@@ -26,11 +26,12 @@ This document defines audit logging requirements for Legacy Guardians (LG), emph
 - bulk exports: scope + record counts
 
 ### Trust Accounting (Level 4)
-- ledger create/edit/void
+- ledger create/edit/void (matter-scoped)
 - disbursement batch create/approve/reject/export
 - monthly **three-way reconciliation** runs and posted results
 - lawyer approval recorded for each reconciliation
 - backdated/corrective adjustments
+- **earned-fee transfer (trust → operating)** initiated/approved/posted **tied to an invoice**
 - CosmoLex sync events that affect financial state
 
 ### Integrations
@@ -56,6 +57,11 @@ Each event should include:
 - `result` (success|failure) + `failure_reason`
 - `request_id` / trace id
 - small `metadata` (redacted)
+
+For **trust accounting** actions, additionally include (as top-level fields if possible):
+- `matter_id` (required; ledgers are matter-level)
+- `trust_bank_account_id` (for Stage 1 this will usually be a single IOLTA account per firm)
+- for earned-fee transfers: `invoice_id`, `invoice_number`, and `external_invoice_ref` (e.g., CosmoLex invoice id)
 
 **Never include:** raw magic-link tokens, document contents, attorney note contents, full bank account numbers.
 
@@ -93,3 +99,9 @@ Alert on:
 - Use consistent action naming and versioning.
 - Ensure time synchronization across services.
 - Consider tagging events with data classification (2/3/4).
+
+## Clarifications applied (2026-03-05)
+
+- **Single IOLTA account (Stage 1):** audit events still record `trust_bank_account_id`, but expect a single firm-level account initially.
+- **Ledgers are matter-level:** require `matter_id` on trust-ledger, disbursement, reconciliation, and adjustment events.
+- **Earned-fee transfers require an invoice:** trust → operating transfers must log invoice linkage (internal + external/CosmoLex reference).
