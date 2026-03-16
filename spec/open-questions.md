@@ -25,7 +25,10 @@ Decisions captured:
 
 Remaining open questions:
 11. **Structured distribution scheme:** what fields are needed to represent specific gifts vs residual shares deterministically across joint/reciprocal variants?
+    - Captured (2026-03-11): residual distribution schemes include standard age-staged (NI/ROW milestones) and bloodline trust (replaces residual clause). Support NI@21 + ROW@25, unified @25, ROW split 25/30, split 25/30/35, and UHNW delay to 40.
+    - Captured (2026-03-11): staged ROW schedules (e.g., 25/30/35 thirds) are deliberately **child-level only** by default; remote descendants are generally less restricted (non-UHNW coaching principle) to avoid elongating trustee administration.
 12. **Beneficiary/descendant modeling:** how to represent per-stirpes/per-capita, contingent beneficiaries, charities, and special cases in a normalized way.
+    - Captured (2026-03-11): strong preference to coach **per capita at each generation** as a residual scheme when there are 3+ children (always raised at 4) to keep generational fairness and avoid branch-size distortions.
 
 ## C) Trust accounting (Day 1 required) — remaining open questions
 Already decided:

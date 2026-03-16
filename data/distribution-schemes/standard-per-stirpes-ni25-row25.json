@@ -1,0 +1,23 @@
+{
+  "id": "standard-per-stirpes-ni25-row25",
+  "family": "standard_residual",
+  "division_method": "per_stirpes",
+  "levels": {
+    "child": {
+      "ni_start_age": 25,
+      "row_schedule": [
+        { "age": 25, "max_fraction": 1.0 }
+      ]
+    },
+    "remote_descendant": {
+      "default_policy": "less_restrictive",
+      "ni_start_age": 25,
+      "row_schedule": [
+        { "age": 25, "max_fraction": 1.0 }
+      ]
+    }
+  },
+  "notes": [
+    "Unified NI + ROW at 25."
+  ]
+}

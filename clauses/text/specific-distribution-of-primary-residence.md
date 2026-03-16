@@ -1,0 +1,3 @@
+# Specific Distribution of Primary Residence
+
+The Trustee shall distribute my principal residence, as determined immediately prior to my death or prior to my admission to a convalescent care facility, which is presently _____________, to ________________________, as *joint tenants with the right of survivorship, subject to all encumbrances and/or liens of record. If neither of them is then living, the Trustee shall distribute this property to their then living issue, per stirpes; provided however, if said beneficiary(ies) shall not so survive and shall not be survived by issue, then the Trustee shall distribute this property in the manner hereinafter set forth for the distribution of the residue of the Trust Estate.

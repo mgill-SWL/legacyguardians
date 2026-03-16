@@ -1,0 +1,3 @@
+# Will Alternate Disposition Savings Clause
+
+3.C.	Alternate Disposition. If the Trust Agreement hereinabove referred to in Paragraph 1.B. of this Will is not in effect at my death, or if for any other reason the gift to said Trust (as hereinabove set forth) cannot be accomplished, I specifically and completely incorporate the terms of said Trust Agreement into this Will by reference. In such a situation, I direct my Executor to establish a trust in accordance with the provisions of said Trust Agreement and give the remainder of my estate, excluding any property over which I might have a power of appointment, to the Trustee of such testamentary trust.

@@ -1,0 +1,44 @@
+# Draft mapping from legacy [[TOKENS]] found in templates -> canonical Jinja keys.
+# We'll refine once we decide exact schema details (e.g., client vs clients[0]).
+
+# --- Common date tokens ---
+"[[Day]]": "{{ today.day }}"              # or {{ execution_date | date('%-d') }}
+"[[Month]]": "{{ today.month_name }}"     # decide formatting
+"[[Year]]": "{{ today.year }}"
+
+# --- Individual client (clients[0]) ---
+"[[CLIENTFIRSTNAME]]": "{{ clients[0].name.first }}"
+"[[CLIENTSURNAME]]": "{{ clients[0].name.last }}"
+"[[Clientfirstname]]": "{{ clients[0].name.first }}"
+"[[Clientsurname]]": "{{ clients[0].name.last }}"
+"[[CLIENTFULLNAME]]": "{{ clients[0].name.legal_full or (clients[0].name.first ~ ' ' ~ clients[0].name.last) }}"
+"[[Client1Fullname]]": "{{ clients[0].name.legal_full or (clients[0].name.first ~ ' ' ~ clients[0].name.last) }}"
+"[[CLIENTINITIALS]]": "{{ clients[0].preferred_initials }}"
+"[[S1INITIALS]]": "{{ clients[0].preferred_initials }}"
+
+"[[ClientStreetAddress]]": "{{ clients[0].address.street }}"
+"[[ClientCity]]": "{{ clients[0].address.city }}"
+"[[Zip]]": "{{ clients[0].address.zip }}"
+"[[County/City]]": "{{ clients[0].address.county }}"  # confirm
+"[[ClientCity/County]]": "{{ clients[0].address.county }}"  # confirm
+
+# --- Joint templates (clients[0], clients[1]) ---
+"[[CLIENT1FULLNAME]]": "{{ clients[0].name.legal_full or (clients[0].name.first ~ ' ' ~ clients[0].name.last) }}"
+"[[CLIENT2FULLNAME]]": "{{ clients[1].name.legal_full or (clients[1].name.first ~ ' ' ~ clients[1].name.last) }}"
+"[[CLIENT1FIRSTNAME]]": "{{ clients[0].name.first }}"
+"[[CLIENT2FIRSTNAME]]": "{{ clients[1].name.first }}"
+"[[Client1Firstname]]": "{{ clients[0].name.first }}"
+"[[Client2Firstname]]": "{{ clients[1].name.first }}"
+"[[S2INITIALS]]": "{{ clients[1].preferred_initials }}"
+
+# --- Trust name ---
+"[[CLIENTTRUSTNAME]]": "{{ trusts[0].name }}"
+"[[Clienttrustname]]": "{{ trusts[0].name }}"
+
+# --- Notary / firm ---
+"[[LawFirmCountyOrCity]]": "{{ firm.county_or_city }}"
+"[[LawFirmCounty/City]]": "{{ firm.county_or_city }}"
+"[[NotaryExpirationDate]]": "{{ notary.expiration_date }}"
+
+# NOTE: Many fiduciary/alternate fields exist in templates but are not yet mapped here.
+# We'll generate a complete mapping automatically after we review the full token inventory.

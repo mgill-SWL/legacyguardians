@@ -1,0 +1,3 @@
+# Remove and Appt Corp Trustee Language
+
+3.D.     Removal. At any time, the beneficiary(ies) of any sub-trust created hereunder may remove the Trustee of such sub-trust and appoint a corporate fiduciary as the successor Trustee; such removal and appointment shall be by an instrument in writing, and the removal shall only be effective upon the signed acceptance of the successor Trustee agreeing to the appointment. If such sub-trust shall have a single income beneficiary, the individual beneficiary of such sub-trust shall have the above-specified power to remove and appoint without the necessity of the agreement of any other beneficiary.

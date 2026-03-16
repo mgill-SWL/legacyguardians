@@ -1,0 +1,21 @@
+{
+  "id": "bloodline-residual",
+  "family": "bloodline_trust",
+  "replaces_residual_clause": true,
+  "division_method": "per_stirpes",
+  "levels": {
+    "child": {
+      "mandatory_income": true,
+      "row_schedule": null,
+      "trust_continues": true
+    },
+    "remote_descendant": {
+      "default_policy": "continuing_trust",
+      "row_schedule": null,
+      "trust_continues": true
+    }
+  },
+  "notes": [
+    "See clause text: clauses/text/residual-distribution-clause-bloodline-trust.md"
+  ]
+}

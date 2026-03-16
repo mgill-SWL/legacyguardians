@@ -1,0 +1,26 @@
+{
+  "id": "standard-per-stirpes-ni21-row-25-30-35-thirds",
+  "family": "standard_residual",
+  "division_method": "per_stirpes",
+  "levels": {
+    "child": {
+      "ni_start_age": 21,
+      "row_schedule": [
+        { "age": 25, "max_fraction": 0.3333333333 },
+        { "age": 30, "max_fraction": 0.6666666667 },
+        { "age": 35, "max_fraction": 1.0 }
+      ]
+    },
+    "remote_descendant": {
+      "default_policy": "less_restrictive",
+      "ni_start_age": 25,
+      "row_schedule": [
+        { "age": 25, "max_fraction": 1.0 }
+      ]
+    }
+  },
+  "notes": [
+    "Child-level only: staged ROW 25/30/35 in thirds.",
+    "Rationale: keep grandchildren less restricted by default to avoid elongating trustee administration (non-UHNW coaching principle)."
+  ]
+}

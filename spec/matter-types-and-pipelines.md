@@ -9,10 +9,11 @@ This document defines the **supported matter types** and how pipelines/stages ar
 Stage 1 must support creating and operating the following matter types (even if only one is fully featured at MVP):
 
 1. **Estate Planning**
-2. **Fiduciary & Continuity Program**
-3. **Probate estate administration (VA only)**
-4. **Trust administration**
-5. **One-off deeds**
+2. **Incapacity Documents Only** *(intake-level representation; limited-scope drafting)*
+3. **Fiduciary & Continuity Program**
+4. **Probate estate administration (VA only)**
+5. **Trust administration**
+6. **One-off deeds**
 
 ### Stage 1 focus
 - **Primary (deep support):** Estate Planning (VA) → document assembly and packet generation.

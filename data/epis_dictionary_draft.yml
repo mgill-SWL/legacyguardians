@@ -1,0 +1,189 @@
+# Draft data dictionary (v0) derived from EPIS (Couple).pdf + EPIS (Individual).pdf
+# Canonical key style: lowercase dotted paths.
+# This is a starting point; we will refine as we map to actual template needs.
+
+matter:
+  type: "individual|joint|reciprocal"  # derived
+  intake_date: "date?"
+  execution_date:
+    mode: "blank|selected|default_next_month"  # how dates should render
+    date: "date?"                              # populated if mode==selected
+  conflict_waiver:
+    date: "date?"           # joint only
+    spouse_1_signed: "bool?"
+    spouse_2_signed: "bool?"
+
+# Trust(s) being created
+# - individual: 1 trust (settlor=clients[0])
+# - joint: 1 trust (settlors=clients[0], clients[1])
+# - reciprocal: 2 trusts (one per client)
+trusts:
+  - name: string
+    kind: "individual|joint"            # reciprocal uses two "individual"
+    settlor_indexes: "list[int]"        # e.g., [0] or [0,1]
+
+# Firm / signing / notary context
+firm:
+  locality:
+    kind: "city|county?"
+    name: "string?"
+    # derived: label => "City of {name}" or "{name} County"
+
+notary:
+  expiration_date: "date?"
+
+# Appointments (fiduciaries) used across instruments.
+# Note: Many are per-client because spouses can diverge.
+appointments:
+  # Trustees are most naturally keyed to the trust being created.
+  # appointments.trustees[i] corresponds to trusts[i].
+  trustees:
+    - primary: { name: "string?", relationship: "string?", email: "string?", address: "string?" }
+      alternate1: { name: "string?", relationship: "string?", email: "string?", address: "string?" }
+      alternate2: { name: "string?", relationship: "string?", email: "string?", address: "string?" }
+
+  financial_poa:
+    # index corresponds to clients[n]
+    - primary: { name: "string?", relationship: "string?", email: "string?", address: "string?" }
+      alternate1: { name: "string?", relationship: "string?", email: "string?", address: "string?" }
+      alternate2: { name: "string?", relationship: "string?", email: "string?", address: "string?" }
+
+  health_agent:
+    - primary: { name: "string?", relationship: "string?", email: "string?", address: "string?" }
+      alternate1: { name: "string?", relationship: "string?", email: "string?", address: "string?" }
+      alternate2: { name: "string?", relationship: "string?", email: "string?", address: "string?" }
+
+  guardian:
+    - primary: { name: "string?", relationship: "string?", email: "string?", address: "string?" }
+      alternate1: { name: "string?", relationship: "string?", email: "string?", address: "string?" }
+      alternate2: { name: "string?", relationship: "string?", email: "string?", address: "string?" }
+
+clients:  # list length 1 (individual) or 2 (joint/reciprocal)
+  - name:
+      first: string
+      middle: "string?"
+      last: string
+      suffix: "string?"            # Jr., III, etc.
+      legal_full: "string?"        # optional convenience override; otherwise derived
+    aka: "string?"
+    preferred_initials: "string?"
+    address:
+      street: string
+      mailing_city: "string?"      # USPS city name (can differ from locality)
+      state: "string?"             # e.g., VA; see commonwealth note below
+      zip: "string?"
+      locality:
+        kind: "city|county?"        # VA: independent cities vs counties
+        name: "string?"            # e.g., "Alexandria" or "Fairfax"
+    email: "string?"
+    phone:
+      home: "string?"
+      work: "string?"
+      cell: "string?"
+    dob: "date?"
+    ssn: "string?"                # sensitive
+    business_employment: "string?"
+    is_us_citizen: "bool?"
+    nationality: "string?"        # if not US citizen
+    prior_marriage:
+      exists: "bool?"              # consider collecting for all clients
+      prior_spouse_name: "string?"
+      termination_method: "death|divorce?"
+      termination_date: "date?"
+    burial:
+      choice: "cremation|burial|undecided|agent_discretion?"
+      ashes_disposition: "string?"
+      interment_details: "string?"
+      prearranged:
+        agency_name: "string?"
+        account_or_contract_id: "string?"
+        documents: "list[string]?"
+      notes: "string?"
+    advisors:                     # list of professional advisors
+      - type: "wealth_planner|financial_advisor|insurance_agent|cpa|tax_preparer|mortgage_lender|attorney|trustee|other"
+        name: string
+        company: "string?"
+        email: "string?"
+        phone: "string?"
+        permission_to_discuss: "bool?"
+        notes: "string?"
+    permissions:
+      consent_to_joint_representation: "bool?"
+      consent_to_joint_representation_date: "date?"
+      release_for_advisors: "bool?"
+
+children:
+  has_children: "bool?"
+  list:
+    - full_name: string
+      dob: "date?"
+  grandchildren:
+    count: "int?"
+    age_range: "string?"
+
+fiduciaries:
+  - name: string
+    relationship: "string?"    # consider enum
+    address:
+      street: "string?"
+      city: "string?"
+      state: "string?"
+      zip: "string?"
+      county: "string?"
+    phone: "string?"
+    email: "string?"
+    roles: "list[string]?"      # trustee, executor, financial_poa, health_surrogate, guardian, burial_agent
+
+estate:
+  real_estate:
+    total_fmv: "number?"
+    properties:
+      - address: { street: "string?", city: "string?", state: "string?", zip: "string?" }
+        fmv: "number?"
+    anticipated_transaction_24mo: "bool?"
+  retirement:
+    total_value: "number?"
+    accounts:
+      - institution: "string?"
+        account_type: "string?"  # consider enum
+        value: "number?"
+  life_insurance:
+    policies:
+      - institution: "string?"
+        type: "term|whole|universal|variable|other?"
+        policy_number: "string?"
+        benefit_amount: "number?"
+        cash_value: "number?"
+  bank_accounts:
+    total_value: "number?"
+    accounts:
+      - institution: "string?"
+        account_type: "checking|savings|cd|money_market|other?"
+        value: "number?"
+  personal_property:
+    total_value: "number?"
+    description: "string?"
+  brokerage:
+    description: "string?"
+    total_value: "number?"      # recommended addition
+  business_interests:
+    total_value: "number?"
+    name: "string?"
+  vehicles:
+    total_value: "number?"
+    description: "string?"
+  total_value: "number?"
+
+distribution:
+  clients:
+    - wishes: "string?"          # free text per client
+
+pets:
+  count: "int?"
+  create_pet_trust: "bool?"
+  pet_trust_endowment: "number?"
+  use_cash_bequest_approach: "bool?"
+  leave_to_trustee_discretion: "bool?"
+  beneficiary:
+    primary: "string?"
+    alternate: "string?"

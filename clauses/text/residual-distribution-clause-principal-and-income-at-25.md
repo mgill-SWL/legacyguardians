@@ -1,0 +1,21 @@
+# Residual Distribution Clause - Principal and Income at 25
+
+The Trustee shall divide the rest, remainder and residue of the Trust Estate into shares for my then living issue so that the number of shares set aside, the issue for whom such shares shall be set aside and the relative values thereof shall be determined per stirpes. The Trustee shall administer and distribute the shares as hereafter provided:
+
+If any of my children are then living, the Trustee shall hold each child’s share of the Trust Estate in further trust hereunder. If a child has not yet attained the age of twenty-five (25), the Trustee shall pay to or apply for the benefit of the child as much of the net income and principal of the child’s trust as the Trustee, in the Trustee’s discretion, shall deem necessary for the child’s proper health, education, maintenance and support. Any income not so distributed shall be added to principal.
+
+When such child shall attain the age of twenty-five (25) years, or at the death of the survivor of myself and my spouse if such child is already age twenty-five (25) or older, the Trustee shall pay to the child the net income of the child on a quarter-annual or more frequent basis. The Trustee shall continue to have the right to apply for the benefit of the child as much of the principal of the child’s trust as the Trustee, in the Trustee’s discretion, shall deem advisable for the child’s proper health, education, maintenance and support.
+
+The Trustee shall also pay over to such child, after he or she shall have attained the age of twenty-five (25) years, so much of the principal of the child’s trust as he or she shall request in writing at any time or times.
+
+In the event of the death of a child before such child’s trust has been fully distributed to such child, the Trustee shall distribute the remaining portion of the child’s trust to such child’s then living issue, per stirpes, in the manner set forth below. If such deceased child shall not be survived by issue, the Trustee shall distribute his or her share to my then living issue (whenever born), per stirpes; provided however, any portion of the share of such deceased child distributable to any other beneficiary for whose benefit a share shall then be held in trust hereunder shall be added to such share and shall thenceforth be held, administered and distributed as a part thereof.
+
+If the Trust Estate or any undistributed part thereof is thereafter distributed to any of my descendants more remote than a child, the Trustee shall hold, administer and distribute such beneficiary’s share in the following manner:
+
+As to each share so set aside, until each such beneficiary shall attain the age of twenty-five (25) years, the Trustee shall pay over to, or apply for the benefit of such beneficiary so much of the net income and/or principal of his or her share as the Trustee, in the Trustee’s discretion, shall deem advisable for such beneficiary’s health, education, support, maintenance and welfare. Any income not so distributed shall be added to principal.
+
+The Trustee shall also pay over to such beneficiary, after he or she shall have attained the age of twenty-five (25) years, so much of the accrued income and principal of the Trust Estate set aside for such beneficiary as he or she shall request in writing at any time or times.
+
+In the event of the death of any beneficiary while any undistributed part of his or her share shall then be held in trust hereunder, the Trustee shall (upon the death of said beneficiary) transfer and deliver forthwith his or her share to said deceased beneficiary’s then living issue, per stirpes. If said deceased beneficiary is not survived by issue, the Trustee shall (upon the death of said beneficiary) transfer and deliver forthwith his or her share to said beneficiary’s then living brothers and sisters.
+
+If no issue of mine shall be living at my death or prior to the distribution of the whole of the Trust Estate, the Trustee shall distribute such part of the Trust Estate as shall then be held in trust hereunder one-half (1/2) to my heirs and one-half (1/2) to the heirs of Sreelakshmi; the identities and respective shares of such heirs to be determined according to the laws of the Commonwealth of Virginia in effect at the date of execution of this Trust Agreement.

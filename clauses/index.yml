@@ -1,0 +1,311 @@
+# clauses/index.yml
+# Auto-generated from clauses/source/epp-amendments/*.docx
+clauses:
+  - id: amd-directive-other-directions
+    title: 'AMD Directive - Other Directions'
+    source: 'clauses/source/epp-amendments/AMD Directive - Other Directions.docx'
+    summary: 'Other Directions'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: addiction-issues-chronic-trust-amendment
+    title: 'Addiction Issues (Chronic) Trust Amendment'
+    source: 'clauses/source/epp-amendments/Addiction Issues (Chronic) Trust Amendment.docx'
+    summary: '*NUMBER AMENDMENT TO'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: arbitration-clause
+    title: 'Arbitration Clause'
+    source: 'clauses/source/epp-amendments/Arbitration Clause.docx'
+    summary: '2.L.\tConflict Resolution and Severability. In order to save the cost of court proceedings and promote the prompt and final resolution of any dispute with regard'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: blank-exhibit-b
+    title: 'Blank Exhibit B'
+    source: 'clauses/source/epp-amendments/Blank Exhibit B.docx'
+    summary: 'EXHIBIT “B”'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: blank-tpp-instx
+    title: 'Blank TPP Instx'
+    source: 'clauses/source/epp-amendments/Blank TPP Instx.docx'
+    summary: 'INSTRUCTIONS FOR'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: bloodline-trust-trustee-language
+    title: 'Bloodline Trust Trustee Language'
+    source: 'clauses/source/epp-amendments/Bloodline Trust Trustee Language.docx'
+    summary: 'Trustee clause (2.C.)'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: burial-instructions
+    title: 'Burial Instructions'
+    source: 'clauses/source/epp-amendments/Burial Instructions.docx'
+    summary: 'Burial Instructions'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: cessation-of-oral-nutrition-and-hydration-directive
+    title: 'Cessation of Oral Nutrition and Hydration Directive'
+    source: 'clauses/source/epp-amendments/Cessation of Oral Nutrition and Hydration Directive.docx'
+    summary: 'VOLUNTARY ADVANCE DIRECTIVE'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: charitable-distribution-cy-pres
+    title: 'Charitable Distribution Cy Pres'
+    source: 'clauses/source/epp-amendments/Charitable Distribution Cy Pres.docx'
+    summary: 'Charitable Distribution Cy Pres'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: contingent-residual-distribution-heirs-at-law-clause
+    title: 'Contingent Residual Distribution Heirs at Law Clause'
+    source: 'clauses/source/epp-amendments/Contingent Residual Distribution Heirs at Law Clause.docx'
+    summary: 'If no issue of mine shall be living at my death or prior to the distribution of the whole of the Trust Estate, the Trustee shall distribute such part of the Tru'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: crypto-fiduciary-powers
+    title: 'Crypto Fiduciary Powers'
+    source: 'clauses/source/epp-amendments/Crypto Fiduciary Powers.docx'
+    summary: 'Crypto Fiduciary Powers'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: definitions
+    title: 'Definitions'
+    source: 'clauses/source/epp-amendments/Definitions.docx'
+    summary: 'Definitions'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: distribution-age-delay-for-kids-half-and-half-at-25-30
+    title: 'Distribution Age Delay for Kids half and half at 25-30'
+    source: 'clauses/source/epp-amendments/Distribution Age Delay for Kids half and half at 25-30.docx'
+    summary: 'If my daughter *CHILD and my son *OTHERCHILD (or any other child of mine hereinafter born) are then living, the Trustee shall hold the Trust Estate (or, if more'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: distribution-clause-tangible-personal-property
+    title: 'Distribution Clause - Tangible Personal Property'
+    source: 'clauses/source/epp-amendments/Distribution Clause - Tangible Personal Property.docx'
+    summary: 'The Trustee shall distribute, free of trust, such items of my tangible personal property as may then be included in the Trust Estate in accordance with any writ'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: distribution-contingent-upon-gainful-employment
+    title: 'Distribution Contingent upon Gainful Employment'
+    source: 'clauses/source/epp-amendments/Distribution Contingent upon Gainful Employment.docx'
+    summary: 'Distribution Contingent upon Gainful Employment'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: distribution-provision-option-to-purchase-real-property
+    title: 'Distribution Provision - Option to Purchase Real Property'
+    source: 'clauses/source/epp-amendments/Distribution Provision - Option to Purchase Real Property.docx'
+    summary: 'The Trustee shall offer to sell the trust’s interest in that certain real property located in the County of Fairfax, State of Virginia, and more particularly kn'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: foreign-trust-savings-provision
+    title: 'Foreign Trust Savings Provision'
+    source: 'clauses/source/epp-amendments/Foreign Trust Savings Provision.docx'
+    summary: '3.P.     "Foreign Trust" Savings Provision. It is our intent that all trusts created by this Trust Agreement qualify as “United States Persons” under §7701(a)(3'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: grantor-trust-provision-medicaid-irrevocable-trust
+    title: 'Grantor Trust Provision - Medicaid Irrevocable Trust'
+    source: 'clauses/source/epp-amendments/Grantor Trust Provision - Medicaid Irrevocable Trust.docx'
+    summary: '2.K. Grantor Trust Status. It is the intent of the Grantor that this Trust be construed as a “Grantor Trust” under Internal Revenue Code §674(a) (Power to Contr'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: guidanceto-trustee-re-discretionary-trust-distributions
+    title: 'Guidanceto Trustee re Discretionary Trust Distributions'
+    source: 'clauses/source/epp-amendments/Guidanceto Trustee re Discretionary Trust Distributions.docx'
+    summary: 'As a guide to the Trustee, in the administration of the discretionary trusts:'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: incapacity-provision
+    title: 'Incapacity Provision'
+    source: 'clauses/source/epp-amendments/Incapacity Provision.docx'
+    summary: 'If no Trust Protector:'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: investment-manager
+    title: 'Investment Manager'
+    source: 'clauses/source/epp-amendments/Investment Manager.docx'
+    summary: 'Investment Manager. NAME is appointed as the Investment Manager of the Trust Estate so long as said Investment Manager is willing and able to act as such manage'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: marital-deduction-trust-provision
+    title: 'Marital Deduction Trust Provision'
+    source: 'clauses/source/epp-amendments/Marital Deduction Trust Provision.docx'
+    summary: 'If *BENEFICIARYFIRSTNAME survives me, the Trustee shall hold the residue of the Trust Estate in further trust (hereinafter referred to as the “Marital Deduction'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: no-contest-provision
+    title: 'No Contest Provision'
+    source: 'clauses/source/epp-amendments/No Contest Provision.docx'
+    summary: 'No-Contest Provision. To the extent permitted under the laws of the Commonwealth of Virginia, in the event any beneficiary under this Trust shall, singly or in '
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: poa-irrevocable-trust-power
+    title: 'POA Irrevocable Trust Power'
+    source: 'clauses/source/epp-amendments/POA Irrevocable Trust Power.docx'
+    summary: 'Create an Irrevocable Trust. To create an irrevocable trust for my benefit wherein the beneficial interests at my death shall be the same as the dispositive pro'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: poa-protector-language
+    title: 'POA Protector Language'
+    source: 'clauses/source/epp-amendments/POA Protector Language.docx'
+    summary: '3.G.\tProtector. Michael D. Gill III shall be appointed as Protector of this Power of Attorney Agreement, or, if he is unable or unwilling to serve, then a membe'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: per-capita-at-each-generation
+    title: 'Per Capita at Each Generation'
+    source: 'clauses/source/epp-amendments/Per Capita at Each Generation.docx'
+    summary: 'Division of Residue language'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: pour-over-holographic-will-template
+    title: 'Pour-Over Holographic Will Template'
+    source: 'clauses/source/epp-amendments/Pour-Over Holographic Will Template.docx'
+    summary: 'Holographic Pour-Over Will Instructions'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: power-of-appointment-for-education-expenses
+    title: 'Power of Appointment for Education Expenses'
+    source: 'clauses/source/epp-amendments/Power of Appointment for Education Expenses.docx'
+    summary: 'Power of Appointment for Education Expenses'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: power-of-appointment
+    title: 'Power of Appointment'
+    source: 'clauses/source/epp-amendments/Power of Appointment.docx'
+    summary: 'I give Theresa Donor the power to appoint all or any portion of the principal and undistributed income remaining in her trust at her death among one or more per'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: remove-and-appt-corp-trustee-language
+    title: 'Remove and Appt Corp Trustee Language'
+    source: 'clauses/source/epp-amendments/Remove and Appt Corp Trustee Language.docx'
+    summary: '3.D.\xa0\xa0\xa0\xa0 Removal. At any time, the beneficiary(ies) of any sub-trust created hereunder may remove the Trustee of such sub-trust and appoint a corporate fiduciar'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: residual-distribution-clause-principal-and-income-at-25
+    title: 'Residual Distribution Clause - Principal and Income at 25'
+    source: 'clauses/source/epp-amendments/Residual Distribution Clause - Principal and Income at 25.docx'
+    summary: 'The Trustee shall divide the rest, remainder and residue of the Trust Estate into shares for my then living issue so that the number of shares set aside, the is'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: residual-distribution-explanation-for-summary-of-client-info
+    title: 'Residual Distribution Explanation for Summary of Client Info'
+    source: 'clauses/source/epp-amendments/Residual Distribution Explanation for Summary of Client Info.docx'
+    summary: 'Fiduciaries serve in the order shown unless otherwise noted'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: retirement-account-provision-post-secure-act-2025-08-21
+    title: 'Retirement Account Provision - Post-Secure Act - 2025-08-21'
+    source: 'clauses/source/epp-amendments/Retirement Account Provision - Post-Secure Act - 2025-08-21.docx'
+    summary: 'Retirement Accounts. To the extent any trust hereunder is the beneficiary of a Retirement Account (as defined below), the Trustee shall withdraw benefits in acc'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: sci-client-explainer-clayton-election
+    title: 'SCI Client Explainer - Clayton Election'
+    source: 'clauses/source/epp-amendments/SCI Client Explainer - Clayton Election.docx'
+    summary: 'A Clayton election initially allocates all of the decedent spouse\'s estate to the marital deduction trust but gives the Trustee the option to "elect" the amount'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: special-distributions-provision-long-form
+    title: 'Special Distributions Provision (Long Form)'
+    source: 'clauses/source/epp-amendments/Special Distributions Provision (Long Form).docx'
+    summary: 'Special Distributions. If any income and/or principal of any trust hereunder ever vests outright under the provisions of this Trust Agreement in a person not ye'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: specific-distribution-of-pets
+    title: 'Specific Distribution of Pets'
+    source: 'clauses/source/epp-amendments/Specific Distribution of Pets.docx'
+    summary: 'The Trustee shall distribute any pets in my possession plus the sum of FIVE THOUSAND DOLLARS ($5,000) per pet to ______________. If all of the aforementioned di'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: specific-distribution-of-primary-residence
+    title: 'Specific Distribution of Primary Residence'
+    source: 'clauses/source/epp-amendments/Specific Distribution of Primary Residence.docx'
+    summary: 'The Trustee shall distribute my principal residence, as determined immediately prior to my death or prior to my admission to a convalescent care facility, which'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: springing-poa-language
+    title: 'Springing POA Language'
+    source: 'clauses/source/epp-amendments/Springing POA Language.docx'
+    summary: 'Precatory Language:'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: standard-trustee-powers
+    title: 'Standard Trustee Powers'
+    source: 'clauses/source/epp-amendments/Standard Trustee Powers.docx'
+    summary: 'EXHIBIT “A”'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: testamentary-trust-amendments
+    title: 'Testamentary Trust Amendments'
+    source: 'clauses/source/epp-amendments/Testamentary Trust Amendments.docx'
+    summary: 'Testamentary Trust Amendments'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: trust-protector-language
+    title: 'Trust Protector Language'
+    source: 'clauses/source/epp-amendments/Trust Protector Language.docx'
+    summary: 'Trust Protector. I reserve the right, to appoint and remove a Trust Protector of this trust at any time or times by written notification to the then-acting Trus'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: trust-protector-mdg-swl-language
+    title: 'Trust Protector MDG-SWL Language'
+    source: 'clauses/source/epp-amendments/Trust Protector MDG-SWL Language.docx'
+    summary: 'Trust Protector. I appoint my attorney Michael D. Gill III, or if he is unable or unwilling to serve then a member of the firm of Speedwell Law, PLLC or its suc'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: trustee-compensation-clause
+    title: 'Trustee Compensation Clause'
+    source: 'clauses/source/epp-amendments/Trustee Compensation Clause.docx'
+    summary: 'Compensation. A Trustee shall be entitled to receive, out of the income and principal of the trust, compensation for its services hereunder to be determined, if'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
+  - id: will-alternate-disposition-savings-clause
+    title: 'Will Alternate Disposition Savings Clause'
+    source: 'clauses/source/epp-amendments/Will Alternate Disposition Savings Clause.docx'
+    summary: '3.C.\tAlternate Disposition. If the Trust Agreement hereinabove referred to in Paragraph 1.B. of this Will is not in effect at my death, or if for any other reas'
+    variation_point: null
+    applies_to: ['trust']
+    tags: []
