@@ -1,26 +1,23 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
 
-import { auth, signOut } from "@/auth";
+import { authOptions } from "@/authOptions";
+import { SignOutButton } from "./SignOutButton";
 
 export default async function MattersPage() {
-  const session = await auth();
+  const session = await getServerSession(authOptions);
+  if (!session?.user) redirect("/login");
 
   return (
     <main style={{ padding: 24, fontFamily: "system-ui" }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h1 style={{ fontSize: 24, fontWeight: 700 }}>Matters</h1>
-        <form
-          action={async () => {
-            "use server";
-            await signOut({ redirectTo: "/" });
-          }}
-        >
-          <button type="submit">Sign out</button>
-        </form>
+        <SignOutButton />
       </header>
 
       <p style={{ marginTop: 8, color: "#666" }}>
-        Signed in as {session?.user?.email}
+        Signed in as {session.user.email}
       </p>
 
       <div style={{ marginTop: 16 }}>
