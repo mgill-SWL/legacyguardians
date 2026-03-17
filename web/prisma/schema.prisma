@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  STAFF
+  ADMIN
+}
+
+enum MatterStatus {
+  DRAFT
+  INTAKE_IN_PROGRESS
+  READY_TO_GENERATE
+  GENERATED
+}
+
+enum DocumentType {
+  ADVANCE_MEDICAL_DIRECTIVE
+  // Future
+  JOINT_TRUST_PORTFOLIO
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+
+  role          UserRole  @default(STAFF)
+
+  accounts      Account[]
+  sessions      Session[]
+
+  matters       Matter[]  @relation("MattersCreatedBy")
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Matter {
+  id          String       @id @default(cuid())
+  status      MatterStatus @default(DRAFT)
+
+  // v0: keep it simple; later we can normalize people/roles.
+  displayName String
+
+  createdById String
+  createdBy   User         @relation("MattersCreatedBy", fields: [createdById], references: [id])
+
+  intake      IntakeResponse?
+  documents   GeneratedDocument[]
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model IntakeResponse {
+  id        String   @id @default(cuid())
+  matterId  String   @unique
+  matter    Matter   @relation(fields: [matterId], references: [id], onDelete: Cascade)
+
+  // v0: JSON blob; evolve to structured columns as forms stabilize.
+  data      Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model GeneratedDocument {
+  id        String       @id @default(cuid())
+  matterId  String
+  matter    Matter       @relation(fields: [matterId], references: [id], onDelete: Cascade)
+
+  type      DocumentType
+
+  // For MVP we can store generated content as a Blob later; for now store metadata.
+  fileName  String?
+  fileUrl   String?
+
+  createdAt DateTime     @default(now())
+
+  @@index([matterId])
+}
