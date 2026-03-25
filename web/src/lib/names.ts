@@ -11,6 +11,6 @@ export function surnameFromFullName(fullName: string): string {
 export function defaultTrustNameFromClient1(fullName: string): string {
   const surname = surnameFromFullName(fullName);
   return surname
-    ? `THE ${surname.toUpperCase()} FAMILY LIVING TRUST`
-    : "THE FAMILY LIVING TRUST";
+    ? `${surname.toUpperCase()} FAMILY LIVING TRUST`
+    : "FAMILY LIVING TRUST";
 }
