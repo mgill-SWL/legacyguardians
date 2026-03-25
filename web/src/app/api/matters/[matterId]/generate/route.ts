@@ -5,6 +5,16 @@ import { authOptions } from "@/authOptions";
 import { prisma } from "@/lib/prisma";
 import { renderDocxTemplate, repoTemplatePath } from "@/lib/docx/renderTemplate";
 
+type Intake = {
+  grantors?: string[];
+  hasMinorChildren?: boolean;
+};
+
+function renderOrThrow(templateRelFromRepoRoot: string, data: Record<string, unknown>) {
+  const templateAbsPath = repoTemplatePath(templateRelFromRepoRoot);
+  return renderDocxTemplate({ templateAbsPath, data });
+}
+
 export async function POST(
   _req: Request,
   { params }: { params: Promise<{ matterId: string }> }
@@ -19,10 +29,7 @@ export async function POST(
   });
   if (!matter) return NextResponse.json({ error: "not found" }, { status: 404 });
 
-  const intake = (matter.intake?.data ?? {}) as unknown as {
-    grantors?: string[];
-    hasMinorChildren?: boolean;
-  };
+  const intake = (matter.intake?.data ?? {}) as Intake;
 
   const grantors = intake.grantors ?? [];
   const client1 = grantors[0] ?? "";
@@ -37,63 +44,78 @@ export async function POST(
   const JSZip = (await import("jszip")).default;
   const zip = new JSZip();
 
+  const rendered: Array<{ name: string; missingTokens: string[] }> = [];
+
   try {
     // 01 Joint Trust
     {
-      const templateAbsPath = repoTemplatePath("templates/canonical/joint.docx");
-      const { buffer } = renderDocxTemplate({ templateAbsPath, data });
+      const { buffer, missingTokens } = renderOrThrow("templates/canonical/joint.docx", data);
       zip.file(`01_Joint_Trust_${matterId}.docx`, buffer);
+      rendered.push({ name: "01_Joint_Trust", missingTokens });
     }
 
-    // 02/03 Wills (split templates)
+    // 02/03 Wills
     {
-      const templateAbsPath = repoTemplatePath("templates/canonical/packet_split/will_client1.docx");
-      const { buffer } = renderDocxTemplate({ templateAbsPath, data });
+      const { buffer, missingTokens } = renderOrThrow(
+        "templates/canonical/packet_split/will_client1.docx",
+        data
+      );
       zip.file(`02_Last_Will_Client1_${matterId}.docx`, buffer);
+      rendered.push({ name: "02_Last_Will_Client1", missingTokens });
     }
     {
-      const templateAbsPath = repoTemplatePath("templates/canonical/packet_split/will_client2.docx");
-      const { buffer } = renderDocxTemplate({ templateAbsPath, data });
+      const { buffer, missingTokens } = renderOrThrow(
+        "templates/canonical/packet_split/will_client2.docx",
+        data
+      );
       zip.file(`03_Last_Will_Client2_${matterId}.docx`, buffer);
+      rendered.push({ name: "03_Last_Will_Client2", missingTokens });
     }
 
-    // 04/05 AMD + Final Disposition (two docs each)
+    // 04/05 AMD
     {
-      const templateAbsPath = repoTemplatePath(
-        "templates/canonical/packet_split/advance_medical_directive_client1.docx"
+      const { buffer, missingTokens } = renderOrThrow(
+        "templates/canonical/packet_split/advance_medical_directive_client1.docx",
+        data
       );
-      const { buffer } = renderDocxTemplate({ templateAbsPath, data });
       zip.file(`04_Advance_Medical_Directive_Client1_${matterId}.docx`, buffer);
+      rendered.push({ name: "04_AMD_Client1", missingTokens });
     }
     {
-      const templateAbsPath = repoTemplatePath(
-        "templates/canonical/packet_split/advance_medical_directive_client2.docx"
+      const { buffer, missingTokens } = renderOrThrow(
+        "templates/canonical/packet_split/advance_medical_directive_client2.docx",
+        data
       );
-      const { buffer } = renderDocxTemplate({ templateAbsPath, data });
       zip.file(`05_Advance_Medical_Directive_Client2_${matterId}.docx`, buffer);
-    }
-    {
-      const templateAbsPath = repoTemplatePath(
-        "templates/canonical/packet_split/final_disposition_client1.docx"
-      );
-      const { buffer } = renderDocxTemplate({ templateAbsPath, data });
-      zip.file(`06_Final_Disposition_Client1_${matterId}.docx`, buffer);
-    }
-    {
-      const templateAbsPath = repoTemplatePath(
-        "templates/canonical/packet_split/final_disposition_client2.docx"
-      );
-      const { buffer } = renderDocxTemplate({ templateAbsPath, data });
-      zip.file(`07_Final_Disposition_Client2_${matterId}.docx`, buffer);
+      rendered.push({ name: "05_AMD_Client2", missingTokens });
     }
 
-    // Optional minors doc (only when explicitly selected)
-    if (intake.hasMinorChildren) {
-      const templateAbsPath = repoTemplatePath(
-        "templates/canonical/packet_split/minor_children_poa_and_healthcare.docx"
+    // 06/07 Final disposition
+    {
+      const { buffer, missingTokens } = renderOrThrow(
+        "templates/canonical/packet_split/final_disposition_client1.docx",
+        data
       );
-      const { buffer } = renderDocxTemplate({ templateAbsPath, data });
+      zip.file(`06_Final_Disposition_Client1_${matterId}.docx`, buffer);
+      rendered.push({ name: "06_Final_Disposition_Client1", missingTokens });
+    }
+    {
+      const { buffer, missingTokens } = renderOrThrow(
+        "templates/canonical/packet_split/final_disposition_client2.docx",
+        data
+      );
+      zip.file(`07_Final_Disposition_Client2_${matterId}.docx`, buffer);
+      rendered.push({ name: "07_Final_Disposition_Client2", missingTokens });
+    }
+
+    // 08 Optional minors
+    if (intake.hasMinorChildren) {
+      const { buffer, missingTokens } = renderOrThrow(
+        "templates/canonical/packet_split/minor_children_poa_and_healthcare.docx",
+        data
+      );
       zip.file(`08_Minor_Children_Power_of_Attorney_${matterId}.docx`, buffer);
+      rendered.push({ name: "08_Minor_Children_Power_of_Attorney", missingTokens });
     }
 
     // Placeholders to preserve overall binder-plan ordering.
@@ -111,6 +133,18 @@ export async function POST(
       if (!zip.file(name)) zip.file(name, "(placeholder — template not wired yet)\n");
     }
 
+    zip.file(
+      "_manifest.json",
+      JSON.stringify(
+        {
+          matterId,
+          rendered,
+        },
+        null,
+        2
+      )
+    );
+
     const zipBuffer = (await zip.generateAsync({ type: "nodebuffer" })) as unknown as BodyInit;
     const fileName = `LG_Packet_${matterId}.zip`;
 
@@ -122,11 +156,32 @@ export async function POST(
       },
     });
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
+    const err = e as unknown as {
+      message?: string;
+      properties?: {
+        errors?: Array<{ properties?: { explanation?: string; xtag?: string } }>;
+      };
+    };
+
+    const message = err?.message ?? (e instanceof Error ? e.message : String(e));
+
+    const explanation =
+      err?.properties?.errors
+        ?.map((x) => x?.properties?.explanation)
+        .filter((x): x is string => Boolean(x)) ?? [];
+    const tags =
+      err?.properties?.errors
+        ?.map((x) => x?.properties?.xtag)
+        .filter((x): x is string => Boolean(x)) ?? [];
+
     return NextResponse.json(
       {
         error: "render_failed",
         message,
+        docxtemplater: {
+          explanation: explanation.slice(0, 20),
+          tags: tags.slice(0, 50),
+        },
       },
       { status: 500 }
     );
