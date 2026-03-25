@@ -138,6 +138,7 @@ export async function POST(
       JSON.stringify(
         {
           matterId,
+          deployedAt: new Date().toISOString(),
           rendered,
         },
         null,
@@ -153,6 +154,7 @@ export async function POST(
       headers: {
         "content-type": "application/zip",
         "content-disposition": `attachment; filename="${fileName}"`,
+        "x-lg-build": process.env.VERCEL_GIT_COMMIT_SHA ?? "dev",
       },
     });
   } catch (e) {
@@ -178,6 +180,7 @@ export async function POST(
       {
         error: "render_failed",
         message,
+        build: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
         docxtemplater: {
           explanation: explanation.slice(0, 20),
           tags: tags.slice(0, 50),
