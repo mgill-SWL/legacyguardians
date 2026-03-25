@@ -1,26 +1,24 @@
 @import "tailwindcss";
+@import "../design/tokens.css";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  font-family: var(--sw-font);
+  background: radial-gradient(1200px 900px at 20% 20%, rgba(110, 231, 255, 0.14), transparent 60%),
+    radial-gradient(900px 700px at 80% 10%, rgba(167, 139, 250, 0.14), transparent 55%),
+    linear-gradient(180deg, var(--sw-bg), #050814);
+  color: var(--sw-text);
+}
+
+a {
+  color: inherit;
 }
