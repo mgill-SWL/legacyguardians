@@ -56,17 +56,45 @@ export async function POST(
       zip.file(`03_Last_Will_Client2_${matterId}.docx`, buffer);
     }
 
+    // 04/05 AMD + Final Disposition (two docs each)
+    {
+      const templateAbsPath = repoTemplatePath(
+        "templates/canonical/packet_split/advance_medical_directive_client1.docx"
+      );
+      const { buffer } = renderDocxTemplate({ templateAbsPath, data });
+      zip.file(`04_Advance_Medical_Directive_Client1_${matterId}.docx`, buffer);
+    }
+    {
+      const templateAbsPath = repoTemplatePath(
+        "templates/canonical/packet_split/advance_medical_directive_client2.docx"
+      );
+      const { buffer } = renderDocxTemplate({ templateAbsPath, data });
+      zip.file(`05_Advance_Medical_Directive_Client2_${matterId}.docx`, buffer);
+    }
+    {
+      const templateAbsPath = repoTemplatePath(
+        "templates/canonical/packet_split/final_disposition_client1.docx"
+      );
+      const { buffer } = renderDocxTemplate({ templateAbsPath, data });
+      zip.file(`06_Final_Disposition_Client1_${matterId}.docx`, buffer);
+    }
+    {
+      const templateAbsPath = repoTemplatePath(
+        "templates/canonical/packet_split/final_disposition_client2.docx"
+      );
+      const { buffer } = renderDocxTemplate({ templateAbsPath, data });
+      zip.file(`07_Final_Disposition_Client2_${matterId}.docx`, buffer);
+    }
+
     // Placeholders to preserve overall binder-plan ordering.
     const placeholders = [
-      "04_Advance_Medical_Directive.docx",
-      "05_Burial_Power_of_Attorney.docx",
-      "06_General_Durable_Power_of_Attorney.docx",
-      "07_Certification_of_Trust.docx",
-      "08_Assignment_of_Tangible_Personal_Property.docx",
-      "09_Declaration_of_Trust.docx",
-      "10_Instructions_for_TPP_Distribution.docx",
-      "11_Summary_of_Client_Information.docx",
-      "12_Summary_of_Estate_Planning_Provisions.docx",
+      "08_General_Durable_Power_of_Attorney.docx",
+      "09_Certification_of_Trust.docx",
+      "10_Assignment_of_Tangible_Personal_Property.docx",
+      "11_Declaration_of_Trust.docx",
+      "12_Instructions_for_TPP_Distribution.docx",
+      "13_Summary_of_Client_Information.docx",
+      "14_Summary_of_Estate_Planning_Provisions.docx",
     ];
 
     for (const name of placeholders) {
