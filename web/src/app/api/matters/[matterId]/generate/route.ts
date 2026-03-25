@@ -36,9 +36,13 @@ export async function POST(
   const client1 = grantors[0] ?? "";
   const client2 = grantors[1] ?? "";
 
+  const { defaultTrustNameFromClient1 } = await import("@/lib/names");
+  const trustName = defaultTrustNameFromClient1(client1);
+
   const data: Record<string, unknown> = {
     Client1FullName: client1,
     Client2FullName: client2,
+    ClientTrustName: trustName,
     FirmName: "Speedwell Law, PLLC",
   };
 
@@ -113,6 +117,8 @@ export async function POST(
       rendered.push({ name: "08_Minor_Children_Power_of_Attorney", missingTokens: r.missingTokens, template: r.templateAbsPath, bytes: fs.statSync(r.templateAbsPath).size });
     }
 
+    const { makePlaceholderDocx } = await import("@/lib/docx/placeholderDocx");
+
     const placeholders = [
       "09_General_Durable_Power_of_Attorney.docx",
       "10_Certification_of_Trust.docx",
@@ -124,7 +130,9 @@ export async function POST(
     ];
 
     for (const name of placeholders) {
-      if (!zip.file(name)) zip.file(name, "(placeholder — template not wired yet)\n");
+      if (!zip.file(name)) {
+        zip.file(name, await makePlaceholderDocx("(placeholder — template not wired yet)"));
+      }
     }
 
     zip.file(
