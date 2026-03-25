@@ -33,39 +33,44 @@ export async function POST(
     FirmName: "Speedwell Law, PLLC",
   };
 
-  // MVP packet (ZIP). Today we only have the Joint Trust template wired.
-  // This endpoint will grow into the full binder-plan packet.
-  const jointTrustTemplateAbsPath = repoTemplatePath("templates/canonical/joint.docx");
+  const JSZip = (await import("jszip")).default;
+  const zip = new JSZip();
 
   try {
-    const { buffer: jointTrustDocx, missingTokens } = renderDocxTemplate({
-      templateAbsPath: jointTrustTemplateAbsPath,
-      data,
-    });
+    // 01 Joint Trust
+    {
+      const templateAbsPath = repoTemplatePath("templates/canonical/joint.docx");
+      const { buffer } = renderDocxTemplate({ templateAbsPath, data });
+      zip.file(`01_Joint_Trust_${matterId}.docx`, buffer);
+    }
 
-    const JSZip = (await import("jszip")).default;
-    const zip = new JSZip();
+    // 02/03 Wills (split templates)
+    {
+      const templateAbsPath = repoTemplatePath("templates/canonical/packet_split/will_client1.docx");
+      const { buffer } = renderDocxTemplate({ templateAbsPath, data });
+      zip.file(`02_Last_Will_Client1_${matterId}.docx`, buffer);
+    }
+    {
+      const templateAbsPath = repoTemplatePath("templates/canonical/packet_split/will_client2.docx");
+      const { buffer } = renderDocxTemplate({ templateAbsPath, data });
+      zip.file(`03_Last_Will_Client2_${matterId}.docx`, buffer);
+    }
 
-    // Binder-plan ordering (prefix numbers lock the order in Finder/Explorer).
-    zip.file(`01_Joint_Trust_${matterId}.docx`, jointTrustDocx);
-
-    // Placeholders to lock the packet order early.
-    // These will be replaced with real generated DOCX once templates are wired.
+    // Placeholders to preserve overall binder-plan ordering.
     const placeholders = [
-      "02_Last_Will_and_Testament.docx",
-      "03_Advance_Medical_Directive.docx",
-      "04_Burial_Power_of_Attorney.docx",
-      "05_General_Durable_Power_of_Attorney.docx",
-      "06_Certification_of_Trust.docx",
-      "07_Assignment_of_Tangible_Personal_Property.docx",
-      "08_Declaration_of_Trust.docx",
-      "09_Instructions_for_TPP_Distribution.docx",
-      "10_Summary_of_Client_Information.docx",
-      "11_Summary_of_Estate_Planning_Provisions.docx",
+      "04_Advance_Medical_Directive.docx",
+      "05_Burial_Power_of_Attorney.docx",
+      "06_General_Durable_Power_of_Attorney.docx",
+      "07_Certification_of_Trust.docx",
+      "08_Assignment_of_Tangible_Personal_Property.docx",
+      "09_Declaration_of_Trust.docx",
+      "10_Instructions_for_TPP_Distribution.docx",
+      "11_Summary_of_Client_Information.docx",
+      "12_Summary_of_Estate_Planning_Provisions.docx",
     ];
 
     for (const name of placeholders) {
-      zip.file(name, "(placeholder — template not wired yet)\n");
+      if (!zip.file(name)) zip.file(name, "(placeholder — template not wired yet)\n");
     }
 
     const zipBuffer = (await zip.generateAsync({ type: "nodebuffer" })) as unknown as BodyInit;
@@ -76,7 +81,6 @@ export async function POST(
       headers: {
         "content-type": "application/zip",
         "content-disposition": `attachment; filename="${fileName}"`,
-        "x-lg-missing-tokens": missingTokens.slice(0, 50).join(","),
       },
     });
   } catch (e) {
