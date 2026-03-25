@@ -39,10 +39,21 @@ export async function POST(
   const { defaultTrustNameFromClient1 } = await import("@/lib/names");
   const trustName = defaultTrustNameFromClient1(client1);
 
+  function firstNameFromFullName(fullName: string) {
+    const cleaned = fullName.trim().replace(/\s+/g, " ");
+    if (!cleaned) return "";
+    return cleaned.split(" ")[0] ?? "";
+  }
+
   const data: Record<string, unknown> = {
     Client1FullName: client1,
     Client2FullName: client2,
+    Client1FirstName: firstNameFromFullName(client1),
+    Client2FirstName: firstNameFromFullName(client2),
     ClientTrustName: trustName,
+    // TODO: map address fields properly once collected in intake
+    ClientCity: "",
+    Zip: "",
     FirmName: "Speedwell Law, PLLC",
   };
 
