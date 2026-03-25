@@ -85,7 +85,7 @@ export default async function MatterDetailPage({
               cursor: "pointer",
             }}
           >
-            Generate joint trust DOCX (v0)
+            Generate packet (ZIP, v0)
           </button>
         </form>
         <p style={{ marginTop: 10, marginBottom: 0, color: "var(--sw-muted)" }}>

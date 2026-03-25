@@ -33,18 +33,48 @@ export async function POST(
     FirmName: "Speedwell Law, PLLC",
   };
 
-  const templateAbsPath = repoTemplatePath("templates/canonical/joint.docx");
+  // MVP packet (ZIP). Today we only have the Joint Trust template wired.
+  // This endpoint will grow into the full binder-plan packet.
+  const jointTrustTemplateAbsPath = repoTemplatePath("templates/canonical/joint.docx");
 
   try {
-    const { buffer, missingTokens } = renderDocxTemplate({ templateAbsPath, data });
+    const { buffer: jointTrustDocx, missingTokens } = renderDocxTemplate({
+      templateAbsPath: jointTrustTemplateAbsPath,
+      data,
+    });
 
-    const fileName = `JointTrust_${matterId}.docx`;
+    const JSZip = (await import("jszip")).default;
+    const zip = new JSZip();
 
-    return new NextResponse(buffer as unknown as BodyInit, {
+    // Binder-plan ordering (prefix numbers lock the order in Finder/Explorer).
+    zip.file(`01_Joint_Trust_${matterId}.docx`, jointTrustDocx);
+
+    // Placeholders to lock the packet order early.
+    // These will be replaced with real generated DOCX once templates are wired.
+    const placeholders = [
+      "02_Last_Will_and_Testament.docx",
+      "03_Advance_Medical_Directive.docx",
+      "04_Burial_Power_of_Attorney.docx",
+      "05_General_Durable_Power_of_Attorney.docx",
+      "06_Certification_of_Trust.docx",
+      "07_Assignment_of_Tangible_Personal_Property.docx",
+      "08_Declaration_of_Trust.docx",
+      "09_Instructions_for_TPP_Distribution.docx",
+      "10_Summary_of_Client_Information.docx",
+      "11_Summary_of_Estate_Planning_Provisions.docx",
+    ];
+
+    for (const name of placeholders) {
+      zip.file(name, "(placeholder — template not wired yet)\n");
+    }
+
+    const zipBuffer = (await zip.generateAsync({ type: "nodebuffer" })) as unknown as BodyInit;
+    const fileName = `LG_Packet_${matterId}.zip`;
+
+    return new NextResponse(zipBuffer, {
       status: 200,
       headers: {
-        "content-type":
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "content-type": "application/zip",
         "content-disposition": `attachment; filename="${fileName}"`,
         "x-lg-missing-tokens": missingTokens.slice(0, 50).join(","),
       },
