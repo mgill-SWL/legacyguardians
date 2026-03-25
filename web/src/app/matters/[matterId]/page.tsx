@@ -71,9 +71,25 @@ export default async function MatterDetailPage({
           border: "1px solid var(--sw-border)",
         }}
       >
-        <div style={{ fontWeight: 800, marginBottom: 10 }}>Generate (next)</div>
-        <p style={{ margin: 0, color: "var(--sw-muted)" }}>
-          Next: wire <code>/api/generate</code> to produce a DOCX from the canonical joint template.
+        <div style={{ fontWeight: 800, marginBottom: 10 }}>Generate</div>
+        <form action={`/api/matters/${matter.id}/generate`} method="post">
+          <button
+            type="submit"
+            style={{
+              padding: "10px 12px",
+              borderRadius: "var(--sw-radius-sm)",
+              border: "1px solid rgba(110,231,255,0.45)",
+              background: "linear-gradient(135deg, rgba(110,231,255,0.14), rgba(167,139,250,0.10))",
+              fontWeight: 800,
+              color: "var(--sw-text)",
+              cursor: "pointer",
+            }}
+          >
+            Generate joint trust DOCX (v0)
+          </button>
+        </form>
+        <p style={{ marginTop: 10, marginBottom: 0, color: "var(--sw-muted)" }}>
+          Next: expand this into the full joint trust + pour-over wills/ancillaries packet.
         </p>
       </section>
     </main>
