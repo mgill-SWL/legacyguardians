@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import fs from "node:fs";
 
 import { authOptions } from "@/authOptions";
 import { prisma } from "@/lib/prisma";
@@ -12,7 +13,7 @@ type Intake = {
 
 function renderOrThrow(templateRelFromRepoRoot: string, data: Record<string, unknown>) {
   const templateAbsPath = repoTemplatePath(templateRelFromRepoRoot);
-  return renderDocxTemplate({ templateAbsPath, data });
+  return { templateAbsPath, ...renderDocxTemplate({ templateAbsPath, data }) };
 }
 
 export async function POST(
@@ -44,81 +45,74 @@ export async function POST(
   const JSZip = (await import("jszip")).default;
   const zip = new JSZip();
 
-  const rendered: Array<{ name: string; missingTokens: string[] }> = [];
+  const rendered: Array<{ name: string; missingTokens: string[]; template: string; bytes: number }> = [];
 
   try {
     // 01 Joint Trust
     {
-      const { buffer, missingTokens } = renderOrThrow("templates/canonical/joint.docx", data);
-      zip.file(`01_Joint_Trust_${matterId}.docx`, buffer);
-      rendered.push({ name: "01_Joint_Trust", missingTokens });
+      const r = renderOrThrow("templates/canonical/joint.docx", data);
+      zip.file(`01_Joint_Trust_${matterId}.docx`, r.buffer);
+      rendered.push({ name: "01_Joint_Trust", missingTokens: r.missingTokens, template: r.templateAbsPath, bytes: fs.statSync(r.templateAbsPath).size });
     }
 
     // 02/03 Wills
     {
-      const { buffer, missingTokens } = renderOrThrow(
-        "templates/canonical/packet_split/will_client1.docx",
-        data
-      );
-      zip.file(`02_Last_Will_Client1_${matterId}.docx`, buffer);
-      rendered.push({ name: "02_Last_Will_Client1", missingTokens });
+      const r = renderOrThrow("templates/canonical/packet_split/will_client1.docx", data);
+      zip.file(`02_Last_Will_Client1_${matterId}.docx`, r.buffer);
+      rendered.push({ name: "02_Last_Will_Client1", missingTokens: r.missingTokens, template: r.templateAbsPath, bytes: fs.statSync(r.templateAbsPath).size });
     }
     {
-      const { buffer, missingTokens } = renderOrThrow(
-        "templates/canonical/packet_split/will_client2.docx",
-        data
-      );
-      zip.file(`03_Last_Will_Client2_${matterId}.docx`, buffer);
-      rendered.push({ name: "03_Last_Will_Client2", missingTokens });
+      const r = renderOrThrow("templates/canonical/packet_split/will_client2.docx", data);
+      zip.file(`03_Last_Will_Client2_${matterId}.docx`, r.buffer);
+      rendered.push({ name: "03_Last_Will_Client2", missingTokens: r.missingTokens, template: r.templateAbsPath, bytes: fs.statSync(r.templateAbsPath).size });
     }
 
     // 04/05 AMD
     {
-      const { buffer, missingTokens } = renderOrThrow(
+      const r = renderOrThrow(
         "templates/canonical/packet_split/advance_medical_directive_client1.docx",
         data
       );
-      zip.file(`04_Advance_Medical_Directive_Client1_${matterId}.docx`, buffer);
-      rendered.push({ name: "04_AMD_Client1", missingTokens });
+      zip.file(`04_Advance_Medical_Directive_Client1_${matterId}.docx`, r.buffer);
+      rendered.push({ name: "04_AMD_Client1", missingTokens: r.missingTokens, template: r.templateAbsPath, bytes: fs.statSync(r.templateAbsPath).size });
     }
     {
-      const { buffer, missingTokens } = renderOrThrow(
+      const r = renderOrThrow(
         "templates/canonical/packet_split/advance_medical_directive_client2.docx",
         data
       );
-      zip.file(`05_Advance_Medical_Directive_Client2_${matterId}.docx`, buffer);
-      rendered.push({ name: "05_AMD_Client2", missingTokens });
+      zip.file(`05_Advance_Medical_Directive_Client2_${matterId}.docx`, r.buffer);
+      rendered.push({ name: "05_AMD_Client2", missingTokens: r.missingTokens, template: r.templateAbsPath, bytes: fs.statSync(r.templateAbsPath).size });
     }
 
     // 06/07 Final disposition
     {
-      const { buffer, missingTokens } = renderOrThrow(
+      const r = renderOrThrow(
         "templates/canonical/packet_split/final_disposition_client1.docx",
         data
       );
-      zip.file(`06_Final_Disposition_Client1_${matterId}.docx`, buffer);
-      rendered.push({ name: "06_Final_Disposition_Client1", missingTokens });
+      zip.file(`06_Final_Disposition_Client1_${matterId}.docx`, r.buffer);
+      rendered.push({ name: "06_Final_Disposition_Client1", missingTokens: r.missingTokens, template: r.templateAbsPath, bytes: fs.statSync(r.templateAbsPath).size });
     }
     {
-      const { buffer, missingTokens } = renderOrThrow(
+      const r = renderOrThrow(
         "templates/canonical/packet_split/final_disposition_client2.docx",
         data
       );
-      zip.file(`07_Final_Disposition_Client2_${matterId}.docx`, buffer);
-      rendered.push({ name: "07_Final_Disposition_Client2", missingTokens });
+      zip.file(`07_Final_Disposition_Client2_${matterId}.docx`, r.buffer);
+      rendered.push({ name: "07_Final_Disposition_Client2", missingTokens: r.missingTokens, template: r.templateAbsPath, bytes: fs.statSync(r.templateAbsPath).size });
     }
 
     // 08 Optional minors
     if (intake.hasMinorChildren) {
-      const { buffer, missingTokens } = renderOrThrow(
+      const r = renderOrThrow(
         "templates/canonical/packet_split/minor_children_poa_and_healthcare.docx",
         data
       );
-      zip.file(`08_Minor_Children_Power_of_Attorney_${matterId}.docx`, buffer);
-      rendered.push({ name: "08_Minor_Children_Power_of_Attorney", missingTokens });
+      zip.file(`08_Minor_Children_Power_of_Attorney_${matterId}.docx`, r.buffer);
+      rendered.push({ name: "08_Minor_Children_Power_of_Attorney", missingTokens: r.missingTokens, template: r.templateAbsPath, bytes: fs.statSync(r.templateAbsPath).size });
     }
 
-    // Placeholders to preserve overall binder-plan ordering.
     const placeholders = [
       "09_General_Durable_Power_of_Attorney.docx",
       "10_Certification_of_Trust.docx",
@@ -139,6 +133,7 @@ export async function POST(
         {
           matterId,
           deployedAt: new Date().toISOString(),
+          build: process.env.VERCEL_GIT_COMMIT_SHA ?? "dev",
           rendered,
         },
         null,
