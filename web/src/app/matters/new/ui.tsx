@@ -13,6 +13,7 @@ export function NewMatterForm() {
   const [grantor1, setGrantor1] = useState("");
   const [grantor2, setGrantor2] = useState("");
   const [children, setChildren] = useState<Child[]>([]);
+  const [hasMinorChildren, setHasMinorChildren] = useState(false);
   const [successor1, setSuccessor1] = useState("");
   const [successor2, setSuccessor2] = useState("");
   const [scheme, setScheme] = useState<DistributionScheme>(
@@ -41,6 +42,7 @@ export function NewMatterForm() {
         displayName: displayName.trim() || `${grantor1} + ${grantor2} (Joint Trust)`,
         intake: {
           grantors: [grantor1.trim(), grantor2.trim()],
+          hasMinorChildren,
           children: children.map((c) => c.name.trim()).filter(Boolean),
           successorTrustees: [successor1.trim(), successor2.trim()].filter(Boolean),
           distributionScheme: scheme,
@@ -102,6 +104,14 @@ export function NewMatterForm() {
 
         <section style={cardStyle}>
           <div style={{ fontWeight: 800, marginBottom: 10 }}>Children (optional)</div>
+          <label style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
+            <input
+              type="checkbox"
+              checked={hasMinorChildren}
+              onChange={(e) => setHasMinorChildren(e.target.checked)}
+            />
+            <span style={{ color: "var(--sw-muted)" }}>Has minor children (include minor-children POA/health care docs)</span>
+          </label>
           <div style={{ display: "grid", gap: 10 }}>
             {children.length ? (
               children.map((c, idx) => (

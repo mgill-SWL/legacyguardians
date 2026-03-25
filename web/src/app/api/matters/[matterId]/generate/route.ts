@@ -21,6 +21,7 @@ export async function POST(
 
   const intake = (matter.intake?.data ?? {}) as unknown as {
     grantors?: string[];
+    hasMinorChildren?: boolean;
   };
 
   const grantors = intake.grantors ?? [];
@@ -86,15 +87,24 @@ export async function POST(
       zip.file(`07_Final_Disposition_Client2_${matterId}.docx`, buffer);
     }
 
+    // Optional minors doc (only when explicitly selected)
+    if (intake.hasMinorChildren) {
+      const templateAbsPath = repoTemplatePath(
+        "templates/canonical/packet_split/minor_children_poa_and_healthcare.docx"
+      );
+      const { buffer } = renderDocxTemplate({ templateAbsPath, data });
+      zip.file(`08_Minor_Children_Power_of_Attorney_${matterId}.docx`, buffer);
+    }
+
     // Placeholders to preserve overall binder-plan ordering.
     const placeholders = [
-      "08_General_Durable_Power_of_Attorney.docx",
-      "09_Certification_of_Trust.docx",
-      "10_Assignment_of_Tangible_Personal_Property.docx",
-      "11_Declaration_of_Trust.docx",
-      "12_Instructions_for_TPP_Distribution.docx",
-      "13_Summary_of_Client_Information.docx",
-      "14_Summary_of_Estate_Planning_Provisions.docx",
+      "09_General_Durable_Power_of_Attorney.docx",
+      "10_Certification_of_Trust.docx",
+      "11_Assignment_of_Tangible_Personal_Property.docx",
+      "12_Declaration_of_Trust.docx",
+      "13_Instructions_for_TPP_Distribution.docx",
+      "14_Summary_of_Client_Information.docx",
+      "15_Summary_of_Estate_Planning_Provisions.docx",
     ];
 
     for (const name of placeholders) {
