@@ -51,12 +51,13 @@ export async function POST(
     Client1FirstName: firstNameFromFullName(client1),
     Client2FirstName: firstNameFromFullName(client2),
     ClientTrustName: trustName,
-    // TODO: map address fields properly once collected in intake
     ClientCity: "",
     Zip: "",
+    ClientStreetAddress: "",
     FirmName: "Speedwell Law, PLLC",
   };
 
+  const { makePlaceholderDocx } = await import("@/lib/docx/placeholderDocx");
   const JSZip = (await import("jszip")).default;
   const zip = new JSZip();
 
@@ -67,19 +68,34 @@ export async function POST(
     {
       const r = renderOrThrow("templates/canonical/joint.docx", data);
       zip.file(`01_Joint_Trust_${matterId}.docx`, r.buffer);
-      rendered.push({ name: "01_Joint_Trust", missingTokens: r.missingTokens, template: r.templateAbsPath, bytes: fs.statSync(r.templateAbsPath).size });
+      rendered.push({
+        name: "01_Joint_Trust",
+        missingTokens: r.missingTokens,
+        template: r.templateAbsPath,
+        bytes: fs.statSync(r.templateAbsPath).size,
+      });
     }
 
     // 02/03 Wills
     {
       const r = renderOrThrow("templates/canonical/packet_split/will_client1.docx", data);
       zip.file(`02_Last_Will_Client1_${matterId}.docx`, r.buffer);
-      rendered.push({ name: "02_Last_Will_Client1", missingTokens: r.missingTokens, template: r.templateAbsPath, bytes: fs.statSync(r.templateAbsPath).size });
+      rendered.push({
+        name: "02_Last_Will_Client1",
+        missingTokens: r.missingTokens,
+        template: r.templateAbsPath,
+        bytes: fs.statSync(r.templateAbsPath).size,
+      });
     }
     {
       const r = renderOrThrow("templates/canonical/packet_split/will_client2.docx", data);
       zip.file(`03_Last_Will_Client2_${matterId}.docx`, r.buffer);
-      rendered.push({ name: "03_Last_Will_Client2", missingTokens: r.missingTokens, template: r.templateAbsPath, bytes: fs.statSync(r.templateAbsPath).size });
+      rendered.push({
+        name: "03_Last_Will_Client2",
+        missingTokens: r.missingTokens,
+        template: r.templateAbsPath,
+        bytes: fs.statSync(r.templateAbsPath).size,
+      });
     }
 
     // 04/05 AMD
@@ -89,7 +105,12 @@ export async function POST(
         data
       );
       zip.file(`04_Advance_Medical_Directive_Client1_${matterId}.docx`, r.buffer);
-      rendered.push({ name: "04_AMD_Client1", missingTokens: r.missingTokens, template: r.templateAbsPath, bytes: fs.statSync(r.templateAbsPath).size });
+      rendered.push({
+        name: "04_AMD_Client1",
+        missingTokens: r.missingTokens,
+        template: r.templateAbsPath,
+        bytes: fs.statSync(r.templateAbsPath).size,
+      });
     }
     {
       const r = renderOrThrow(
@@ -97,7 +118,12 @@ export async function POST(
         data
       );
       zip.file(`05_Advance_Medical_Directive_Client2_${matterId}.docx`, r.buffer);
-      rendered.push({ name: "05_AMD_Client2", missingTokens: r.missingTokens, template: r.templateAbsPath, bytes: fs.statSync(r.templateAbsPath).size });
+      rendered.push({
+        name: "05_AMD_Client2",
+        missingTokens: r.missingTokens,
+        template: r.templateAbsPath,
+        bytes: fs.statSync(r.templateAbsPath).size,
+      });
     }
 
     // 06/07 Final disposition
@@ -107,7 +133,12 @@ export async function POST(
         data
       );
       zip.file(`06_Final_Disposition_Client1_${matterId}.docx`, r.buffer);
-      rendered.push({ name: "06_Final_Disposition_Client1", missingTokens: r.missingTokens, template: r.templateAbsPath, bytes: fs.statSync(r.templateAbsPath).size });
+      rendered.push({
+        name: "06_Final_Disposition_Client1",
+        missingTokens: r.missingTokens,
+        template: r.templateAbsPath,
+        bytes: fs.statSync(r.templateAbsPath).size,
+      });
     }
     {
       const r = renderOrThrow(
@@ -115,7 +146,12 @@ export async function POST(
         data
       );
       zip.file(`07_Final_Disposition_Client2_${matterId}.docx`, r.buffer);
-      rendered.push({ name: "07_Final_Disposition_Client2", missingTokens: r.missingTokens, template: r.templateAbsPath, bytes: fs.statSync(r.templateAbsPath).size });
+      rendered.push({
+        name: "07_Final_Disposition_Client2",
+        missingTokens: r.missingTokens,
+        template: r.templateAbsPath,
+        bytes: fs.statSync(r.templateAbsPath).size,
+      });
     }
 
     // 08 Optional minors
@@ -125,16 +161,62 @@ export async function POST(
         data
       );
       zip.file(`08_Minor_Children_Power_of_Attorney_${matterId}.docx`, r.buffer);
-      rendered.push({ name: "08_Minor_Children_Power_of_Attorney", missingTokens: r.missingTokens, template: r.templateAbsPath, bytes: fs.statSync(r.templateAbsPath).size });
+      rendered.push({
+        name: "08_Minor_Children_Power_of_Attorney",
+        missingTokens: r.missingTokens,
+        template: r.templateAbsPath,
+        bytes: fs.statSync(r.templateAbsPath).size,
+      });
     }
 
-    const { makePlaceholderDocx } = await import("@/lib/docx/placeholderDocx");
+    // 09 Certification of Trust
+    {
+      const r = renderOrThrow(
+        "templates/canonical/packet_split/certification_of_trust.docx",
+        data
+      );
+      zip.file(`09_Certification_of_Trust_${matterId}.docx`, r.buffer);
+      rendered.push({
+        name: "09_Certification_of_Trust",
+        missingTokens: r.missingTokens,
+        template: r.templateAbsPath,
+        bytes: fs.statSync(r.templateAbsPath).size,
+      });
+    }
 
+    // 10 Assignment of Tangible Personal Property (template is named personal_property)
+    {
+      const r = renderOrThrow(
+        "templates/canonical/packet_split/assignment_of_personal_property.docx",
+        data
+      );
+      zip.file(`10_Assignment_of_Tangible_Personal_Property_${matterId}.docx`, r.buffer);
+      rendered.push({
+        name: "10_Assignment_of_Tangible_Personal_Property",
+        missingTokens: r.missingTokens,
+        template: r.templateAbsPath,
+        bytes: fs.statSync(r.templateAbsPath).size,
+      });
+    }
+
+    // 11 Declaration of Trust
+    {
+      const r = renderOrThrow(
+        "templates/canonical/packet_split/declaration_of_trust.docx",
+        data
+      );
+      zip.file(`11_Declaration_of_Trust_${matterId}.docx`, r.buffer);
+      rendered.push({
+        name: "11_Declaration_of_Trust",
+        missingTokens: r.missingTokens,
+        template: r.templateAbsPath,
+        bytes: fs.statSync(r.templateAbsPath).size,
+      });
+    }
+
+    // Remaining placeholders
     const placeholders = [
-      "09_General_Durable_Power_of_Attorney.docx",
-      "10_Certification_of_Trust.docx",
-      "11_Assignment_of_Tangible_Personal_Property.docx",
-      "12_Declaration_of_Trust.docx",
+      "12_General_Durable_Power_of_Attorney.docx",
       "13_Instructions_for_TPP_Distribution.docx",
       "14_Summary_of_Client_Information.docx",
       "15_Summary_of_Estate_Planning_Provisions.docx",
