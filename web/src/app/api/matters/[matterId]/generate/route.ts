@@ -214,12 +214,39 @@ export async function POST(
       });
     }
 
+    // 12/13 General Durable POA (two files for now; later we can unify or keep separate)
+    {
+      const r = renderOrThrow(
+        "templates/canonical/packet_split/durable_poa_client1.docx",
+        data
+      );
+      zip.file(`12_General_Durable_Power_of_Attorney_Client1_${matterId}.docx`, r.buffer);
+      rendered.push({
+        name: "12_GDPOA_Client1",
+        missingTokens: r.missingTokens,
+        template: r.templateAbsPath,
+        bytes: fs.statSync(r.templateAbsPath).size,
+      });
+    }
+    {
+      const r = renderOrThrow(
+        "templates/canonical/packet_split/durable_poa_client2.docx",
+        data
+      );
+      zip.file(`13_General_Durable_Power_of_Attorney_Client2_${matterId}.docx`, r.buffer);
+      rendered.push({
+        name: "13_GDPOA_Client2",
+        missingTokens: r.missingTokens,
+        template: r.templateAbsPath,
+        bytes: fs.statSync(r.templateAbsPath).size,
+      });
+    }
+
     // Remaining placeholders
     const placeholders = [
-      "12_General_Durable_Power_of_Attorney.docx",
-      "13_Instructions_for_TPP_Distribution.docx",
-      "14_Summary_of_Client_Information.docx",
-      "15_Summary_of_Estate_Planning_Provisions.docx",
+      "14_Instructions_for_TPP_Distribution.docx",
+      "15_Summary_of_Client_Information.docx",
+      "16_Summary_of_Estate_Planning_Provisions.docx",
     ];
 
     for (const name of placeholders) {
