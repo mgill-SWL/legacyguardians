@@ -16,8 +16,14 @@ export type RoleAssignment = {
   alternate2?: string;
 };
 
+export type Child = {
+  name: string;
+  dob?: string; // ISO date (YYYY-MM-DD)
+};
+
 export type IntakeV1 = {
   matterType: "JOINT_TRUST" | "RECIPROCAL_TRUSTS" | "WILL_ONLY" | "WILL_AND_INCAPACITY" | "INCAPACITY_ONLY";
+
   grantors: [string, string];
   hasMinorChildren: boolean;
 
@@ -50,7 +56,7 @@ export type IntakeV1 = {
     guardians: RoleAssignment;
   };
 
-  children: string[];
+  children: Child[];
   successorTrustees: string[];
   distributionScheme: string;
 };

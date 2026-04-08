@@ -38,8 +38,12 @@ export function tokenDataFromIntake(intake: IntakeV1) {
   };
 
   // Children (MVP: first two only)
-  data.CHILD1FULLNAME = intake.children?.[0] ?? "";
-  data.CHILD2FULLNAME = intake.children?.[1] ?? "";
+  const c1 = intake.children?.[0];
+  const c2 = intake.children?.[1];
+  data.CHILD1FULLNAME = c1?.name ?? "";
+  data.CHILD2FULLNAME = c2?.name ?? "";
+  data.CHILD1DOB = c1?.dob ?? "";
+  data.CHILD2DOB = c2?.dob ?? "";
 
   // Guardians
   const gPrimary = byId(intake.people, intake.roles.guardians.primary);

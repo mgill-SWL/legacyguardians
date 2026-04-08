@@ -2,7 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 
-type Child = { name: string };
+type Child = { name: string; dob: string };
 
 type MatterType =
   | "JOINT_TRUST"
@@ -215,7 +215,7 @@ export function NewMatterForm() {
             healthAgents,
             guardians,
           },
-          children: children.map((c) => c.name.trim()).filter(Boolean),
+          children: children.map((c) => ({ name: c.name.trim(), dob: c.dob || undefined })).filter((c) => c.name),
           successorTrustees: [],
           distributionScheme: scheme,
         },
@@ -380,8 +380,16 @@ export function NewMatterForm() {
                         prev.map((x, i) => (i === idx ? { ...x, name: e.target.value } : x))
                       )
                     }
-                    placeholder={`Child ${idx + 1} name`}
+                    placeholder={`Child  full name`}
                     style={{ ...inputStyle, flex: 1 }}
+                  />
+                  <input
+                    value={c.dob}
+                    onChange={(e) =>
+                      setChildren((prev) => prev.map((x, i) => (i === idx ? { ...x, dob: e.target.value } : x)))
+                    }
+                    placeholder="YYYY-MM-DD"
+                    style={{ ...inputStyle, width: 160 }}
                   />
                   <button
                     type="button"
@@ -398,7 +406,7 @@ export function NewMatterForm() {
             <div>
               <button
                 type="button"
-                onClick={() => setChildren((p) => [...p, { name: "" }])}
+                onClick={() => setChildren((p) => [...p, { name: "", dob: "" }])}
                 style={secondaryBtn}
               >
                 + Add child
