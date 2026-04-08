@@ -6,10 +6,6 @@ import { authOptions } from "@/authOptions";
 import { prisma } from "@/lib/prisma";
 import { renderDocxTemplate, repoTemplatePath } from "@/lib/docx/renderTemplate";
 
-type Intake = {
-  grantors?: string[];
-  hasMinorChildren?: boolean;
-};
 
 function renderOrThrow(templateRelFromRepoRoot: string, data: Record<string, unknown>) {
   const templateAbsPath = repoTemplatePath(templateRelFromRepoRoot);
@@ -30,30 +26,12 @@ export async function POST(
   });
   if (!matter) return NextResponse.json({ error: "not found" }, { status: 404 });
 
-  const intake = (matter.intake?.data ?? {}) as Intake;
+  const intake = (matter.intake?.data ?? {}) as unknown as import("@/lib/intakeTypes").IntakeV1;
 
-  const grantors = intake.grantors ?? [];
-  const client1 = grantors[0] ?? "";
-  const client2 = grantors[1] ?? "";
-
-  const { defaultTrustNameFromClient1 } = await import("@/lib/names");
-  const trustName = defaultTrustNameFromClient1(client1);
-
-  function firstNameFromFullName(fullName: string) {
-    const cleaned = fullName.trim().replace(/\s+/g, " ");
-    if (!cleaned) return "";
-    return cleaned.split(" ")[0] ?? "";
-  }
+  const { tokenDataFromIntake } = await import("@/lib/tokenMap");
 
   const data: Record<string, unknown> = {
-    Client1FullName: client1,
-    Client2FullName: client2,
-    Client1FirstName: firstNameFromFullName(client1),
-    Client2FirstName: firstNameFromFullName(client2),
-    ClientTrustName: trustName,
-    ClientCity: "",
-    Zip: "",
-    ClientStreetAddress: "",
+    ...(tokenDataFromIntake(intake) as Record<string, unknown>),
     FirmName: "Speedwell Law, PLLC",
   };
 

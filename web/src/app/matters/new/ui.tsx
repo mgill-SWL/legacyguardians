@@ -126,7 +126,19 @@ export function NewMatterForm() {
   const [hasMinorChildren, setHasMinorChildren] = useState(false);
 
   // People cards
-  const [people, setPeople] = useState<Person[]>([]);
+  const [people, setPeople] = useState<Person[]>([
+    {
+      id: newId(),
+      name: "",
+      relationship: "",
+      email: "",
+      phone: "",
+      street: "",
+      city: "",
+      state: "",
+      zip: "",
+    },
+  ]);
 
   // Role assignments (store person IDs)
   const [trustees, setTrustees] = useState<RoleAssignment>({});
