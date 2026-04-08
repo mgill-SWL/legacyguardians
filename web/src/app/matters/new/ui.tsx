@@ -4,6 +4,13 @@ import { FormEvent, useMemo, useState } from "react";
 
 type Child = { name: string };
 
+type MatterType =
+  | "JOINT_TRUST"
+  | "RECIPROCAL_TRUSTS"
+  | "WILL_ONLY"
+  | "WILL_AND_INCAPACITY"
+  | "INCAPACITY_ONLY";
+
 type DistributionScheme =
   | "standard-per-stirpes-ni21-row-25-30-halves"
   | "bloodline-residual";
@@ -106,6 +113,7 @@ function RoleBlock({
 
 export function NewMatterForm() {
   const [displayName, setDisplayName] = useState("");
+  const [matterType, setMatterType] = useState<MatterType>("JOINT_TRUST");
   const [grantor1, setGrantor1] = useState("");
   const [grantor2, setGrantor2] = useState("");
 
@@ -181,6 +189,7 @@ export function NewMatterForm() {
         displayName:
           displayName.trim() || `${grantor1} + ${grantor2} (Joint Trust)`,
         intake: {
+          matterType,
           grantors: [grantor1.trim(), grantor2.trim()],
           hasMinorChildren,
           clientAddress: {
@@ -233,15 +242,29 @@ export function NewMatterForm() {
       <form onSubmit={onSubmit} style={{ marginTop: 18, display: "grid", gap: 14 }}>
         <section style={cardStyle}>
           <div style={{ fontWeight: 800, marginBottom: 10 }}>Matter</div>
-          <label style={{ display: "grid", gap: 6, maxWidth: 520 }}>
-            <span style={{ color: "var(--sw-muted)" }}>Display name (optional)</span>
-            <input
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Doe + Doe (Joint Trust)"
-              style={inputStyle}
-            />
-          </label>
+
+          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={{ color: "var(--sw-muted)" }}>Offering</span>
+              <select value={matterType} onChange={(e) => setMatterType(e.target.value as MatterType)} style={inputStyle}>
+                <option value="JOINT_TRUST">Joint trust (packet)</option>
+                <option value="RECIPROCAL_TRUSTS">Reciprocal individual trusts (packet)</option>
+                <option value="WILL_ONLY">Wills only</option>
+                <option value="WILL_AND_INCAPACITY">Wills + incapacity docs</option>
+                <option value="INCAPACITY_ONLY">Incapacity docs only</option>
+              </select>
+            </label>
+
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={{ color: "var(--sw-muted)" }}>Display name (optional)</span>
+              <input
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Doe + Doe (Joint Trust)"
+                style={inputStyle}
+              />
+            </label>
+          </div>
         </section>
 
         <section style={cardStyle}>

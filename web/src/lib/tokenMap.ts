@@ -41,12 +41,18 @@ export function tokenDataFromIntake(intake: IntakeV1) {
   data.CHILD1FULLNAME = intake.children?.[0] ?? "";
   data.CHILD2FULLNAME = intake.children?.[1] ?? "";
 
-  // Guardians (client1-based tokens used in will template)
+  // Guardians
+  const gPrimary = byId(intake.people, intake.roles.guardians.primary);
   const gA1 = byId(intake.people, intake.roles.guardians.alternate1);
   const gA2 = byId(intake.people, intake.roles.guardians.alternate2);
 
+  // Will template tokens (client1-based)
   data.CLIENT1FIRSTALTERNATEGUARDIANFULLNAME = gA1?.name ?? "";
   data.CLIENT1SECONDALTERNATEGUARDIANFULLNAME = gA2?.name ?? "";
+
+  // Minor-children doc tokens
+  data.FIRSTALTERNATEGUARDIANFULLNAME = gA1?.name ?? gPrimary?.name ?? "";
+  data.SECONDALTERNATEGUARDIANFULLNAME = gA2?.name ?? "";
   data.Client1FirstAlternateGuardianRelationship = gA1?.relationship ?? "";
   data.Client1SecondAlternateGuardianRelationship = gA2?.relationship ?? "";
   data.Client1FirstAlternateGuardianAddress = formatAddress(gA1);

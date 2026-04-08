@@ -17,6 +17,7 @@ export type RoleAssignment = {
 };
 
 export type IntakeV1 = {
+  matterType: "JOINT_TRUST" | "RECIPROCAL_TRUSTS" | "WILL_ONLY" | "WILL_AND_INCAPACITY" | "INCAPACITY_ONLY";
   grantors: [string, string];
   hasMinorChildren: boolean;
 
