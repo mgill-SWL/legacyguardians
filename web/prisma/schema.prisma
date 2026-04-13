@@ -11,6 +11,8 @@ datasource db {
 enum UserRole {
   STAFF
   ADMIN
+  CRM_AGENT_PH
+  CRM_AGENT_US
 }
 
 enum MatterStatus {
@@ -24,6 +26,68 @@ enum DocumentType {
   ADVANCE_MEDICAL_DIRECTIVE
   // Future
   JOINT_TRUST_PORTFOLIO
+}
+
+enum ContactState {
+  VA
+  DC
+  MD
+  OTHER
+  UNKNOWN
+}
+
+enum CrmTaskType {
+  PRE_SHOW
+  POST_SHOW
+  RESCUE_CLICK
+  INBOUND_REPLY
+  REFERRAL_OOJ
+}
+
+enum CrmPriority {
+  HOT
+  WARM
+  COLD
+}
+
+enum CrmOwnerTeam {
+  PH
+  US
+}
+
+enum CrmTaskStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+}
+
+enum CrmDisposition {
+  SCHEDULED_DISCOVERY
+  INTERESTED_FOLLOW_UP
+  NOT_INTERESTED
+  NO_ANSWER_RETRY
+  LEFT_VOICEMAIL
+  WRONG_NUMBER
+  DISQUALIFIED_JURISDICTION
+  REFERRED_TO_OVERTURE
+  BOOKING_LINK_SENT
+}
+
+enum CrmProvider {
+  RINGCENTRAL
+}
+
+enum CrmMessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum CrmMessageStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+  RECEIVED
 }
 
 model User {
@@ -40,8 +104,27 @@ model User {
 
   matters       Matter[]  @relation("MattersCreatedBy")
 
+  ringCentralConnection RingCentralConnection?
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+}
+
+model RingCentralConnection {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  rcUserId     String?
+  rcExtensionId String?
+
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  scope        String?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Account {
@@ -123,4 +206,147 @@ model GeneratedDocument {
   createdAt DateTime     @default(now())
 
   @@index([matterId])
+}
+
+model CrmContact {
+  id        String       @id @default(cuid())
+  firstName String
+  lastName  String
+  email     String?
+  phoneE164 String       @unique
+  state     ContactState @default(UNKNOWN)
+
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  registrations CrmRegistration[]
+  tasks         CrmTask[]
+  threads       CrmMessageThread[]
+}
+
+model CrmCampaign {
+  id        String @id @default(cuid())
+  slug      String @unique
+  name      String
+
+  // Config defaults (MVP)
+  defaultSenderName String @default("Noah")
+  bookingUrl        String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  showings       CrmShowing[]
+  registrations  CrmRegistration[]
+  tasks          CrmTask[]
+}
+
+model CrmShowing {
+  id         String      @id @default(cuid())
+  campaignId String
+  campaign   CrmCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  startsAt   DateTime
+  endsAt     DateTime
+
+  createdAt  DateTime @default(now())
+
+  registrations CrmRegistration[]
+  tasks         CrmTask[]
+
+  @@index([campaignId])
+  @@index([startsAt])
+}
+
+model CrmRegistration {
+  id        String @id @default(cuid())
+
+  contactId String
+  contact   CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  campaignId String
+  campaign   CrmCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  showingId String
+  showing   CrmShowing @relation(fields: [showingId], references: [id], onDelete: Cascade)
+
+  status    String @default("REGISTERED") // TODO enum later when we wire attendance
+  watchToken String? @unique
+
+  createdAt DateTime @default(now())
+
+  @@index([campaignId])
+  @@index([showingId])
+  @@index([contactId])
+}
+
+model CrmTask {
+  id         String @id @default(cuid())
+  contactId  String
+  contact    CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  campaignId String
+  campaign   CrmCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  showingId  String?
+  showing    CrmShowing? @relation(fields: [showingId], references: [id], onDelete: SetNull)
+
+  type       CrmTaskType
+  priority   CrmPriority
+  ownerTeam  CrmOwnerTeam
+  status     CrmTaskStatus @default(OPEN)
+
+  dueAt      DateTime
+  lastTouchAt DateTime?
+
+  disposition CrmDisposition?
+  notes       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, dueAt])
+  @@index([campaignId])
+  @@index([contactId])
+}
+
+model CrmMessageThread {
+  id        String @id @default(cuid())
+
+  contactId String
+  contact   CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  provider  CrmProvider
+  providerConversationId String?
+
+  lastMessageAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages  CrmMessage[]
+
+  @@index([contactId])
+}
+
+model CrmMessage {
+  id        String @id @default(cuid())
+
+  threadId  String
+  thread    CrmMessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  direction CrmMessageDirection
+  fromNumberE164 String
+  toNumberE164   String
+  body      String
+
+  providerMessageId String? @unique
+  status    CrmMessageStatus
+
+  sentAt    DateTime?
+  receivedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([threadId, createdAt])
 }

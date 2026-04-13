@@ -36,5 +36,22 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/login",
     verifyRequest: "/login/check-email",
+    error: "/unauthorized",
+  },
+  callbacks: {
+    async signIn({ account, email }) {
+      // Allow only Speedwell Law staff emails for now.
+      // Note: for the Email provider, NextAuth calls signIn twice:
+      // 1) verification request (email.verificationRequest=true)
+      // 2) callback after magic link click
+      if (account?.provider === "email" && email?.verificationRequest) {
+        const address = (account.providerAccountId || "").toLowerCase();
+        const allowedDomains = ["speedwelllaw.com"]; // TODO: expand/parameterize
+        const domain = address.split("@").pop() || "";
+        return allowedDomains.includes(domain);
+      }
+
+      return true;
+    },
   },
 };

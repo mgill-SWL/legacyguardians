@@ -29,7 +29,7 @@ export default function LoginPage() {
   return (
     <main style={{ padding: 24, fontFamily: "system-ui" }}>
       <h1 style={{ fontSize: 24, fontWeight: 700 }}>Legacy Guardians</h1>
-      <p style={{ marginTop: 8 }}>Staff sign-in</p>
+      <p style={{ marginTop: 8 }}>Staff sign-in (speedwelllaw.com)</p>
 
       {sent ? (
         <p style={{ marginTop: 16 }}>
