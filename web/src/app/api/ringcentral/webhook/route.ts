@@ -21,24 +21,37 @@ type RcInstantMessageEvent = {
 };
 
 export async function POST(req: Request) {
-  // RingCentral sends a Validation-Token header during subscription validation.
-  // We must echo it back within 3 seconds.
+  // RingCentral uses Validation-Token as the shared secret we set when creating the subscription.
+  // We only echo it back (required for validation) if it matches the expected token.
   const validationToken = req.headers.get('validation-token');
-
-  const raw = await req.text();
+  const expectedToken = process.env.RINGCENTRAL_WEBHOOK_VALIDATION_TOKEN;
 
   // Always keep response tiny (<1024 bytes).
-  const res = NextResponse.json({ ok: true });
-  if (validationToken) res.headers.set('Validation-Token', validationToken);
+  const okRes = NextResponse.json({ ok: true });
+
+  if (expectedToken) {
+    if (!validationToken || validationToken !== expectedToken) {
+      return NextResponse.json({ ok: false }, { status: 403 });
+    }
+    okRes.headers.set('Validation-Token', validationToken);
+  } else if (validationToken) {
+    // Dev fallback: echo only if no expected token is configured.
+    okRes.headers.set('Validation-Token', validationToken);
+  }
+
+  const raw = await req.text();
+  if (raw.length > 200_000) {
+    return NextResponse.json({ ok: false }, { status: 413 });
+  }
 
   let payload: RcInstantMessageEvent | null = null;
   try {
     payload = raw ? (JSON.parse(raw) as RcInstantMessageEvent) : null;
   } catch {
-    return res;
+    return okRes;
   }
 
-  if (!payload?.body) return res;
+  if (!payload?.body) return okRes;
 
   const from = normalizeE164(payload.body.from?.phoneNumber);
   const to = normalizeE164(payload.body.to?.[0]?.phoneNumber);
@@ -46,14 +59,14 @@ export async function POST(req: Request) {
   // Only ingest messages for the dedicated shared texting number (Noah).
   const shared = normalizeE164(process.env.RINGCENTRAL_SHARED_SMS_NUMBER);
   if (shared && from !== shared && to !== shared) {
-    return res;
+    return okRes;
   }
 
   const direction = (payload.body.direction || '').toLowerCase();
   const isInbound = direction === 'inbound';
 
   const contactPhone = isInbound ? from : to;
-  if (!contactPhone) return res;
+  if (!contactPhone) return okRes;
 
   const contact = await prisma.crmContact.upsert({
     where: { phoneE164: contactPhone },
@@ -86,24 +99,29 @@ export async function POST(req: Request) {
   // Provider message id: use RC message-store id if present.
   const providerMessageId = payload.body.id ? `rc:${payload.body.id}` : null;
 
-  await prisma.crmMessage.create({
-    data: {
-      threadId: t.id,
-      direction: isInbound ? 'INBOUND' : 'OUTBOUND',
-      fromNumberE164: from || '',
-      toNumberE164: to || '',
-      body,
-      providerMessageId,
-      status: isInbound ? 'RECEIVED' : 'SENT',
-      receivedAt: isInbound ? createdAt : null,
-      sentAt: isInbound ? null : createdAt,
-    },
-  });
+  try {
+    await prisma.crmMessage.create({
+      data: {
+        threadId: t.id,
+        direction: isInbound ? 'INBOUND' : 'OUTBOUND',
+        fromNumberE164: from || '',
+        toNumberE164: to || '',
+        body,
+        providerMessageId,
+        status: isInbound ? 'RECEIVED' : 'SENT',
+        receivedAt: isInbound ? createdAt : null,
+        sentAt: isInbound ? null : createdAt,
+      },
+    });
+  } catch (e: any) {
+    // Idempotency: ignore duplicates when RingCentral retries webhook delivery.
+    if (e?.code !== 'P2002') throw e;
+  }
 
   await prisma.crmMessageThread.update({
     where: { id: t.id },
     data: { lastMessageAt: createdAt },
   });
 
-  return res;
+  return okRes;
 }
