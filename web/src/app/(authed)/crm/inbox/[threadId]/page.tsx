@@ -43,7 +43,7 @@ export default async function CrmThreadPage(props: { params: Promise<{ threadId:
       </div>
 
       <p style={{ marginTop: 16, color: '#666' }}>
-        Sending UI not wired yet. Next step: compose box + /api/ringcentral/send.
+        Sending UI not wired yet. (Next step: /api/ringcentral/send + compose box.)
       </p>
     </div>
   );

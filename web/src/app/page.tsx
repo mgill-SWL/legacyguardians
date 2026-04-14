@@ -70,7 +70,7 @@ export default function DashboardLanding() {
             Staff sign-in
           </Link>
           <Link
-            href="/matters"
+            href="/dashboard"
             style={{
               padding: "10px 12px",
               borderRadius: "var(--sw-radius-sm)",

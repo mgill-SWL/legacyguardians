@@ -20,7 +20,9 @@ export default async function CrmInboxPage() {
   return (
     <div style={{ padding: 24 }}>
       <h1 style={{ fontSize: 22, fontWeight: 600 }}>CRM Inbox (MVP)</h1>
-      <p style={{ marginTop: 8, color: '#666' }}>RingCentral threads ({threads.length}).</p>
+      <p style={{ marginTop: 8, color: '#666' }}>
+        RingCentral threads ({threads.length}).
+      </p>
 
       <div style={{ marginTop: 16, display: 'grid', gap: 10 }}>
         {threads.map((t) => {
@@ -50,7 +52,9 @@ export default async function CrmInboxPage() {
           );
         })}
 
-        {threads.length === 0 ? <div style={{ color: '#666' }}>No threads yet.</div> : null}
+        {threads.length === 0 ? (
+          <div style={{ color: '#666' }}>No threads yet.</div>
+        ) : null}
       </div>
     </div>
   );
