@@ -68,6 +68,7 @@ export default async function AuthedLayout({
           <NavLink href="/crm/inbox" label="Inbox" />
           <NavLink href="/crm/queue" label="Queue" />
           <NavLink href="/crm/leads" label="Leads" />
+          <NavLink href="/crm/spend" label="Spend" />
           <NavLink href="/crm/reports/weekly" label="Weekly report" />
           <NavLink href="/settings/ringcentral" label="Integrations" />
           <NavLink href="/matters" label="Matters" />
