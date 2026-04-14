@@ -22,3 +22,10 @@ body {
 a {
   color: inherit;
 }
+
+/* Form controls: keep dark theme readable (some browsers render <option> with white bg) */
+select,
+option {
+  color: var(--sw-text);
+  background-color: #0b1020;
+}

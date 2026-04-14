@@ -16,7 +16,13 @@ export function tokenDataFromIntake(intake: IntakeV1) {
   const client1 = intake.grantors[0] ?? "";
   const client2 = intake.grantors[1] ?? "";
 
-  const trustName = (intake.trustNameOverride || "").trim() || defaultTrustNameFromClient1(client1);
+  const rawOverride = (intake.trustNameOverride || "").trim();
+  const normalizedOverride = rawOverride
+    ? rawOverride.replace(/^the\s+/i, "").trim()
+    : "";
+
+  const trustNameBase = normalizedOverride || defaultTrustNameFromClient1(client1);
+  const trustName = trustNameBase.toUpperCase();
 
   const data: Record<string, unknown> = {
     // canonical
