@@ -8,6 +8,9 @@ export default function CrmHomePage() {
         <li>
           <Link href="/crm/queue">Queue</Link>
         </li>
+        <li>
+          <Link href="/crm/inbox">Inbox</Link>
+        </li>
       </ul>
     </div>
   );

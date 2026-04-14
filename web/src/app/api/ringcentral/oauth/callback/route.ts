@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ringCentralExchangeCode } from '@/lib/ringcentral';
+import { ringCentralApi, ringCentralExchangeCode } from '@/lib/ringcentral';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/authOptions';
 import { prisma } from '@/lib/prisma';
@@ -48,6 +48,28 @@ export async function GET(req: Request) {
       scope: token.scope,
     },
   });
+
+  // Create (or renew) a webhook subscription for inbound SMS for this extension.
+  // This is best-effort; if it fails, the connection still stands.
+  try {
+    const webhookUrl = new URL('/api/ringcentral/webhook', url.origin).toString();
+    const validationToken = process.env.RINGCENTRAL_WEBHOOK_VALIDATION_TOKEN || 'lg-webhook';
+
+    await ringCentralApi(token.access_token, '/restapi/v1.0/subscription', {
+      method: 'POST',
+      body: JSON.stringify({
+        eventFilters: ['/restapi/v1.0/account/~/extension/~/message-store/instant?type=SMS'],
+        deliveryMode: {
+          transportType: 'WebHook',
+          address: webhookUrl,
+          validationToken,
+        },
+        expiresIn: 60 * 60 * 24 * 7, // 7 days
+      }),
+    });
+  } catch (e) {
+    console.error('RingCentral subscription create failed', e);
+  }
 
   return NextResponse.redirect(new URL('/settings/ringcentral?connected=1', url.origin));
 }
