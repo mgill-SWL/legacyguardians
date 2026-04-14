@@ -95,6 +95,14 @@ enum CrmVerificationPurpose {
   WATCH_ROOM
 }
 
+enum CrmAppointmentStatus {
+  SCHEDULED
+  SHOWED
+  NO_SHOW
+  CANCELED
+  RESCHEDULED
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -230,6 +238,9 @@ model CrmContact {
   tasks         CrmTask[]
   threads       CrmMessageThread[]
   verifications CrmVerification[] @relation("CrmContactVerifications")
+
+  prequalSubmissions CrmPrequalSubmission[]
+  pipelineRecords    CrmLeadPipeline[]
 }
 
 model CrmCampaign {
@@ -247,6 +258,10 @@ model CrmCampaign {
   showings       CrmShowing[]
   registrations  CrmRegistration[]
   tasks          CrmTask[]
+
+  prequalSubmissions CrmPrequalSubmission[]
+  pipelineRecords    CrmLeadPipeline[]
+  dailySpends        CrmDailySpend[]
 }
 
 model CrmShowing {
@@ -287,6 +302,8 @@ model CrmRegistration {
 
   verifications CrmVerification[] @relation("CrmRegistrationVerifications")
 
+  prequalSubmissions CrmPrequalSubmission[] @relation("CrmRegistrationPrequal")
+
   @@index([campaignId])
   @@index([showingId])
   @@index([contactId])
@@ -315,6 +332,92 @@ model CrmVerification {
   @@index([contactId])
   @@index([registrationId])
   @@index([purpose, expiresAt])
+}
+
+model CrmPrequalSubmission {
+  id        String @id @default(cuid())
+
+  contactId String
+  contact   CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  campaignId String
+  campaign   CrmCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  registrationId String?
+  registration   CrmRegistration? @relation("CrmRegistrationPrequal", fields: [registrationId], references: [id], onDelete: SetNull)
+
+  source    String @default("internal") // typeform|internal
+  qualified Boolean @default(false)
+
+  // Denormalized key answers for reporting
+  estatePlanningStage String?
+  primaryConcern      String?
+  docsInPlace         String[]
+  estateWorthBand     String?
+  investReady         Boolean?
+  readyToStart        String?
+  additionalNotes     String?
+
+  answers   Json
+
+  createdAt DateTime @default(now())
+
+  @@index([campaignId, createdAt])
+  @@index([contactId, createdAt])
+}
+
+model CrmLeadPipeline {
+  id         String @id @default(cuid())
+
+  contactId  String
+  contact    CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  campaignId String
+  campaign   CrmCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  dateAdded  DateTime @default(now())
+  additionalNotes String?
+
+  intakeCallAttempted Boolean @default(false)
+  intakeCallAttemptedAt DateTime?
+
+  appt1Scheduled Boolean @default(false)
+  appt1At        DateTime?
+  appt1Status    CrmAppointmentStatus?
+
+  leadQualityScore Int?
+
+  appt2Scheduled Boolean @default(false)
+  appt2At        DateTime?
+  appt2Status    CrmAppointmentStatus?
+
+  // Closing metrics (manual for now)
+  closed          Boolean @default(false)
+  cashCollectedCents Int @default(0)
+  revenueCents       Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([contactId, campaignId])
+  @@index([campaignId, dateAdded])
+}
+
+model CrmDailySpend {
+  id        String @id @default(cuid())
+
+  campaignId String
+  campaign   CrmCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  // Store at midnight ET as a DateTime for now (we'll enforce in UI).
+  day       DateTime
+  amountCents Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([campaignId, day])
+  @@index([campaignId, day])
 }
 
 model CrmTask {
