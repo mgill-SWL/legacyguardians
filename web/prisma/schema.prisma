@@ -90,6 +90,11 @@ enum CrmMessageStatus {
   RECEIVED
 }
 
+enum CrmVerificationPurpose {
+  REGISTRATION
+  WATCH_ROOM
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -216,12 +221,15 @@ model CrmContact {
   phoneE164 String       @unique
   state     ContactState @default(UNKNOWN)
 
+  phoneVerifiedAt DateTime?
+
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
   registrations CrmRegistration[]
   tasks         CrmTask[]
   threads       CrmMessageThread[]
+  verifications CrmVerification[] @relation("CrmContactVerifications")
 }
 
 model CrmCampaign {
@@ -273,11 +281,40 @@ model CrmRegistration {
   status    String @default("REGISTERED") // TODO enum later when we wire attendance
   watchToken String? @unique
 
+  phoneVerifiedAt DateTime?
+
   createdAt DateTime @default(now())
+
+  verifications CrmVerification[] @relation("CrmRegistrationVerifications")
 
   @@index([campaignId])
   @@index([showingId])
   @@index([contactId])
+}
+
+model CrmVerification {
+  id        String @id @default(cuid())
+  purpose   CrmVerificationPurpose
+
+  contactId String
+  contact   CrmContact @relation("CrmContactVerifications", fields: [contactId], references: [id], onDelete: Cascade)
+
+  registrationId String?
+  registration   CrmRegistration? @relation("CrmRegistrationVerifications", fields: [registrationId], references: [id], onDelete: Cascade)
+
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int @default(0)
+
+  sentAt    DateTime @default(now())
+  verifiedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([contactId])
+  @@index([registrationId])
+  @@index([purpose, expiresAt])
 }
 
 model CrmTask {
