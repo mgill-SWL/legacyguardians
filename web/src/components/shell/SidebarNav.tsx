@@ -1,36 +1,71 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { SignOutButton } from "@/components/SignOutButton";
 import { useUnsavedChanges } from "@/components/unsaved/UnsavedChangesProvider";
 
-type Item = { href: string; label: string };
+type Item = { href: string; label: string; icon: string };
 
-const NAV: Item[] = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/crm/inbox", label: "Inbox" },
-  { href: "/crm/queue", label: "Queue" },
-  { href: "/crm/leads", label: "Leads" },
-  { href: "/crm/spend", label: "Spend" },
-  { href: "/crm/reports/weekly", label: "Weekly report" },
-  { href: "/settings/ringcentral", label: "Integrations" },
-  { href: "/matters", label: "Matters" },
+type Group = { label: string; items: Item[]; defaultOpen?: boolean };
+
+const GROUPS: Group[] = [
+  {
+    label: "",
+    items: [{ href: "/dashboard", label: "Dashboard", icon: "D" }],
+  },
+  {
+    label: "CRM",
+    defaultOpen: true,
+    items: [
+      { href: "/crm/work", label: "Work", icon: "W" },
+      { href: "/crm/leads", label: "Leads", icon: "L" },
+    ],
+  },
+  {
+    label: "Documents",
+    items: [{ href: "/matters", label: "Matters", icon: "M" }],
+  },
+  {
+    label: "KPIs",
+    items: [
+      { href: "/crm/spend", label: "Spend", icon: "$" },
+      { href: "/crm/reports/weekly", label: "Weekly", icon: "R" },
+    ],
+  },
+  {
+    label: "Settings",
+    items: [{ href: "/settings/ringcentral", label: "Integrations", icon: "I" }],
+  },
 ];
 
-function NavButton({ href, label, onClick }: { href: string; label: string; onClick: () => void }) {
+function NavButton({
+  href,
+  label,
+  icon,
+  collapsed,
+  onClick,
+}: {
+  href: string;
+  label: string;
+  icon: string;
+  collapsed: boolean;
+  onClick: () => void;
+}) {
   return (
     <button
       onClick={onClick}
+      title={label}
       style={{
-        display: "block",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
         width: "100%",
         textAlign: "left",
-        padding: "10px 12px",
+        padding: collapsed ? "10px 10px" : "10px 12px",
         borderRadius: 10,
-        border: "1px solid var(--sw-border, #ddd)",
+        border: "1px solid var(--sw-border, rgba(255,255,255,0.12))",
         color: "inherit",
         fontWeight: 800,
         background: "rgba(255,255,255,0.03)",
@@ -38,7 +73,22 @@ function NavButton({ href, label, onClick }: { href: string; label: string; onCl
       }}
       aria-label={label}
     >
-      {label}
+      <span
+        aria-hidden
+        style={{
+          width: 24,
+          height: 24,
+          borderRadius: 8,
+          display: "grid",
+          placeItems: "center",
+          border: "1px solid rgba(255,255,255,0.16)",
+          background: "rgba(255,255,255,0.03)",
+          fontWeight: 900,
+        }}
+      >
+        {icon}
+      </span>
+      {collapsed ? null : <span>{label}</span>}
     </button>
   );
 }
@@ -47,6 +97,26 @@ export function SidebarNav({ email }: { email: string | null | undefined }) {
   const router = useRouter();
   const { dirty, saveFn, setDirty, registerSaveFn } = useUnsavedChanges();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  const [collapsed, setCollapsed] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    for (const g of GROUPS) {
+      if (g.label) init[g.label] = !!g.defaultOpen;
+    }
+    return init;
+  });
+
+  useEffect(() => {
+    const v = window.localStorage.getItem("lg.sidebar.collapsed");
+    if (v === "1") setCollapsed(true);
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("lg.sidebar.collapsed", collapsed ? "1" : "0");
+  }, [collapsed]);
+
+  const flatItems = useMemo(() => GROUPS.flatMap((g) => g.items), []);
 
   function requestNav(href: string) {
     if (!dirty) {
@@ -86,7 +156,7 @@ export function SidebarNav({ email }: { email: string | null | undefined }) {
     <>
       <aside
         style={{
-          width: 280,
+          width: collapsed ? 84 : 280,
           padding: 16,
           borderRight: "1px solid var(--sw-border, rgba(255,255,255,0.12))",
           display: "flex",
@@ -94,19 +164,80 @@ export function SidebarNav({ email }: { email: string | null | undefined }) {
           gap: 14,
         }}
       >
-        <div style={{ padding: "6px 6px 2px" }}>
-          <div style={{ fontSize: 16, fontWeight: 900, letterSpacing: -0.2 }}>
-            Legacy Guardians
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <div style={{ padding: "6px 6px 2px", overflow: "hidden" }}>
+            <div style={{ fontSize: 16, fontWeight: 900, letterSpacing: -0.2, whiteSpace: "nowrap" }}>
+              {collapsed ? "LG" : "Legacy Guardians"}
+            </div>
+            {collapsed ? null : (
+              <div style={{ marginTop: 6, fontSize: 12, color: "var(--sw-muted, #aab4d4)" }}>Staff console</div>
+            )}
           </div>
-          <div style={{ marginTop: 6, fontSize: 12, color: "var(--sw-muted, #aab4d4)" }}>
-            Staff console
-          </div>
+
+          <button
+            onClick={() => setCollapsed((v) => !v)}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              border: "1px solid rgba(255,255,255,0.16)",
+              background: "rgba(255,255,255,0.03)",
+              color: "inherit",
+              fontWeight: 900,
+              cursor: "pointer",
+              flex: "0 0 auto",
+            }}
+          >
+            {collapsed ? ">" : "<"}
+          </button>
         </div>
 
         <div style={{ display: "grid", gap: 10 }}>
-          {NAV.map((n) => (
-            <NavButton key={n.href} href={n.href} label={n.label} onClick={() => requestNav(n.href)} />
-          ))}
+          {(collapsed ? [{ label: "", items: flatItems }] : GROUPS).map((g, idx) => {
+            const isOpen = g.label ? openGroups[g.label] : true;
+            return (
+              <div key={`${g.label}-${idx}`} style={{ display: "grid", gap: 8 }}>
+                {g.label && !collapsed ? (
+                  <button
+                    onClick={() =>
+                      setOpenGroups((prev) => ({ ...prev, [g.label]: !prev[g.label] }))
+                    }
+                    style={{
+                      textAlign: "left",
+                      padding: "6px 6px",
+                      background: "transparent",
+                      border: "none",
+                      color: "var(--sw-muted, #aab4d4)",
+                      fontWeight: 900,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <span>{g.label}</span>
+                    <span style={{ opacity: 0.8 }}>{isOpen ? "▾" : "▸"}</span>
+                  </button>
+                ) : null}
+
+                {(!g.label || collapsed || isOpen) ? (
+                  <div style={{ display: "grid", gap: 10 }}>
+                    {g.items.map((n) => (
+                      <NavButton
+                        key={n.href}
+                        href={n.href}
+                        label={n.label}
+                        icon={n.icon}
+                        collapsed={collapsed}
+                        onClick={() => requestNav(n.href)}
+                      />
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
 
         <div style={{ marginTop: "auto", padding: 6 }}>
