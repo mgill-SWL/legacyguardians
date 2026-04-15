@@ -117,6 +117,20 @@ export function PipelineSettingsClient({ pipelines }: { pipelines: Pipe[] }) {
     }
   }
 
+  async function importLawmatics() {
+    if (!confirm("Import the Lawmatics pipelines/stages from the screenshots?")) return;
+    setBusy("importLawmatics");
+    setError(null);
+    try {
+      await api("/api/pipelines/import-lawmatics", { method: "POST" });
+      router.refresh();
+    } catch (e: any) {
+      setError(e?.message || "Failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <div style={{ marginTop: 16 }}>
       <div
@@ -128,7 +142,24 @@ export function PipelineSettingsClient({ pipelines }: { pipelines: Pipe[] }) {
           maxWidth: 760,
         }}
       >
-        <div style={{ fontWeight: 900 }}>Add pipeline</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+          <div style={{ fontWeight: 900 }}>Add pipeline</div>
+          <button
+            onClick={importLawmatics}
+            disabled={busy === "importLawmatics"}
+            style={{
+              padding: "8px 10px",
+              borderRadius: 10,
+              border: "1px solid rgba(255,255,255,0.18)",
+              background: "transparent",
+              color: "inherit",
+              fontWeight: 900,
+              cursor: "pointer",
+            }}
+          >
+            Import Lawmatics pipelines
+          </button>
+        </div>
         <div style={{ marginTop: 10, display: "flex", gap: 10 }}>
           <input
             value={newPipelineName}
