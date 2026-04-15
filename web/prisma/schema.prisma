@@ -119,6 +119,10 @@ model User {
 
   ringCentralConnection RingCentralConnection?
 
+  ftmHowOwnerSteps    FtmStep[] @relation("FtmHowOwner")
+  ftmEnsureOwnerSteps FtmStep[] @relation("FtmEnsureOwner")
+  ftmDoerSteps        FtmStep[] @relation("FtmDoer")
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -474,6 +478,49 @@ model PipelineStage {
   updatedAt DateTime @updatedAt
 
   @@index([pipelineId, sortOrder])
+}
+
+// --- Forever Task Maps (FTMs) ---
+
+model FtmMap {
+  id          String @id @default(cuid())
+  title       String
+  description String?
+
+  // v1: structured steps (later: diagram nodes/edges)
+  steps       FtmStep[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FtmStep {
+  id      String @id @default(cuid())
+  mapId   String
+  map     FtmMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
+
+  sortOrder Int @default(0)
+  name    String
+
+  // Role assignments (simplified RACI)
+  howOwnerUserId String?
+  howOwnerUser   User? @relation("FtmHowOwner", fields: [howOwnerUserId], references: [id], onDelete: SetNull)
+
+  ensureOwnerUserId String?
+  ensureOwnerUser   User? @relation("FtmEnsureOwner", fields: [ensureOwnerUserId], references: [id], onDelete: SetNull)
+
+  doerUserId String?
+  doerUser   User? @relation("FtmDoer", fields: [doerUserId], references: [id], onDelete: SetNull)
+  doerRole   String?
+
+  // Light documentation
+  howToMd   String?
+  doneWhenMd String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([mapId, sortOrder])
 }
 
 model CrmTask {

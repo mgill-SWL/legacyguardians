@@ -24,11 +24,16 @@ const GROUPS: Group[] = [
     ],
   },
   {
-    label: "Documents",
+    label: "FTMs & Pipelines",
+    defaultOpen: true,
     items: [
-      { href: "/matters", label: "Matters", icon: "M" },
-      { href: "/pipeline", label: "Pipeline", icon: "P" },
+      { href: "/ftm", label: "Task maps", icon: "T" },
+      { href: "/pipeline", label: "Pipelines", icon: "P" },
     ],
+  },
+  {
+    label: "Documents",
+    items: [{ href: "/matters", label: "Matters", icon: "M" }],
   },
   {
     label: "KPIs",
