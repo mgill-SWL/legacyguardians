@@ -188,6 +188,7 @@ model Matter {
 
   intake      IntakeResponse?
   documents   GeneratedDocument[]
+  pipelineLinks MatterPipeline[]
 
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
@@ -418,6 +419,61 @@ model CrmDailySpend {
 
   @@unique([campaignId, day])
   @@index([campaignId, day])
+}
+
+// --- Matter pipelines (Kanban) ---
+
+model MatterPipeline {
+  id         String @id @default(cuid())
+
+  matterId   String
+  matter     Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
+
+  pipelineId String
+  pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+
+  stageId    String
+  stage      PipelineStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  // ordering within a stage column (optional; used later)
+  sortKey    Int @default(0)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([matterId, pipelineId])
+  @@index([pipelineId, stageId])
+  @@index([matterId])
+}
+
+model Pipeline {
+  id          String @id @default(cuid())
+  name        String
+  description String?
+  sortOrder   Int @default(0)
+
+  stages      PipelineStage[]
+  matterLinks MatterPipeline[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PipelineStage {
+  id         String @id @default(cuid())
+  pipelineId String
+  pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+
+  name       String
+  colorHex   String? // optional UI color
+  sortOrder  Int @default(0)
+
+  matters    MatterPipeline[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pipelineId, sortOrder])
 }
 
 model CrmTask {

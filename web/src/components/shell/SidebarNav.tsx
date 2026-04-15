@@ -25,7 +25,10 @@ const GROUPS: Group[] = [
   },
   {
     label: "Documents",
-    items: [{ href: "/matters", label: "Matters", icon: "M" }],
+    items: [
+      { href: "/matters", label: "Matters", icon: "M" },
+      { href: "/pipeline", label: "Pipeline", icon: "P" },
+    ],
   },
   {
     label: "KPIs",
