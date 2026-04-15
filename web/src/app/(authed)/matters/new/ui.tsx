@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 type Child = { name: string; dob: string };
 
@@ -112,6 +112,10 @@ function RoleBlock({
 }
 
 export function NewMatterForm() {
+  const [draftMatterId, setDraftMatterId] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const lastSavedSnapshot = useRef<string | null>(null);
+
   const [displayName, setDisplayName] = useState("");
   const [matterType, setMatterType] = useState<MatterType>("JOINT_TRUST");
   const [grantor1, setGrantor1] = useState("");
@@ -178,47 +182,169 @@ export function NewMatterForm() {
     | { kind: "error"; message: string }
   >({ kind: "idle" });
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
+  const intakePayload = useMemo(() => {
+    return {
+      matterType,
+      grantors: [grantor1.trim(), grantor2.trim()],
+      hasMinorChildren,
+      clientAddress: {
+        street: street.trim(),
+        city: city.trim(),
+        state: state.trim(),
+        zip: zip.trim(),
+      },
+      clientEmails: {
+        client1: client1Email.trim() || undefined,
+        client2: client2Email.trim() || undefined,
+      },
+      clientPhones: {
+        client1: client1Phone.trim() || undefined,
+        client2: client2Phone.trim() || undefined,
+      },
+      trustNameOverride: trustNameOverride.trim() || undefined,
+      people,
+      roles: {
+        trustees,
+        executors,
+        financialAgents,
+        healthAgents,
+        guardians,
+      },
+      children: children
+        .map((c) => ({ name: c.name.trim(), dob: c.dob || undefined }))
+        .filter((c) => c.name),
+      successorTrustees: [],
+      distributionScheme: scheme,
+    };
+  }, [
+    matterType,
+    grantor1,
+    grantor2,
+    hasMinorChildren,
+    street,
+    city,
+    state,
+    zip,
+    client1Email,
+    client2Email,
+    client1Phone,
+    client2Phone,
+    trustNameOverride,
+    people,
+    trustees,
+    executors,
+    financialAgents,
+    healthAgents,
+    guardians,
+    children,
+    scheme,
+  ]);
+
+  const snapshot = useMemo(() => {
+    return JSON.stringify({
+      displayName,
+      grantor1,
+      grantor2,
+      street,
+      city,
+      state,
+      zip,
+      client1Email,
+      client2Email,
+      client1Phone,
+      client2Phone,
+      trustNameOverride,
+      hasMinorChildren,
+      people,
+      trustees,
+      executors,
+      financialAgents,
+      healthAgents,
+      guardians,
+      children,
+      scheme,
+      matterType,
+    });
+  }, [
+    displayName,
+    grantor1,
+    grantor2,
+    street,
+    city,
+    state,
+    zip,
+    client1Email,
+    client2Email,
+    client1Phone,
+    client2Phone,
+    trustNameOverride,
+    hasMinorChildren,
+    people,
+    trustees,
+    executors,
+    financialAgents,
+    healthAgents,
+    guardians,
+    children,
+    scheme,
+    matterType,
+  ]);
+
+  useEffect(() => {
+    if (lastSavedSnapshot.current === null) {
+      lastSavedSnapshot.current = snapshot;
+      return;
+    }
+    setDirty(snapshot !== lastSavedSnapshot.current);
+  }, [snapshot]);
+
+  useEffect(() => {
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      if (!dirty) return;
+      e.preventDefault();
+      // Required for Chrome
+      e.returnValue = "";
+    }
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [dirty]);
+
+  async function saveProgress() {
     setStatus({ kind: "saving" });
 
-    const res = await fetch("/api/matters", {
-      method: "POST",
+    const computedDisplayName =
+      displayName.trim() || `${grantor1} + ${grantor2} (Joint Trust)`;
+
+    if (!draftMatterId) {
+      const res = await fetch("/api/matters", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          displayName: computedDisplayName,
+          intake: intakePayload,
+        }),
+      });
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        setStatus({ kind: "error", message: txt || `HTTP ${res.status}` });
+        return;
+      }
+
+      const data = (await res.json()) as { matterId: string };
+      setDraftMatterId(data.matterId);
+      lastSavedSnapshot.current = snapshot;
+      setDirty(false);
+      setStatus({ kind: "done", matterId: data.matterId });
+      return;
+    }
+
+    const res = await fetch(`/api/matters/${draftMatterId}`, {
+      method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        displayName:
-          displayName.trim() || `${grantor1} + ${grantor2} (Joint Trust)`,
-        intake: {
-          matterType,
-          grantors: [grantor1.trim(), grantor2.trim()],
-          hasMinorChildren,
-          clientAddress: {
-            street: street.trim(),
-            city: city.trim(),
-            state: state.trim(),
-            zip: zip.trim(),
-          },
-          clientEmails: {
-            client1: client1Email.trim() || undefined,
-            client2: client2Email.trim() || undefined,
-          },
-          clientPhones: {
-            client1: client1Phone.trim() || undefined,
-            client2: client2Phone.trim() || undefined,
-          },
-          trustNameOverride: trustNameOverride.trim() || undefined,
-          people,
-          roles: {
-            trustees,
-            executors,
-            financialAgents,
-            healthAgents,
-            guardians,
-          },
-          children: children.map((c) => ({ name: c.name.trim(), dob: c.dob || undefined })).filter((c) => c.name),
-          successorTrustees: [],
-          distributionScheme: scheme,
-        },
+        displayName: computedDisplayName,
+        intake: intakePayload,
       }),
     });
 
@@ -229,6 +355,35 @@ export function NewMatterForm() {
     }
 
     const data = (await res.json()) as { matterId: string };
+    lastSavedSnapshot.current = snapshot;
+    setDirty(false);
+    setStatus({ kind: "done", matterId: data.matterId });
+  }
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    setStatus({ kind: "saving" });
+
+    const res = await fetch("/api/matters", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        displayName:
+          displayName.trim() || `${grantor1} + ${grantor2} (Joint Trust)`,
+        intake: intakePayload,
+      }),
+    });
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      setStatus({ kind: "error", message: txt || `HTTP ${res.status}` });
+      return;
+    }
+
+    const data = (await res.json()) as { matterId: string };
+    setDraftMatterId(data.matterId);
+    lastSavedSnapshot.current = snapshot;
+    setDirty(false);
     setStatus({ kind: "done", matterId: data.matterId });
   }
 
@@ -600,6 +755,19 @@ export function NewMatterForm() {
 
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           <button
+            type="button"
+            onClick={saveProgress}
+            disabled={status.kind === "saving" || !dirty}
+            style={{
+              ...secondaryBtn,
+              opacity: status.kind === "saving" || !dirty ? 0.6 : 1,
+              cursor: status.kind === "saving" || !dirty ? "not-allowed" : "pointer",
+            }}
+          >
+            Save progress
+          </button>
+
+          <button
             type="submit"
             disabled={!canSubmit || status.kind === "saving"}
             style={{
@@ -611,6 +779,12 @@ export function NewMatterForm() {
           >
             {status.kind === "saving" ? "Creating…" : "Create matter"}
           </button>
+
+          {dirty ? (
+            <span style={{ fontSize: 12, color: "var(--sw-muted)" }}>
+              Unsaved changes
+            </span>
+          ) : null}
 
           {status.kind === "done" ? (
             <a
