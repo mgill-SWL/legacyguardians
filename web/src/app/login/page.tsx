@@ -14,7 +14,7 @@ export default function LoginPage() {
 
     const res = await signIn("email", {
       email,
-      callbackUrl: "/matters",
+      callbackUrl: "/dashboard",
       redirect: false,
     });
 
