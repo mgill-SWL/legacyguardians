@@ -1,6 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import { useUnsavedChanges } from "@/components/unsaved/UnsavedChangesProvider";
 
 type Child = { name: string; dob: string };
 
@@ -112,6 +114,7 @@ function RoleBlock({
 }
 
 export function NewMatterForm() {
+  const unsaved = useUnsavedChanges();
   const [draftMatterId, setDraftMatterId] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const lastSavedSnapshot = useRef<string | null>(null);
@@ -309,7 +312,7 @@ export function NewMatterForm() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [dirty]);
 
-  async function saveProgress() {
+  const saveProgress = useCallback(async () => {
     setStatus({ kind: "saving" });
 
     const computedDisplayName =
@@ -358,7 +361,16 @@ export function NewMatterForm() {
     lastSavedSnapshot.current = snapshot;
     setDirty(false);
     setStatus({ kind: "done", matterId: data.matterId });
-  }
+  }, [displayName, draftMatterId, grantor1, grantor2, intakePayload, snapshot]);
+
+  useEffect(() => {
+    unsaved.setDirty(dirty);
+    unsaved.registerSaveFn(dirty ? saveProgress : null);
+    return () => {
+      unsaved.setDirty(false);
+      unsaved.registerSaveFn(null);
+    };
+  }, [dirty, saveProgress, unsaved]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
