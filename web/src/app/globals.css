@@ -2,6 +2,10 @@
 @import "../design/tokens.css";
 
 :root {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
   color-scheme: dark;
 }
 
@@ -13,9 +17,7 @@ body {
 body {
   margin: 0;
   font-family: var(--sw-font);
-  background: radial-gradient(1200px 900px at 20% 20%, rgba(110, 231, 255, 0.14), transparent 60%),
-    radial-gradient(900px 700px at 80% 10%, rgba(167, 139, 250, 0.14), transparent 55%),
-    linear-gradient(180deg, var(--sw-bg), #050814);
+  background: var(--sw-body-bg);
   color: var(--sw-text);
 }
 
@@ -27,5 +29,5 @@ a {
 select,
 option {
   color: var(--sw-text);
-  background-color: #0b1020;
+  background-color: var(--sw-surface);
 }

@@ -16,35 +16,45 @@ const GROUPS: Group[] = [
     items: [{ href: "/dashboard", label: "Dashboard", icon: "D" }],
   },
   {
-    label: "CRM",
+    label: "Leads",
     defaultOpen: true,
     items: [
-      { href: "/crm/work", label: "Work", icon: "W" },
-      { href: "/crm/leads", label: "Leads", icon: "L" },
+      { href: "/crm/inbox", label: "Inbox", icon: "I" },
+      { href: "/crm/queue", label: "Queue", icon: "Q" },
+      { href: "/crm/leads", label: "All leads", icon: "L" },
     ],
   },
   {
-    label: "FTMs & Pipelines",
+    label: "Clients",
+    items: [
+      { href: "/clients/contacts", label: "Contacts", icon: "C" },
+      { href: "/matters", label: "Matters", icon: "M" },
+      { href: "/clients/billing", label: "Billing", icon: "B" },
+    ],
+  },
+  {
+    label: "Management",
     defaultOpen: true,
     items: [
-      { href: "/ftm", label: "Task maps", icon: "T" },
+      { href: "/management/vivid-vision", label: "Vivid Vision", icon: "V" },
+      { href: "/ftm", label: "Forever Task Maps", icon: "F" },
+      { href: "/management/boulders", label: "Boulders", icon: "O" },
       { href: "/pipeline", label: "Pipelines", icon: "P" },
-    ],
-  },
-  {
-    label: "Documents",
-    items: [{ href: "/matters", label: "Matters", icon: "M" }],
-  },
-  {
-    label: "KPIs",
-    items: [
-      { href: "/crm/spend", label: "Spend", icon: "$" },
-      { href: "/crm/reports/weekly", label: "Weekly", icon: "R" },
+      { href: "/management/kpis", label: "KPIs", icon: "K" },
+      { href: "/management/accounting", label: "Accounting", icon: "A" },
     ],
   },
   {
     label: "Settings",
-    items: [{ href: "/settings/ringcentral", label: "Integrations", icon: "I" }],
+    items: [
+      { href: "/settings/user", label: "User settings", icon: "U" },
+      { href: "/settings/firm", label: "Firm settings", icon: "F" },
+      { href: "/settings/ringcentral", label: "Integrations", icon: "I" },
+    ],
+  },
+  {
+    label: "Support",
+    items: [{ href: "/support", label: "Help", icon: "?" }],
   },
 ];
 
@@ -107,6 +117,7 @@ export function SidebarNav({ email }: { email: string | null | undefined }) {
   const [pendingHref, setPendingHref] = useState<string | null>(null);
 
   const [collapsed, setCollapsed] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
     for (const g of GROUPS) {
@@ -118,7 +129,16 @@ export function SidebarNav({ email }: { email: string | null | undefined }) {
   useEffect(() => {
     const v = window.localStorage.getItem("lg.sidebar.collapsed");
     if (v === "1") setCollapsed(true);
+
+    const t = window.localStorage.getItem("lg.theme");
+    if (t === "dark" || t === "light") setTheme(t);
+    // Default is light.
   }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem("lg.theme", theme);
+  }, [theme]);
 
   useEffect(() => {
     window.localStorage.setItem("lg.sidebar.collapsed", collapsed ? "1" : "0");
@@ -255,7 +275,26 @@ export function SidebarNav({ email }: { email: string | null | undefined }) {
               {email}
             </div>
           </div>
-          <SignOutButton />
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <button
+              onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
+              style={{
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid rgba(255,255,255,0.18)",
+                background: "rgba(255,255,255,0.04)",
+                color: "inherit",
+                fontWeight: 900,
+                cursor: "pointer",
+                width: collapsed ? 40 : undefined,
+              }}
+              title={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+              aria-label="Toggle theme"
+            >
+              {collapsed ? (theme === "light" ? "☾" : "☀" ) : theme === "light" ? "Dark mode" : "Light mode"}
+            </button>
+            <SignOutButton />
+          </div>
           <div style={{ marginTop: 10, fontSize: 12, color: "var(--sw-muted, #aab4d4)" }}>
             {dirty ? "Unsaved changes" : ""}
           </div>

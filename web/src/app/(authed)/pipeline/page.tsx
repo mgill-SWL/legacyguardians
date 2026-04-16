@@ -14,12 +14,12 @@ export default async function PipelineHome() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
         <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>Pipeline</h1>
         <Link href="/pipeline/settings" style={{ color: "inherit" }}>
-          Settings →
+          Pipeline setup →
         </Link>
       </div>
 
-      <p style={{ marginTop: 8, color: "var(--sw-muted, #aab4d4)" }}>
-        Kanban shell (MVP). Matters can belong to multiple pipelines.
+      <p style={{ marginTop: 8, color: "var(--sw-muted, #6b7280)" }}>
+        Pick a pipeline to view its Kanban board.
       </p>
 
       <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
