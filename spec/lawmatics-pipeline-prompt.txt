@@ -1,0 +1,25 @@
+Ok the fix worked and I imported my pipelines! That has the additional bonus effect of making me Admin user. Great progress.
+
+Additionally, the key thing about the pipelines is that they display matters in the Kanban style - i.e. each pipeline stage is a column and in each column the user can place matters to indicate where they are in the pipeline and then users have a visual representation of work in process. Please set that up. See example screenshot of my intake pipeline. By the way, please ensure when you set it up that the column has the "count" of matters in the stage displayed at the top. Also, the card for each matter, please replicate the matter name in the top ribbon of the box with the content below. In the content below, I want the matter phone number and email and case value to appear. I'm not sure if you've wired up each matter to have an estimated case value yet, but please do if you haven't. 
+
+Ok for the schema, Firstly, let’s give the user the option of light mode or dark mode, with light mode being the default, and please change the colors so that we have a lightmode. I don’t want bright bright white. Copy the extremely light gray of lawmatics. Add accents in Speedwell Law blue (lmk if you need my logo or if you can just go to my website that would be great, www.speedwelllaw.com).  
+I'm thinking of re-ordering the left navigation bar. Here's how I think I want to order it (In using the numbered list I'm not suggesting that should be the style, I’m using it for clarity, where the lettered sub-list indicates a sub-menu):
+1) Dashboard (default view)
+2) Leads (Rename “CRM” to “Leads)
+a) Inbox (eliminate “Work” header) b) Queue
+3) Clients
+a) Contacts (sub pages would be Clients, Vendors, Referrers) 
+b) Matters (would replace the “documents” button in navigation bar)
+c) Billing (see PRD for more spec about what I want here).
+4) Management
+a) Vivid Vision
+b) Forever Task Maps
+c) Boulders – Quarterly and Yearly boulders lists
+d) Pipelines. Default display page for this should be the list of pipelines. User clicks on the specific pipeline to view the pipeline’s Kanban view. Put “Pipeline setup” as a button somewhere on the default display page, like at the top right of the default display page, for editing pipelines. In the editing pipeline page, the one that you have currently existing, ensure that each pipeline is vertically collapsible for ease of navigation. Ensure that each pipeline stage can be assigned a color like in the Lawmatics pipeline example, and that that color displays in the Kanban view. In the Kanban view, ensure that each column is horizontally collapsible (but displays number of matters in the column even when collapsed), and if matters are more than fit on the screen, then there is a scroll bar inside of the column to scroll through matters (like in the lawmatics example).
+e) KPIs (Intake KPIs, Firm KPIs (spend, weekly), Attorney KPIs)
+f) Accounting. I’m unsure about where to nest all the finances. I want there to be an easy timekeeping and invoicing option under the client’s tab for attorneys to work in. I envision this tab being where I track my P&L, balance sheet, financial productivity report, and generally just generate all my financial reports. I envision the “billing” section above being like the replacement for Cosmolex’s matter view. Sub-pages of the Accounting tab should be Bank, Chart of Accounts, Journal Entries, and Accounts Payable.
+5) Settings
+a) User settings
+b) Firm Settings
+c) Integrations
+6) Support. Create an AI help chatbot to assist users with doing things. The chatbot should live on the bottom right side of the app window, and be a clickable button that expands into a chat dialogue. Begin building a library of help topics. Populate the library of help topics in a persistent way from conversations with the ai agent. Ensure the library is kept up to date by an AI agent. 

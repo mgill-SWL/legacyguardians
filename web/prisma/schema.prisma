@@ -187,6 +187,11 @@ model Matter {
   // v0: keep it simple; later we can normalize people/roles.
   displayName String
 
+  // lightweight contact/value fields for pipeline cards (MVP)
+  primaryEmail String?
+  primaryPhone String?
+  estimatedValueCents Int @default(0)
+
   createdById String
   createdBy   User         @relation("MattersCreatedBy", fields: [createdById], references: [id])
 
