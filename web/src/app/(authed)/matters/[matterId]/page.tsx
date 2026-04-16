@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/authOptions";
 import { prisma } from "@/lib/prisma";
+import { PipelineFieldsForm } from "./PipelineFieldsForm";
 
 export default async function MatterDetailPage({
   params,
@@ -35,6 +36,24 @@ export default async function MatterDetailPage({
       </Link>
       <h1 style={{ marginTop: 14, marginBottom: 6 }}>{matter.displayName}</h1>
       <div style={{ color: "var(--sw-muted)", fontSize: 13 }}>Status: {matter.status}</div>
+
+      <section
+        style={{
+          marginTop: 18,
+          padding: 18,
+          borderRadius: "var(--sw-radius)",
+          background: "var(--sw-card)",
+          border: "1px solid var(--sw-border)",
+        }}
+      >
+        <div style={{ fontWeight: 800, marginBottom: 10 }}>Pipeline card fields</div>
+        <PipelineFieldsForm
+          matterId={matter.id}
+          primaryEmail={matter.primaryEmail}
+          primaryPhone={matter.primaryPhone}
+          estimatedValueCents={matter.estimatedValueCents}
+        />
+      </section>
 
       <section
         style={{
