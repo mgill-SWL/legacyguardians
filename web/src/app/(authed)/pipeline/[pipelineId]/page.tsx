@@ -36,6 +36,7 @@ export default async function PipelineBoardPage(props: { params: Promise<{ pipel
 
   return (
     <PipelineBoard
+      pipelineId={pipeline.id}
       pipelineName={pipeline.name}
       stages={pipeline.stages.map((s) => ({ id: s.id, name: s.name, colorHex: s.colorHex }))}
       links={links.map((l) => ({

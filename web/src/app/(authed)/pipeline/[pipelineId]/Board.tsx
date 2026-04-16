@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 type Stage = {
@@ -25,15 +26,19 @@ type LinkRec = {
 };
 
 export function PipelineBoard({
+  pipelineId,
   pipelineName,
   stages,
   links,
 }: {
+  pipelineId: string;
   pipelineName: string;
   stages: Stage[];
   links: LinkRec[];
 }) {
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [adding, setAdding] = useState(false);
 
   const byStage = useMemo(() => {
     const m = new Map<string, LinkRec[]>();
@@ -52,9 +57,25 @@ export function PipelineBoard({
           <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>{pipelineName}</h1>
           <div style={{ marginTop: 6, color: "var(--sw-muted, #aab4d4)" }}>Kanban view</div>
         </div>
-        <Link href="/pipeline/settings" style={{ color: "inherit" }}>
-          Pipeline setup →
-        </Link>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button
+            onClick={() => setAdding(true)}
+            style={{
+              padding: "10px 12px",
+              borderRadius: 10,
+              border: "1px solid rgba(110,231,255,0.45)",
+              background: "linear-gradient(135deg, rgba(110,231,255,0.14), rgba(167,139,250,0.10))",
+              fontWeight: 900,
+              color: "inherit",
+              cursor: "pointer",
+            }}
+          >
+            Add matter
+          </button>
+          <Link href="/pipeline/settings" style={{ color: "inherit" }}>
+            Pipeline setup →
+          </Link>
+        </div>
       </div>
 
       <div
@@ -77,6 +98,23 @@ export function PipelineBoard({
           return (
             <div
               key={s.id}
+              onDragOver={(e) => {
+                e.preventDefault();
+              }}
+              onDrop={async (e) => {
+                e.preventDefault();
+                const linkId = e.dataTransfer.getData("text/plain");
+                if (!linkId) return;
+                try {
+                  await fetch(`/api/matter-pipeline/${linkId}`, {
+                    method: "PATCH",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({ stageId: s.id }),
+                  });
+                } finally {
+                  router.refresh();
+                }
+              }}
               style={{
                 border: "1px solid var(--sw-border, rgba(255,255,255,0.12))",
                 borderRadius: 14,
@@ -151,7 +189,7 @@ export function PipelineBoard({
                 {!isCollapsed ? (
                   <div style={{ display: "grid", gap: 10 }}>
                     {items.map((l) => (
-                      <MatterCard key={l.id} m={l.matter} />
+                      <MatterCard key={l.id} linkId={l.id} m={l.matter} />
                     ))}
                     {items.length === 0 ? (
                       <div style={{ color: "var(--sw-muted, #aab4d4)", fontSize: 12 }}>No matters.</div>
@@ -163,6 +201,18 @@ export function PipelineBoard({
           );
         })}
       </div>
+
+      {adding ? (
+        <AddMatterModal
+          pipelineId={pipelineId}
+          stageId={stages[0]?.id || null}
+          onClose={() => setAdding(false)}
+          onAdded={() => {
+            setAdding(false);
+            router.refresh();
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -172,12 +222,17 @@ function fmtMoney(cents: number) {
   return (cents / 100).toLocaleString(undefined, { style: "currency", currency: "USD" });
 }
 
-function MatterCard({ m }: { m: Matter }) {
+function MatterCard({ linkId, m }: { linkId: string; m: Matter }) {
   const value = fmtMoney(m.estimatedValueCents);
 
   return (
     <Link
       href={`/matters/${m.id}`}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData("text/plain", linkId);
+        e.dataTransfer.effectAllowed = "move";
+      }}
       style={{
         display: "block",
         borderRadius: 12,
@@ -204,5 +259,180 @@ function MatterCard({ m }: { m: Matter }) {
         {value ? <div style={{ color: "inherit", fontWeight: 900 }}>{value}</div> : null}
       </div>
     </Link>
+  );
+}
+
+function AddMatterModal({
+  pipelineId,
+  stageId,
+  onClose,
+  onAdded,
+}: {
+  pipelineId: string;
+  stageId: string | null;
+  onClose: () => void;
+  onAdded: () => void;
+}) {
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState<Matter[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function search() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/pipelines/${pipelineId}/available-matters?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      if (!res.ok || data.ok === false) throw new Error(data.error || "Failed");
+      setResults(data.matters || []);
+    } catch (e: any) {
+      setError(e?.message || "Failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function add(matterId: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/pipelines/${pipelineId}/matters`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ matterId, stageId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.ok === false) throw new Error(data.error || "Failed");
+      onAdded();
+    } catch (e: any) {
+      setError(e?.message || "Failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.35)",
+        display: "grid",
+        placeItems: "center",
+        padding: 16,
+        zIndex: 60,
+      }}
+    >
+      <div
+        style={{
+          width: "min(720px, 100%)",
+          borderRadius: 14,
+          border: "1px solid var(--sw-border, rgba(0,0,0,0.12))",
+          background: "var(--sw-surface)",
+          color: "var(--sw-text)",
+          padding: 16,
+          boxShadow: "var(--sw-shadow)",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+          <div style={{ fontWeight: 900, fontSize: 16 }}>Add matter to pipeline</div>
+          <button
+            onClick={onClose}
+            style={{
+              padding: "8px 10px",
+              borderRadius: 10,
+              border: "1px solid var(--sw-border)",
+              background: "transparent",
+              color: "inherit",
+              fontWeight: 900,
+              cursor: "pointer",
+            }}
+          >
+            Close
+          </button>
+        </div>
+
+        <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search matters by name…"
+            style={{
+              flex: 1,
+              padding: "10px 12px",
+              borderRadius: 10,
+              border: "1px solid var(--sw-border)",
+              background: "rgba(0,0,0,0.02)",
+              color: "inherit",
+            }}
+          />
+          <button
+            onClick={search}
+            disabled={busy}
+            style={{
+              padding: "10px 12px",
+              borderRadius: 10,
+              border: "1px solid var(--sw-border)",
+              background: "rgba(0,0,0,0.04)",
+              color: "inherit",
+              fontWeight: 900,
+              cursor: "pointer",
+            }}
+          >
+            Search
+          </button>
+        </div>
+
+        {error ? <div style={{ marginTop: 10, color: "var(--sw-danger)" }}>{error}</div> : null}
+
+        <div style={{ marginTop: 12, display: "grid", gap: 10, maxHeight: "60vh", overflowY: "auto" }}>
+          {results.map((m) => (
+            <div
+              key={m.id}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 10,
+                padding: 10,
+                borderRadius: 12,
+                border: "1px solid var(--sw-border)",
+                background: "rgba(0,0,0,0.02)",
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 900 }}>{m.displayName}</div>
+                <div style={{ marginTop: 4, fontSize: 12, color: "var(--sw-muted)" }}>
+                  {m.primaryPhone || ""} {m.primaryEmail ? `• ${m.primaryEmail}` : ""}
+                </div>
+              </div>
+              <button
+                onClick={() => add(m.id)}
+                disabled={busy}
+                style={{
+                  padding: "8px 10px",
+                  borderRadius: 10,
+                  border: "1px solid rgba(110,231,255,0.45)",
+                  background: "linear-gradient(135deg, rgba(110,231,255,0.14), rgba(167,139,250,0.10))",
+                  fontWeight: 900,
+                  color: "inherit",
+                  cursor: "pointer",
+                  flex: "0 0 auto",
+                }}
+              >
+                Add
+              </button>
+            </div>
+          ))}
+          {results.length === 0 ? (
+            <div style={{ color: "var(--sw-muted)", fontSize: 12 }}>
+              Search to find matters not already in this pipeline.
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
   );
 }
