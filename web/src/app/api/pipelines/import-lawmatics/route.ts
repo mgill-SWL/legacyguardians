@@ -143,7 +143,17 @@ export async function POST() {
   if (!session?.user?.email) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
 
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-  if (user?.role !== "ADMIN") return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+  if (!user) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+
+  if (user.role !== "ADMIN") {
+    // Bootstrap: if no admins exist yet, promote the first real user who attempts an admin action.
+    const adminCount = await prisma.user.count({ where: { role: "ADMIN" } });
+    if (adminCount === 0) {
+      await prisma.user.update({ where: { id: user.id }, data: { role: "ADMIN" } });
+    } else {
+      return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+    }
+  }
 
   // If an old pipeline exists, rename it.
   const old = await prisma.pipeline.findFirst({ where: { name: "One-Off Matters" } });
