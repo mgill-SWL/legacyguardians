@@ -7,15 +7,23 @@ export function PipelineFieldsForm({
   primaryEmail,
   primaryPhone,
   estimatedValueCents,
+  intakeSpecialistId,
+  leadAttorneyId,
+  users,
 }: {
   matterId: string;
   primaryEmail: string | null;
   primaryPhone: string | null;
   estimatedValueCents: number;
+  intakeSpecialistId: string | null;
+  leadAttorneyId: string | null;
+  users: { id: string; email: string | null; name: string | null }[];
 }) {
   const [email, setEmail] = useState(primaryEmail || "");
   const [phone, setPhone] = useState(primaryPhone || "");
   const [value, setValue] = useState(estimatedValueCents ? String(Math.round(estimatedValueCents / 100)) : "");
+  const [intakeId, setIntakeId] = useState(intakeSpecialistId || "");
+  const [attorneyId, setAttorneyId] = useState(leadAttorneyId || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -33,6 +41,8 @@ export function PipelineFieldsForm({
           primaryEmail: email.trim() ? email.trim() : null,
           primaryPhone: phone.trim() ? phone.trim() : null,
           estimatedValueCents: cents,
+          intakeSpecialistId: intakeId || null,
+          leadAttorneyId: attorneyId || null,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -93,6 +103,50 @@ export function PipelineFieldsForm({
               color: "inherit",
             }}
           />
+        </label>
+
+        <label style={{ display: "grid", gap: 6 }}>
+          <span style={{ fontSize: 12, color: "var(--sw-muted)" }}>Intake specialist</span>
+          <select
+            value={intakeId}
+            onChange={(e) => setIntakeId(e.target.value)}
+            style={{
+              padding: "10px 12px",
+              borderRadius: "var(--sw-radius-sm)",
+              border: "1px solid var(--sw-border)",
+              background: "rgba(0,0,0,0.02)",
+              color: "inherit",
+            }}
+          >
+            <option value="">—</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id} style={{ color: "#000" }}>
+                {u.email}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label style={{ display: "grid", gap: 6 }}>
+          <span style={{ fontSize: 12, color: "var(--sw-muted)" }}>Lead attorney</span>
+          <select
+            value={attorneyId}
+            onChange={(e) => setAttorneyId(e.target.value)}
+            style={{
+              padding: "10px 12px",
+              borderRadius: "var(--sw-radius-sm)",
+              border: "1px solid var(--sw-border)",
+              background: "rgba(0,0,0,0.02)",
+              color: "inherit",
+            }}
+          >
+            <option value="">—</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id} style={{ color: "#000" }}>
+                {u.email}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
 

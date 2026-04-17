@@ -12,6 +12,8 @@ type Body = {
   primaryEmail?: string | null;
   primaryPhone?: string | null;
   estimatedValueCents?: number;
+  intakeSpecialistId?: string | null;
+  leadAttorneyId?: string | null;
 };
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ matterId: string }> }) {
@@ -34,6 +36,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ matterId: str
       primaryEmail: body.primaryEmail === undefined ? undefined : body.primaryEmail,
       primaryPhone: body.primaryPhone === undefined ? undefined : body.primaryPhone,
       estimatedValueCents: body.estimatedValueCents === undefined ? undefined : body.estimatedValueCents,
+      intakeSpecialistId: body.intakeSpecialistId === undefined ? undefined : body.intakeSpecialistId,
+      leadAttorneyId: body.leadAttorneyId === undefined ? undefined : body.leadAttorneyId,
       status: body.intake ? "INTAKE_IN_PROGRESS" : undefined,
       intake: body.intake
         ? {

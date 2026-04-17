@@ -36,3 +36,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
 
   return NextResponse.json({ ok: true });
 }
+
+export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+
+  const { id } = await ctx.params;
+  await prisma.matterPipeline.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
+}

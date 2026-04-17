@@ -17,6 +17,8 @@ type Matter = {
   primaryEmail: string | null;
   primaryPhone: string | null;
   estimatedValueCents: number;
+  intakeSpecialistEmail?: string | null;
+  leadAttorneyEmail?: string | null;
 };
 
 type LinkRec = {
@@ -39,6 +41,11 @@ export function PipelineBoard({
   const router = useRouter();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [adding, setAdding] = useState(false);
+
+  async function removeCard(linkId: string) {
+    await fetch(`/api/matter-pipeline/${linkId}`, { method: "DELETE" });
+    router.refresh();
+  }
 
   const byStage = useMemo(() => {
     const m = new Map<string, LinkRec[]>();
@@ -189,7 +196,7 @@ export function PipelineBoard({
                 {!isCollapsed ? (
                   <div style={{ display: "grid", gap: 10 }}>
                     {items.map((l) => (
-                      <MatterCard key={l.id} linkId={l.id} m={l.matter} />
+                      <MatterCard key={l.id} linkId={l.id} m={l.matter} onRemove={removeCard} />
                     ))}
                     {items.length === 0 ? (
                       <div style={{ color: "var(--sw-muted, #aab4d4)", fontSize: 12 }}>No matters.</div>
@@ -222,7 +229,15 @@ function fmtMoney(cents: number) {
   return (cents / 100).toLocaleString(undefined, { style: "currency", currency: "USD" });
 }
 
-function MatterCard({ linkId, m }: { linkId: string; m: Matter }) {
+function MatterCard({
+  linkId,
+  m,
+  onRemove,
+}: {
+  linkId: string;
+  m: Matter;
+  onRemove: (linkId: string) => void | Promise<void>;
+}) {
   const value = fmtMoney(m.estimatedValueCents);
 
   return (
@@ -234,6 +249,7 @@ function MatterCard({ linkId, m }: { linkId: string; m: Matter }) {
         e.dataTransfer.effectAllowed = "move";
       }}
       style={{
+        position: "relative",
         display: "block",
         borderRadius: 12,
         border: "1px solid rgba(255,255,255,0.12)",
@@ -243,6 +259,30 @@ function MatterCard({ linkId, m }: { linkId: string; m: Matter }) {
         overflow: "hidden",
       }}
     >
+      <button
+        onClick={async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!confirm("Remove this matter from the pipeline?")) return;
+          await onRemove(linkId);
+        }}
+        title="Remove from pipeline"
+        style={{
+          position: "absolute",
+          top: 8,
+          right: 8,
+          width: 26,
+          height: 26,
+          borderRadius: 10,
+          border: "1px solid rgba(255,255,255,0.18)",
+          background: "rgba(0,0,0,0.18)",
+          color: "inherit",
+          cursor: "pointer",
+          fontWeight: 900,
+        }}
+      >
+        ✕
+      </button>
       <div
         style={{
           padding: "10px 10px",
@@ -256,6 +296,8 @@ function MatterCard({ linkId, m }: { linkId: string; m: Matter }) {
       <div style={{ padding: 10, display: "grid", gap: 6, fontSize: 12, color: "var(--sw-muted, #aab4d4)" }}>
         {m.primaryPhone ? <div>{m.primaryPhone}</div> : null}
         {m.primaryEmail ? <div>{m.primaryEmail}</div> : null}
+        {m.intakeSpecialistEmail ? <div>Intake: {m.intakeSpecialistEmail}</div> : null}
+        {m.leadAttorneyEmail ? <div>Attorney: {m.leadAttorneyEmail}</div> : null}
         {value ? <div style={{ color: "inherit", fontWeight: 900 }}>{value}</div> : null}
       </div>
     </Link>

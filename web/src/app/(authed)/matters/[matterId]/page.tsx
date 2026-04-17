@@ -20,6 +20,11 @@ export default async function MatterDetailPage({
     include: { intake: true },
   });
 
+  const users = await prisma.user.findMany({
+    orderBy: { email: "asc" },
+    select: { id: true, email: true, name: true },
+  });
+
   if (!matter) {
     return (
       <main style={{ padding: 24 }}>
@@ -52,6 +57,9 @@ export default async function MatterDetailPage({
           primaryEmail={matter.primaryEmail}
           primaryPhone={matter.primaryPhone}
           estimatedValueCents={matter.estimatedValueCents}
+          intakeSpecialistId={matter.intakeSpecialistId}
+          leadAttorneyId={matter.leadAttorneyId}
+          users={users}
         />
       </section>
 

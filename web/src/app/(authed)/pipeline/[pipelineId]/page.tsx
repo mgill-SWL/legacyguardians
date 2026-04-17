@@ -28,10 +28,12 @@ export default async function PipelineBoardPage(props: { params: Promise<{ pipel
           primaryEmail: true,
           primaryPhone: true,
           estimatedValueCents: true,
+          intakeSpecialist: { select: { email: true, name: true } },
+          leadAttorney: { select: { email: true, name: true } },
         },
       },
     },
-    orderBy: [{ sortKey: "asc" }, { updatedAt: "desc" }],
+    orderBy: [{ createdAt: "asc" }],
   });
 
   return (
@@ -49,6 +51,8 @@ export default async function PipelineBoardPage(props: { params: Promise<{ pipel
           primaryEmail: l.matter.primaryEmail,
           primaryPhone: l.matter.primaryPhone,
           estimatedValueCents: l.matter.estimatedValueCents,
+          intakeSpecialistEmail: l.matter.intakeSpecialist?.email || null,
+          leadAttorneyEmail: l.matter.leadAttorney?.email || null,
         },
       }))}
     />
