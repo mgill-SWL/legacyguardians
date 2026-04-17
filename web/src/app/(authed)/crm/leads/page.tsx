@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { ConvertLeadButton } from "./ConvertLeadButton";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,7 @@ export default async function LeadsPage() {
     include: {
       contact: true,
       campaign: true,
+      convertedMatter: { select: { id: true, displayName: true } },
     },
   });
 
@@ -34,6 +36,7 @@ export default async function LeadsPage() {
               <th style={{ padding: "10px 8px" }}>Quality</th>
               <th style={{ padding: "10px 8px" }}>Appt 2</th>
               <th style={{ padding: "10px 8px" }}>Closed</th>
+              <th style={{ padding: "10px 8px" }}>Convert</th>
             </tr>
           </thead>
           <tbody>
@@ -52,6 +55,15 @@ export default async function LeadsPage() {
                 <td style={{ padding: "10px 8px" }}>{l.leadQualityScore ?? ""}</td>
                 <td style={{ padding: "10px 8px" }}>{l.appt2At ? l.appt2At.toISOString().slice(0, 10) : ""}</td>
                 <td style={{ padding: "10px 8px" }}>{l.closed ? "Y" : "N"}</td>
+                <td style={{ padding: "10px 8px" }}>
+                  {l.convertedMatterId ? (
+                    <Link href={`/matters/${l.convertedMatterId}`} style={{ color: "inherit" }}>
+                      Matter →
+                    </Link>
+                  ) : (
+                    <ConvertLeadButton leadId={l.id} />
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

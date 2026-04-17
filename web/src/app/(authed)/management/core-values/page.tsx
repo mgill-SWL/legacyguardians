@@ -10,20 +10,19 @@ import { ManagementTextEditor } from "../ManagementTextEditor";
 export const dynamic = "force-dynamic";
 
 async function defaultContent() {
-  // Next app cwd is /web in this repo.
-  const p = path.join(process.cwd(), "..", "spec", "management", "core-values.txt");
+  const p = path.join(process.cwd(), "..", "spec", "management", "vivid-vision.txt");
   return readFile(p, "utf8");
 }
 
-export default async function VividVisionPage() {
+export default async function CoreValuesPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) redirect("/login");
 
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
   const canEdit = user?.role === "ADMIN";
 
-  const slug = "vivid-vision";
-  const title = "Vivid Vision";
+  const slug = "core-values";
+  const title = "Core Values";
 
   const existing = await prisma.managementPage.findUnique({ where: { slug } });
   const page = existing

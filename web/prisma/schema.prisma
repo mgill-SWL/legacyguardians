@@ -208,6 +208,12 @@ model Matter {
   leadAttorneyId String?
   leadAttorney   User? @relation("MatterLeadAttorney", fields: [leadAttorneyId], references: [id], onDelete: SetNull)
 
+  // primary client contact (v1; later: MatterContact join for multiple parties)
+  primaryContactId String?
+  primaryContact   Contact? @relation(fields: [primaryContactId], references: [id], onDelete: SetNull)
+
+  convertedFromLeads CrmLeadPipeline[] @relation("LeadConvertedMatter")
+
   createdById String
   createdBy   User         @relation("MattersCreatedBy", fields: [createdById], references: [id])
 
@@ -228,10 +234,24 @@ model Contact {
   categories    ContactCategory[]
   notes         String?
 
+  matters       Matter[]
+
+  convertedFromLeads CrmLeadPipeline[] @relation("LeadConvertedContact")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([displayName])
+}
+
+model ManagementPage {
+  id      String @id @default(cuid())
+  slug    String @unique
+  title   String
+  content String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model IntakeResponse {
@@ -436,6 +456,14 @@ model CrmLeadPipeline {
   closed          Boolean @default(false)
   cashCollectedCents Int @default(0)
   revenueCents       Int @default(0)
+
+  // Lead → client conversion (RA signed)
+  raSignedAt        DateTime?
+  convertedAt       DateTime?
+  convertedContactId String?
+  convertedContact   Contact? @relation("LeadConvertedContact", fields: [convertedContactId], references: [id], onDelete: SetNull)
+  convertedMatterId  String?
+  convertedMatter    Matter?  @relation("LeadConvertedMatter", fields: [convertedMatterId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

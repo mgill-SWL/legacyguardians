@@ -37,6 +37,7 @@ const GROUPS: Group[] = [
     defaultOpen: true,
     items: [
       { href: "/management/vivid-vision", label: "Vivid Vision", icon: "V" },
+      { href: "/management/core-values", label: "Core Values", icon: "♥" },
       { href: "/ftm", label: "Forever Task Maps", icon: "F" },
       { href: "/management/boulders", label: "Boulders", icon: "O" },
       { href: "/pipeline", label: "Pipelines", icon: "P" },
