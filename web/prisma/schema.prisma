@@ -36,6 +36,12 @@ enum ContactState {
   UNKNOWN
 }
 
+enum ContactCategory {
+  CLIENT
+  VENDOR
+  REFERRER
+}
+
 enum CrmTaskType {
   PRE_SHOW
   POST_SHOW
@@ -211,6 +217,21 @@ model Matter {
 
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
+}
+
+model Contact {
+  id            String @id @default(cuid())
+  displayName   String
+  email         String?
+  phone         String?
+  organization  String?
+  categories    ContactCategory[]
+  notes         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([displayName])
 }
 
 model IntakeResponse {
