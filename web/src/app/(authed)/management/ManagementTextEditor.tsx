@@ -15,6 +15,7 @@ export function ManagementTextEditor({
 }) {
   const [title, setTitle] = useState(initialTitle);
   const [content, setContent] = useState(initialContent);
+  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -42,76 +43,103 @@ export function ManagementTextEditor({
 
   return (
     <div style={{ marginTop: 16, display: "grid", gap: 14 }}>
-      <div
-        style={{
-          border: "1px solid var(--sw-border)",
-          borderRadius: 14,
-          padding: 16,
-          background: "var(--sw-card)",
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
-          <div style={{ fontWeight: 900 }}>Display text</div>
-          {canEdit ? (
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+        <div style={{ fontSize: 12, color: "var(--sw-muted)" }}>
+          {canEdit ? "Admin can edit" : "Admin-only edit"}
+        </div>
+        {canEdit ? (
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <button
-              onClick={save}
-              disabled={saving}
+              onClick={() => setEditing((v) => !v)}
               style={{
                 padding: "10px 12px",
                 borderRadius: 10,
-                border: "1px solid rgba(110,231,255,0.45)",
-                background: "linear-gradient(135deg, rgba(110,231,255,0.14), rgba(167,139,250,0.10))",
+                border: "1px solid var(--sw-border)",
+                background: "rgba(0,0,0,0.03)",
                 fontWeight: 900,
                 color: "inherit",
                 cursor: "pointer",
               }}
             >
-              {saving ? "Saving…" : "Save"}
+              {editing ? "Done" : "Edit"}
             </button>
-          ) : (
-            <div style={{ fontSize: 12, color: "var(--sw-muted)" }}>Admin-only edit</div>
-          )}
-        </div>
+            {editing ? (
+              <button
+                onClick={save}
+                disabled={saving}
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: "1px solid rgba(110,231,255,0.45)",
+                  background: "linear-gradient(135deg, rgba(110,231,255,0.14), rgba(167,139,250,0.10))",
+                  fontWeight: 900,
+                  color: "inherit",
+                  cursor: "pointer",
+                }}
+              >
+                {saving ? "Saving…" : "Save"}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
 
-        <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            readOnly={!canEdit}
-            style={{
-              padding: "10px 12px",
-              borderRadius: 10,
-              border: "1px solid var(--sw-border)",
-              background: "rgba(0,0,0,0.02)",
-              color: "inherit",
-              fontWeight: 900,
-            }}
-          />
-
-          {canEdit ? (
+      {editing && canEdit ? (
+        <div
+          style={{
+            border: "1px solid var(--sw-border)",
+            borderRadius: 14,
+            padding: 16,
+            background: "var(--sw-card)",
+          }}
+        >
+          <div style={{ display: "grid", gap: 10 }}>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              style={{
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid var(--sw-border)",
+                background: "rgba(0,0,0,0.02)",
+                color: "inherit",
+                fontWeight: 900,
+              }}
+            />
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              rows={18}
+              rows={22}
               style={{
                 padding: "12px 12px",
                 borderRadius: 10,
                 border: "1px solid var(--sw-border)",
                 background: "rgba(0,0,0,0.02)",
                 color: "inherit",
-                fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+                fontFamily:
+                  "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
                 fontSize: 12,
                 lineHeight: 1.45,
               }}
             />
-          ) : (
-            <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{content}</div>
-          )}
-
-          {error ? <div style={{ color: "var(--sw-danger)" }}>{error}</div> : null}
-          {saved ? <div style={{ color: "var(--sw-muted)", fontSize: 12 }}>Saved</div> : null}
+            {error ? <div style={{ color: "var(--sw-danger)" }}>{error}</div> : null}
+            {saved ? <div style={{ color: "var(--sw-muted)", fontSize: 12 }}>Saved</div> : null}
+          </div>
         </div>
-      </div>
+      ) : (
+        <article
+          style={{
+            background: "transparent",
+            border: "none",
+            padding: 0,
+            lineHeight: 1.75,
+            fontSize: 16,
+            maxWidth: 860,
+          }}
+        >
+          <div style={{ whiteSpace: "pre-wrap" }}>{content}</div>
+        </article>
+      )}
     </div>
   );
 }
