@@ -2,19 +2,33 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-export default function KpisPage() {
+export default function KpisHome() {
   return (
-    <div style={{ padding: 24 }}>
-      <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>KPIs</h1>
-      <p style={{ marginTop: 8, color: "var(--sw-muted, #6b7280)" }}>Placeholder. Existing firm KPI pages:</p>
-      <ul style={{ marginTop: 12, lineHeight: 1.6 }}>
-        <li>
-          <Link href="/crm/spend">Spend</Link>
-        </li>
-        <li>
-          <Link href="/crm/reports/weekly">Weekly report</Link>
-        </li>
-      </ul>
+    <div className="sw-page">
+      <div className="sw-pageHeader">
+        <h1 className="sw-h1">KPIs</h1>
+      </div>
+      <p className="sw-muted" style={{ marginTop: 8 }}>
+        Reporting tables (manual entry) + summary views.
+      </p>
+
+      <div style={{ marginTop: 16, display: "grid", gap: 10, maxWidth: 720 }}>
+        <Link className="sw-btn" href="/management/kpis/intake">
+          Intake (summary)
+        </Link>
+        <Link className="sw-btn" href="/management/kpis/l10/reporting">
+          L10 (reporting)
+        </Link>
+        <Link className="sw-btn" href="/management/kpis/l10/summary">
+          L10 (summary)
+        </Link>
+        <Link className="sw-btn" href="/management/kpis/timekeepers/reporting">
+          Timekeepers (reporting)
+        </Link>
+        <Link className="sw-btn" href="/management/kpis/timekeepers/summary">
+          Timekeepers (summary)
+        </Link>
+      </div>
     </div>
   );
 }
