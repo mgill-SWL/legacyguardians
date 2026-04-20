@@ -2,6 +2,10 @@
 //
 // Vercel CLI writes .env.local, but Prisma config mode does NOT auto-load it,
 // so we explicitly load it here.
+//
+// Hide Prisma's "upgrade" notifier in CLI output (we'll only surface real errors).
+process.env.PRISMA_HIDE_UPDATE_MESSAGE = "1";
+
 import { config as dotenvConfig } from "dotenv";
 import { defineConfig } from "prisma/config";
 
