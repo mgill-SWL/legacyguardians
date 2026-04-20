@@ -115,3 +115,107 @@
   border: 1px solid var(--sw-border);
   color: var(--sw-muted);
 }
+
+/* Sidebar navigation */
+
+.sw-navAside {
+  padding: 16px;
+  border-right: 1px solid var(--sw-border);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sw-navBtn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--sw-border);
+  background: rgba(0, 0, 0, 0.02);
+  color: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.sw-navBtn:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+:root[data-theme="dark"] .sw-navBtn {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+:root[data-theme="dark"] .sw-navBtn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.sw-navBtnActive {
+  border-color: rgba(29, 103, 184, 0.45);
+  background: rgba(29, 103, 184, 0.10);
+}
+
+.sw-navIcon {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, 0.02);
+  font-weight: 900;
+}
+
+:root[data-theme="dark"] .sw-navIcon {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.sw-navGroupLabel {
+  text-align: left;
+  padding: 6px 6px;
+  background: transparent;
+  border: none;
+  color: var(--sw-muted);
+  font-weight: 900;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Kanban */
+
+.sw-kanbanCol {
+  background: rgba(0, 0, 0, 0.01);
+}
+
+:root[data-theme="dark"] .sw-kanbanCol {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.sw-kanbanCard {
+  border-radius: 12px;
+  border: 1px solid var(--sw-border);
+  background: rgba(0, 0, 0, 0.02);
+  overflow: hidden;
+}
+
+:root[data-theme="dark"] .sw-kanbanCard {
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.sw-kanbanCardHeader {
+  padding: 10px;
+  font-weight: 900;
+  background: rgba(0, 0, 0, 0.03);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme="dark"] .sw-kanbanCardHeader {
+  background: rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+}

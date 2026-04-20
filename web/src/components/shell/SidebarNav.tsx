@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { SignOutButton } from "@/components/SignOutButton";
@@ -64,46 +65,27 @@ function NavButton({
   label,
   icon,
   collapsed,
+  active,
   onClick,
 }: {
   href: string;
   label: string;
   icon: string;
   collapsed: boolean;
+  active: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       onClick={onClick}
       title={label}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        width: "100%",
-        textAlign: "left",
-        padding: collapsed ? "10px 10px" : "10px 12px",
-        borderRadius: 10,
-        border: "1px solid var(--sw-border, rgba(255,255,255,0.12))",
-        color: "inherit",
-        fontWeight: 800,
-        background: "rgba(255,255,255,0.03)",
-        cursor: "pointer",
-      }}
+      className={`sw-navBtn ${active ? "sw-navBtnActive" : ""}`}
+      style={{ padding: collapsed ? "10px 10px" : undefined }}
       aria-label={label}
     >
       <span
         aria-hidden
-        style={{
-          width: 24,
-          height: 24,
-          borderRadius: 8,
-          display: "grid",
-          placeItems: "center",
-          border: "1px solid rgba(255,255,255,0.16)",
-          background: "rgba(255,255,255,0.03)",
-          fontWeight: 900,
-        }}
+        className="sw-navIcon"
       >
         {icon}
       </span>
@@ -114,6 +96,7 @@ function NavButton({
 
 export function SidebarNav({ email }: { email: string | null | undefined }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { dirty, saveFn, setDirty, registerSaveFn } = useUnsavedChanges();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
 
@@ -146,6 +129,12 @@ export function SidebarNav({ email }: { email: string | null | undefined }) {
   }, [collapsed]);
 
   const flatItems = useMemo(() => GROUPS.flatMap((g) => g.items), []);
+
+  function isActive(href: string) {
+    if (pathname === href) return true;
+    if (href !== "/" && pathname.startsWith(href + "/")) return true;
+    return false;
+  }
 
   function requestNav(href: string) {
     if (!dirty) {
@@ -184,14 +173,8 @@ export function SidebarNav({ email }: { email: string | null | undefined }) {
   return (
     <>
       <aside
-        style={{
-          width: collapsed ? 84 : 280,
-          padding: 16,
-          borderRight: "1px solid var(--sw-border, rgba(255,255,255,0.12))",
-          display: "flex",
-          flexDirection: "column",
-          gap: 14,
-        }}
+        className="sw-navAside"
+        style={{ width: collapsed ? 84 : 280 }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
           <div style={{ padding: "6px 6px 2px", overflow: "hidden" }}>
@@ -232,18 +215,7 @@ export function SidebarNav({ email }: { email: string | null | undefined }) {
                     onClick={() =>
                       setOpenGroups((prev) => ({ ...prev, [g.label]: !prev[g.label] }))
                     }
-                    style={{
-                      textAlign: "left",
-                      padding: "6px 6px",
-                      background: "transparent",
-                      border: "none",
-                      color: "var(--sw-muted, #aab4d4)",
-                      fontWeight: 900,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    }}
+                    className="sw-navGroupLabel"
                   >
                     <span>{g.label}</span>
                     <span style={{ opacity: 0.8 }}>{isOpen ? "▾" : "▸"}</span>
@@ -259,6 +231,7 @@ export function SidebarNav({ email }: { email: string | null | undefined }) {
                         label={n.label}
                         icon={n.icon}
                         collapsed={collapsed}
+                        active={isActive(n.href)}
                         onClick={() => requestNav(n.href)}
                       />
                     ))}

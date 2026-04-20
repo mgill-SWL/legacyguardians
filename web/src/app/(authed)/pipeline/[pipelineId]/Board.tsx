@@ -93,6 +93,7 @@ export function PipelineBoard({
           return (
             <div
               key={s.id}
+              className="sw-card sw-kanbanCol"
               onDragOver={(e) => {
                 e.preventDefault();
               }}
@@ -111,9 +112,6 @@ export function PipelineBoard({
                 }
               }}
               style={{
-                border: "1px solid var(--sw-border, rgba(255,255,255,0.12))",
-                borderRadius: 14,
-                background: "rgba(255,255,255,0.03)",
                 minHeight: 240,
                 display: "grid",
                 gridTemplateRows: "auto 1fr",
@@ -237,16 +235,8 @@ function MatterCard({
         e.dataTransfer.setData("text/plain", linkId);
         e.dataTransfer.effectAllowed = "move";
       }}
-      style={{
-        position: "relative",
-        display: "block",
-        borderRadius: 12,
-        border: "1px solid rgba(255,255,255,0.12)",
-        background: "rgba(0,0,0,0.18)",
-        textDecoration: "none",
-        color: "inherit",
-        overflow: "hidden",
-      }}
+      className="sw-kanbanCard"
+      style={{ position: "relative", display: "block", textDecoration: "none", color: "inherit" }}
     >
       <button
         onClick={async (e) => {
@@ -272,14 +262,7 @@ function MatterCard({
       >
         ✕
       </button>
-      <div
-        style={{
-          padding: "10px 10px",
-          fontWeight: 900,
-          background: "rgba(255,255,255,0.06)",
-          borderBottom: "1px solid rgba(255,255,255,0.10)",
-        }}
-      >
+      <div className="sw-kanbanCardHeader">
         {m.displayName}
       </div>
       <div style={{ padding: 10, display: "grid", gap: 6, fontSize: 12, color: "var(--sw-muted, #aab4d4)" }}>
