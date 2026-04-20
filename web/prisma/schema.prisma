@@ -271,6 +271,28 @@ model ScheduledJob {
   @@index([status, runAt])
 }
 
+enum MessageChannel {
+  EMAIL
+  SMS
+}
+
+model MessageTemplate {
+  id      String @id @default(cuid())
+  key     String @unique
+  channel MessageChannel
+  name    String
+
+  subject String?
+  body    String
+  isHtml  Boolean @default(false)
+
+  // Optional attachment URL (v1; later: stored files)
+  attachmentUrl String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String
