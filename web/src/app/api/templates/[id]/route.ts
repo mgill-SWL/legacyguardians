@@ -13,6 +13,7 @@ type Body = {
   subject?: string | null;
   body?: string;
   attachmentUrl?: string | null;
+  isHtml?: boolean;
 };
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -35,6 +36,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       subject: body.subject === undefined ? undefined : body.subject,
       body: body.body === undefined ? undefined : body.body,
       attachmentUrl: body.attachmentUrl === undefined ? undefined : body.attachmentUrl,
+      isHtml: body.isHtml === undefined ? undefined : body.isHtml,
     },
   });
 

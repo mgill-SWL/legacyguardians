@@ -23,7 +23,7 @@ export function TemplatesClient({ initialTemplates, canEdit }: { initialTemplate
   const [selectedId, setSelectedId] = useState<string | null>(templates[0]?.id || null);
   const selected = useMemo(() => templates.find((t) => t.id === selectedId) || null, [templates, selectedId]);
 
-  const [draft, setDraft] = useState<{ key: string; channel: "EMAIL" | "SMS"; name: string; subject: string; body: string; attachmentUrl: string }>(
+  const [draft, setDraft] = useState<{ key: string; channel: "EMAIL" | "SMS"; name: string; subject: string; body: string; attachmentUrl: string; isHtml: boolean }>(
     selected
       ? {
           key: selected.key,
@@ -32,8 +32,9 @@ export function TemplatesClient({ initialTemplates, canEdit }: { initialTemplate
           subject: selected.subject || "",
           body: selected.body,
           attachmentUrl: selected.attachmentUrl || "",
+          isHtml: !!selected.isHtml,
         }
-      : { key: "", channel: "EMAIL", name: "", subject: "", body: "", attachmentUrl: "" }
+      : { key: "", channel: "EMAIL", name: "", subject: "", body: "", attachmentUrl: "", isHtml: true }
   );
 
   const [busy, setBusy] = useState(false);
@@ -54,6 +55,7 @@ export function TemplatesClient({ initialTemplates, canEdit }: { initialTemplate
           subject: draft.subject || null,
           body: draft.body,
           attachmentUrl: draft.attachmentUrl || null,
+          isHtml: draft.isHtml,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -80,6 +82,7 @@ export function TemplatesClient({ initialTemplates, canEdit }: { initialTemplate
           subject: draft.subject || null,
           body: draft.body,
           attachmentUrl: draft.attachmentUrl || null,
+          isHtml: draft.isHtml,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -110,6 +113,7 @@ export function TemplatesClient({ initialTemplates, canEdit }: { initialTemplate
                   subject: t.subject || "",
                   body: t.body,
                   attachmentUrl: t.attachmentUrl || "",
+                  isHtml: !!t.isHtml,
                 });
               }}
             >
@@ -155,16 +159,38 @@ export function TemplatesClient({ initialTemplates, canEdit }: { initialTemplate
           </div>
 
           {draft.channel === "EMAIL" ? (
-            <label style={{ display: "grid", gap: 6 }}>
-              <span className="sw-muted" style={{ fontSize: 12 }}>Subject</span>
-              <input className="sw-input" value={draft.subject} onChange={(e) => setDraft((d) => ({ ...d, subject: e.target.value }))} disabled={!canEdit} />
-            </label>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 220px", gap: 10, alignItems: "end" }}>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span className="sw-muted" style={{ fontSize: 12 }}>Subject</span>
+                <input className="sw-input" value={draft.subject} onChange={(e) => setDraft((d) => ({ ...d, subject: e.target.value }))} disabled={!canEdit} />
+              </label>
+              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12 }} className="sw-muted">
+                <input type="checkbox" checked={draft.isHtml} onChange={(e) => setDraft((d) => ({ ...d, isHtml: e.target.checked }))} disabled={!canEdit} />
+                HTML email
+              </label>
+            </div>
           ) : null}
 
-          <label style={{ display: "grid", gap: 6 }}>
-            <span className="sw-muted" style={{ fontSize: 12 }}>Body</span>
-            <textarea className="sw-input" value={draft.body} onChange={(e) => setDraft((d) => ({ ...d, body: e.target.value }))} disabled={!canEdit} rows={16} />
-          </label>
+          <div style={{ display: draft.channel === "EMAIL" && draft.isHtml ? "grid" : "block", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span className="sw-muted" style={{ fontSize: 12 }}>Body</span>
+              <textarea className="sw-input" value={draft.body} onChange={(e) => setDraft((d) => ({ ...d, body: e.target.value }))} disabled={!canEdit} rows={18} />
+              {draft.channel === "SMS" ? (
+                <div className="sw-muted" style={{ fontSize: 12, marginTop: 6 }}>
+                  {draft.body.length} characters
+                </div>
+              ) : null}
+            </label>
+
+            {draft.channel === "EMAIL" && draft.isHtml ? (
+              <div style={{ display: "grid", gap: 6 }}>
+                <span className="sw-muted" style={{ fontSize: 12 }}>Preview</span>
+                <div className="sw-card sw-card-pad" style={{ background: "var(--sw-surface)", overflow: "auto", maxHeight: 420 }}>
+                  <div dangerouslySetInnerHTML={{ __html: draft.body || "<em>(empty)</em>" }} />
+                </div>
+              </div>
+            ) : null}
+          </div>
 
           {draft.channel === "EMAIL" ? (
             <label style={{ display: "grid", gap: 6 }}>

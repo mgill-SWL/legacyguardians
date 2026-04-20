@@ -13,6 +13,7 @@ type Body = {
   subject?: string | null;
   body: string;
   attachmentUrl?: string | null;
+  isHtml?: boolean;
 };
 
 export async function POST(req: Request) {
@@ -35,6 +36,7 @@ export async function POST(req: Request) {
       subject: body.subject || null,
       body: body.body,
       attachmentUrl: body.attachmentUrl || null,
+      isHtml: body.isHtml ?? false,
     },
     select: { id: true },
   });
