@@ -172,6 +172,105 @@ model GoogleConnection {
   updatedAt DateTime @updatedAt
 }
 
+// --- Scheduling / automations (v1) ---
+
+enum AppointmentStatus {
+  SCHEDULED
+  CANCELED
+}
+
+model AppointmentType {
+  id    String @id @default(cuid())
+  slug  String @unique
+  name  String
+
+  durationMin      Int
+  startIntervalMin Int @default(15)
+  bufferBeforeMin  Int @default(0)
+  bufferAfterMin   Int @default(0)
+  minNoticeHours   Int @default(24)
+  rollingWeeks     Int @default(8)
+  maxPerDay        Int @default(6)
+
+  assignees AppointmentAssignee[]
+  appointments Appointment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AppointmentAssignee {
+  id      String @id @default(cuid())
+  typeId  String
+  type    AppointmentType @relation(fields: [typeId], references: [id], onDelete: Cascade)
+
+  googleEmail String
+  displayName String?
+  timeZone    String @default("America/New_York")
+
+  // Weekday office hours (minutes since midnight). MVP assumes Mon–Fri only.
+  weekdayStartMin Int @default(540) // 09:00
+  weekdayEndMin   Int @default(1020) // 17:00
+
+  enabled Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([typeId, googleEmail])
+  @@index([typeId, enabled])
+}
+
+model Appointment {
+  id      String @id @default(cuid())
+  typeId  String
+  type    AppointmentType @relation(fields: [typeId], references: [id], onDelete: Cascade)
+
+  status  AppointmentStatus @default(SCHEDULED)
+
+  startsAt DateTime
+  endsAt   DateTime
+
+  assignedGoogleEmail String
+  googleEventId       String?
+
+  clientName  String?
+  clientEmail String?
+  clientPhone String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([typeId, startsAt])
+  @@index([assignedGoogleEmail, startsAt])
+}
+
+enum ScheduledJobType {
+  SEND_EMAIL
+  SEND_SMS
+}
+
+enum ScheduledJobStatus {
+  PENDING
+  DONE
+  FAILED
+}
+
+model ScheduledJob {
+  id     String @id @default(cuid())
+  runAt  DateTime
+  type   ScheduledJobType
+  status ScheduledJobStatus @default(PENDING)
+  attempts Int @default(0)
+  lastError String?
+  payload Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, runAt])
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String
