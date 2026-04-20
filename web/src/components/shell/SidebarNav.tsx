@@ -52,7 +52,8 @@ const GROUPS: Group[] = [
     items: [
       { href: "/settings/user", label: "User settings", icon: "U" },
       { href: "/settings/firm", label: "Firm settings", icon: "F" },
-      { href: "/settings/ringcentral", label: "Integrations", icon: "I" },
+      { href: "/settings/ringcentral", label: "RingCentral", icon: "I" },
+      { href: "/settings/google", label: "Google", icon: "G" },
     ],
   },
   {
