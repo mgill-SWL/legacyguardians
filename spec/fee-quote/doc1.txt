@@ -1,0 +1,53 @@
+Fee Quote Logic and Appearance Order for Rep Agreement 2025-10-19
+
+SERVICE FEATURE: Attorney Tier (Premium)
+Text
+$9,975.00 includes the following Service Features: Work with Misha, Meet Anywhere, Text my Attorney, Up to 3 Deeds, Enhanced Creditor Protection, Tax Planning Strategies, Payment required prior to booking DM, 1 year Probate Avoidance Club Admission
+SERVICE FEATURE: Will Base Price
+Money
+$3,000
+Establishes the core of the plan, a Last Will and Testament. This is the lynchpin document which ensures your wishes are carried out, names trusted individuals to handle your affairs, and provides guardianship designations for minor children.
+SERVICE FEATURE: Living Trust Attorney Tier (Senior Associate)
+Money
+$900
+SERVICE FEATURE: Living Trust Attorney Tier (Fresh Face)
+Money
+$600
+SERVICE FEATURE: In Person Consultations
+Money
+$195
+SERVICE FEATURE: Text My Attorney
+Money
+$195
+SERVICE FEATURE: Rush Service
+Money
+$500
+SERVICE FEATURE: Bedside Service
+Money
+$800
+SERVICE FEATURE: Tax Planning Advice and Irrevocable Trusts Drafting
+Text
+SERVICE FEATURE: Enhanced Creditor Protections
+Money
+SERVICE FEATURE: Incapacity Planning Docs: (POA/AMD/HIPAA/BPOA)
+Money
+SERVICE FEATURE: Satisfaction Guarantee
+Text
+If SWL does not meet your expectations, you will receive free admission to our Probate Avoidance Club and all its features for 1 year
+SERVICE FEATURE: Virginia Deeds (Number and Total Fee)
+Text
+SERVICE FEATURE: Out-of-State Deeds (Number and Total Fee)
+Text
+BONUS: Same Day Booking (Free Binder)
+True/False
+Courtesy Adjustment: Military/Teacher/First Responder
+Text
+-$100
+Courtesy Extension – Payment Due at Design Meeting
+True/False
+Courtesy Extension - Payment Plan (3 Monthly Installments)
+True/False
+TOTAL ESTIMATED FEE
+Money
+Notes/Special Instructions
+Text Field
