@@ -1,0 +1,117 @@
+/* UI primitives (lightweight design system) */
+
+.sw-card {
+  border: 1px solid var(--sw-border);
+  border-radius: var(--sw-radius);
+  background: var(--sw-card);
+}
+
+.sw-card-pad {
+  padding: 16px;
+}
+
+.sw-page {
+  padding: 24px;
+}
+
+.sw-pageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.sw-h1 {
+  font-size: 22px;
+  font-weight: 900;
+  margin: 0;
+}
+
+.sw-muted {
+  color: var(--sw-muted);
+}
+
+.sw-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--sw-radius-sm);
+  border: 1px solid var(--sw-border);
+  background: rgba(0, 0, 0, 0.03);
+  color: inherit;
+  font-weight: 900;
+  cursor: pointer;
+  text-decoration: none;
+  user-select: none;
+}
+
+.sw-btn:hover {
+  filter: brightness(0.98);
+}
+
+.sw-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sw-btnPrimary {
+  border: 1px solid rgba(110, 231, 255, 0.45);
+  background: linear-gradient(135deg, rgba(110, 231, 255, 0.14), rgba(167, 139, 250, 0.10));
+}
+
+.sw-btnGhost {
+  background: transparent;
+}
+
+.sw-btnSm {
+  padding: 8px 10px;
+}
+
+.sw-input {
+  padding: 10px 12px;
+  border-radius: var(--sw-radius-sm);
+  border: 1px solid var(--sw-border);
+  background: rgba(0, 0, 0, 0.02);
+  color: inherit;
+}
+
+.sw-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.sw-th {
+  padding: 10px 8px;
+  text-align: left;
+  font-size: 12px;
+  color: var(--sw-muted);
+  font-weight: 900;
+  border-bottom: 1px solid var(--sw-border);
+}
+
+.sw-td {
+  padding: 10px 8px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+:root[data-theme="dark"] .sw-td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.sw-tr:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+:root[data-theme="dark"] .sw-tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.sw-badge {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--sw-border);
+  color: var(--sw-muted);
+}

@@ -90,25 +90,25 @@ export function ContactsClient({ initialContacts }: { initialContacts: any[] }) 
             value={form.displayName}
             onChange={(e) => setForm((f) => ({ ...f, displayName: e.target.value }))}
             placeholder="Name"
-            style={inputStyle}
+            className="sw-input"
           />
           <input
             value={form.email}
             onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
             placeholder="Email"
-            style={inputStyle}
+            className="sw-input"
           />
           <input
             value={form.phone}
             onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
             placeholder="Phone"
-            style={inputStyle}
+            className="sw-input"
           />
           <input
             value={form.organization}
             onChange={(e) => setForm((f) => ({ ...f, organization: e.target.value }))}
             placeholder="Organization"
-            style={inputStyle}
+            className="sw-input"
           />
         </div>
 
@@ -129,7 +129,7 @@ export function ContactsClient({ initialContacts }: { initialContacts: any[] }) 
             </label>
           ))}
 
-          <button onClick={create} disabled={busy || !form.displayName.trim()} style={primaryBtn}>
+          <button onClick={create} disabled={busy || !form.displayName.trim()} className="sw-btn sw-btnPrimary">
             {busy ? "Saving…" : "Create"}
           </button>
           {error ? <span style={{ fontSize: 12, color: "var(--sw-danger)" }}>{error}</span> : null}
@@ -141,9 +141,10 @@ export function ContactsClient({ initialContacts }: { initialContacts: any[] }) 
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search contacts…"
-          style={{ ...inputStyle, minWidth: 260 }}
+          className="sw-input"
+          style={{ minWidth: 260 }}
         />
-        <select value={filter} onChange={(e) => setFilter(e.target.value as any)} style={inputStyle as any}>
+        <select value={filter} onChange={(e) => setFilter(e.target.value as any)} className="sw-input">
           <option value="ALL">All</option>
           <option value="CLIENT">Clients</option>
           <option value="VENDOR">Vendors</option>
@@ -153,24 +154,24 @@ export function ContactsClient({ initialContacts }: { initialContacts: any[] }) 
       </div>
 
       <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <table className="sw-table">
           <thead>
-            <tr style={{ textAlign: "left", borderBottom: "1px solid var(--sw-border)" }}>
-              <th style={{ padding: "10px 8px" }}>Name</th>
-              <th style={{ padding: "10px 8px" }}>Categories</th>
-              <th style={{ padding: "10px 8px" }}>Email</th>
-              <th style={{ padding: "10px 8px" }}>Phone</th>
-              <th style={{ padding: "10px 8px" }}>Organization</th>
+            <tr>
+              <th className="sw-th">Name</th>
+              <th className="sw-th">Categories</th>
+              <th className="sw-th">Email</th>
+              <th className="sw-th">Phone</th>
+              <th className="sw-th">Organization</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map((c) => (
-              <tr key={c.id} style={{ borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
-                <td style={{ padding: "10px 8px", fontWeight: 900 }}>{c.displayName}</td>
-                <td style={{ padding: "10px 8px", fontSize: 12, color: "var(--sw-muted)" }}>{c.categories.join(", ")}</td>
-                <td style={{ padding: "10px 8px" }}>{c.email || ""}</td>
-                <td style={{ padding: "10px 8px" }}>{c.phone || ""}</td>
-                <td style={{ padding: "10px 8px" }}>{c.organization || ""}</td>
+              <tr key={c.id} className="sw-tr">
+                <td className="sw-td" style={{ fontWeight: 900 }}>{c.displayName}</td>
+                <td className="sw-td" style={{ fontSize: 12, color: "var(--sw-muted)" }}>{c.categories.join(", ")}</td>
+                <td className="sw-td">{c.email || ""}</td>
+                <td className="sw-td">{c.phone || ""}</td>
+                <td className="sw-td">{c.organization || ""}</td>
               </tr>
             ))}
           </tbody>
@@ -179,21 +180,3 @@ export function ContactsClient({ initialContacts }: { initialContacts: any[] }) 
     </div>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  padding: "10px 12px",
-  borderRadius: 10,
-  border: "1px solid var(--sw-border)",
-  background: "rgba(0,0,0,0.02)",
-  color: "inherit",
-};
-
-const primaryBtn: React.CSSProperties = {
-  padding: "10px 12px",
-  borderRadius: 10,
-  border: "1px solid rgba(110,231,255,0.45)",
-  background: "linear-gradient(135deg, rgba(110,231,255,0.14), rgba(167,139,250,0.10))",
-  fontWeight: 900,
-  color: "inherit",
-  cursor: "pointer",
-};

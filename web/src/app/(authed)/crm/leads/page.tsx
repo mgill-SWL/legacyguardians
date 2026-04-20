@@ -16,46 +16,46 @@ export default async function LeadsPage() {
   });
 
   return (
-    <div style={{ padding: 24 }}>
-      <h1 style={{ fontSize: 22, fontWeight: 900 }}>Leads</h1>
-      <p style={{ marginTop: 8, color: "var(--sw-muted, #aab4d4)" }}>
+    <div className="sw-page">
+      <h1 className="sw-h1">Leads</h1>
+      <p style={{ marginTop: 8 }} className="sw-muted">
         Summary view (MVP). We’ll match your Miro table columns next.
       </p>
 
       <div style={{ marginTop: 16, overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <table className="sw-table">
           <thead>
-            <tr style={{ textAlign: "left", borderBottom: "1px solid var(--sw-border, rgba(255,255,255,0.12))" }}>
-              <th style={{ padding: "10px 8px" }}>Name</th>
-              <th style={{ padding: "10px 8px" }}>Campaign</th>
-              <th style={{ padding: "10px 8px" }}>Date Added</th>
-              <th style={{ padding: "10px 8px" }}>Notes</th>
-              <th style={{ padding: "10px 8px" }}>Intake Attempted</th>
-              <th style={{ padding: "10px 8px" }}>Appt 1</th>
-              <th style={{ padding: "10px 8px" }}>Show</th>
-              <th style={{ padding: "10px 8px" }}>Quality</th>
-              <th style={{ padding: "10px 8px" }}>Appt 2</th>
-              <th style={{ padding: "10px 8px" }}>Closed</th>
-              <th style={{ padding: "10px 8px" }}>Convert</th>
+            <tr>
+              <th className="sw-th">Name</th>
+              <th className="sw-th">Campaign</th>
+              <th className="sw-th">Date Added</th>
+              <th className="sw-th">Notes</th>
+              <th className="sw-th">Intake Attempted</th>
+              <th className="sw-th">Appt 1</th>
+              <th className="sw-th">Show</th>
+              <th className="sw-th">Quality</th>
+              <th className="sw-th">Appt 2</th>
+              <th className="sw-th">Closed</th>
+              <th className="sw-th">Convert</th>
             </tr>
           </thead>
           <tbody>
             {leads.map((l) => (
-              <tr key={l.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                <td style={{ padding: "10px 8px", fontWeight: 800 }}>
+              <tr key={l.id} className="sw-tr">
+                <td className="sw-td" style={{ fontWeight: 900 }}>
                   {l.contact.firstName} {l.contact.lastName}
                   <div style={{ fontSize: 12, color: "var(--sw-muted, #aab4d4)" }}>{l.contact.phoneE164}</div>
                 </td>
-                <td style={{ padding: "10px 8px" }}>{l.campaign.slug}</td>
-                <td style={{ padding: "10px 8px" }}>{l.dateAdded.toISOString().slice(0, 10)}</td>
-                <td style={{ padding: "10px 8px" }}>{l.additionalNotes || ""}</td>
-                <td style={{ padding: "10px 8px" }}>{l.intakeCallAttempted ? "Y" : "N"}</td>
-                <td style={{ padding: "10px 8px" }}>{l.appt1At ? l.appt1At.toISOString().slice(0, 10) : ""}</td>
-                <td style={{ padding: "10px 8px" }}>{l.appt1Status || ""}</td>
-                <td style={{ padding: "10px 8px" }}>{l.leadQualityScore ?? ""}</td>
-                <td style={{ padding: "10px 8px" }}>{l.appt2At ? l.appt2At.toISOString().slice(0, 10) : ""}</td>
-                <td style={{ padding: "10px 8px" }}>{l.closed ? "Y" : "N"}</td>
-                <td style={{ padding: "10px 8px" }}>
+                <td className="sw-td">{l.campaign.slug}</td>
+                <td className="sw-td">{l.dateAdded.toISOString().slice(0, 10)}</td>
+                <td className="sw-td">{l.additionalNotes || ""}</td>
+                <td className="sw-td">{l.intakeCallAttempted ? "Y" : "N"}</td>
+                <td className="sw-td">{l.appt1At ? l.appt1At.toISOString().slice(0, 10) : ""}</td>
+                <td className="sw-td">{l.appt1Status || ""}</td>
+                <td className="sw-td">{l.leadQualityScore ?? ""}</td>
+                <td className="sw-td">{l.appt2At ? l.appt2At.toISOString().slice(0, 10) : ""}</td>
+                <td className="sw-td">{l.closed ? "Y" : "N"}</td>
+                <td className="sw-td">
                   {l.convertedMatterId ? (
                     <Link href={`/matters/${l.convertedMatterId}`} style={{ color: "inherit" }}>
                       Matter →

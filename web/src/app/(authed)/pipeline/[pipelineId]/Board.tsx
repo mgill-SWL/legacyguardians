@@ -65,18 +65,7 @@ export function PipelineBoard({
           <div style={{ marginTop: 6, color: "var(--sw-muted, #aab4d4)" }}>Kanban view</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button
-            onClick={() => setAdding(true)}
-            style={{
-              padding: "10px 12px",
-              borderRadius: 10,
-              border: "1px solid rgba(110,231,255,0.45)",
-              background: "linear-gradient(135deg, rgba(110,231,255,0.14), rgba(167,139,250,0.10))",
-              fontWeight: 900,
-              color: "inherit",
-              cursor: "pointer",
-            }}
-          >
+          <button onClick={() => setAdding(true)} className="sw-btn sw-btnPrimary">
             Add matter
           </button>
           <Link href="/pipeline/settings" style={{ color: "inherit" }}>

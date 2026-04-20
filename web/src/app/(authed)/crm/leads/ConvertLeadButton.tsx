@@ -26,20 +26,7 @@ export function ConvertLeadButton({ leadId }: { leadId: string }) {
 
   return (
     <div style={{ display: "grid", gap: 6 }}>
-      <button
-        onClick={convert}
-        disabled={busy}
-        style={{
-          padding: "8px 10px",
-          borderRadius: 10,
-          border: "1px solid rgba(110,231,255,0.45)",
-          background: "linear-gradient(135deg, rgba(110,231,255,0.14), rgba(167,139,250,0.10))",
-          fontWeight: 900,
-          color: "inherit",
-          cursor: "pointer",
-          whiteSpace: "nowrap",
-        }}
-      >
+      <button onClick={convert} disabled={busy} className="sw-btn sw-btnPrimary sw-btnSm">
         {busy ? "Converting…" : "Convert"}
       </button>
       {error ? <div style={{ fontSize: 12, color: "var(--sw-danger)" }}>{error}</div> : null}
