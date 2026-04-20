@@ -88,9 +88,8 @@ export function PipelineBoard({
       <div
         style={{
           marginTop: 16,
-          display: "grid",
-          gridAutoFlow: "column",
-          gridAutoColumns: "minmax(280px, 340px)",
+          display: "flex",
+          alignItems: "stretch",
           gap: 12,
           overflowX: "auto",
           paddingBottom: 8,
@@ -129,7 +128,8 @@ export function PipelineBoard({
                 minHeight: 240,
                 display: "grid",
                 gridTemplateRows: "auto 1fr",
-                width: isCollapsed ? 84 : undefined,
+                flex: "0 0 auto",
+                width: isCollapsed ? 84 : 320,
               }}
             >
               <div
