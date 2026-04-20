@@ -19,12 +19,35 @@ const DEFAULT_COLUMNS: { key: string; label: string; type?: any }[] = [
   { key: "strategy_meeting_500_booked", label: "$500 Strategy Meeting Booked", type: "NUMBER" },
   { key: "welcome_calls_booked", label: "Welcome Calls Booked", type: "NUMBER" },
   { key: "welcome_calls_held", label: "Welcome Calls Held", type: "NUMBER" },
+  { key: "paid_consult_500_held", label: "$500 Paid Consult Held", type: "NUMBER" },
   { key: "design_meetings_booked", label: "Design Meetings Booked", type: "NUMBER" },
   { key: "design_meetings_held", label: "Design Meetings Held", type: "NUMBER" },
+  { key: "design_meetings_cancelled", label: "Design Meetings Cancelled", type: "NUMBER" },
+  { key: "close_ea_matters", label: "Close EA Matters", type: "NUMBER" },
   { key: "doc_tour_held", label: "Doc Tour Held", type: "NUMBER" },
   { key: "signing_held", label: "Signing Held", type: "NUMBER" },
   { key: "reviews_5_star", label: "5-star Reviews", type: "NUMBER" },
 ];
+
+async function ensureColumns(tableId: string) {
+  const existing = await prisma.reportColumn.findMany({ where: { tableId } });
+  const byKey = new Set(existing.map((c) => c.key));
+  const max = existing.reduce((m, c) => Math.max(m, c.sortOrder), -1);
+  let next = max + 1;
+
+  for (const c of DEFAULT_COLUMNS) {
+    if (byKey.has(c.key)) continue;
+    await prisma.reportColumn.create({
+      data: {
+        tableId,
+        key: c.key,
+        label: c.label,
+        type: c.type || "TEXT",
+        sortOrder: next++,
+      },
+    });
+  }
+}
 
 export default async function IntakeReportingPage() {
   const session = await getServerSession(authOptions);
@@ -62,6 +85,19 @@ export default async function IntakeReportingPage() {
         include: { columns: { orderBy: { sortOrder: "asc" } }, rows: { orderBy: { sortOrder: "asc" } } },
       });
 
+  // If we already created the table earlier with fewer columns, backfill missing defaults.
+  if (table) {
+    await ensureColumns(table.id);
+  }
+
+  const refreshed = await prisma.reportTable.findUnique({
+    where: { slug: SLUG },
+    include: {
+      columns: { orderBy: { sortOrder: "asc" } },
+      rows: { orderBy: { sortOrder: "asc" } },
+    },
+  });
+
   return (
     <div className="sw-page">
       <div className="sw-pageHeader">
@@ -74,7 +110,7 @@ export default async function IntakeReportingPage() {
         This replaces the Google Sheet. Admins can add columns; column delete is super-admin only.
       </p>
 
-      <ReportGrid table={ensured as any} canAdmin={!!canAdmin} />
+      <ReportGrid table={(refreshed || ensured) as any} canAdmin={!!canAdmin} />
     </div>
   );
 }

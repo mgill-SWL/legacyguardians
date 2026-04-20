@@ -26,6 +26,19 @@ const DEFAULT_COLUMNS = [
   { key: "lawpay_past_30_avg_tx", label: "Lawpay past 30 days avg trx value", type: "CURRENCY" },
 ] as const;
 
+async function ensureColumns(tableId: string) {
+  const existing = await prisma.reportColumn.findMany({ where: { tableId } });
+  const byKey = new Set(existing.map((c) => c.key));
+  const max = existing.reduce((m, c) => Math.max(m, c.sortOrder), -1);
+  let next = max + 1;
+  for (const c of DEFAULT_COLUMNS) {
+    if (byKey.has(c.key)) continue;
+    await prisma.reportColumn.create({
+      data: { tableId, key: c.key, label: c.label, type: c.type as any, sortOrder: next++ },
+    });
+  }
+}
+
 export default async function L10ReportingPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) redirect("/login");
@@ -52,6 +65,13 @@ export default async function L10ReportingPage() {
         include: { columns: { orderBy: { sortOrder: "asc" } }, rows: { orderBy: { sortOrder: "asc" } } },
       });
 
+  if (table) await ensureColumns(table.id);
+
+  const refreshed = await prisma.reportTable.findUnique({
+    where: { slug: SLUG },
+    include: { columns: { orderBy: { sortOrder: "asc" } }, rows: { orderBy: { sortOrder: "asc" } } },
+  });
+
   return (
     <div className="sw-page">
       <div className="sw-pageHeader">
@@ -61,7 +81,7 @@ export default async function L10ReportingPage() {
         </a>
       </div>
       <p className="sw-muted" style={{ marginTop: 8 }}>Executive-level reporting (admin-only for now).</p>
-      <ReportGrid table={ensured as any} canAdmin={true} />
+      <ReportGrid table={(refreshed || ensured) as any} canAdmin={true} />
     </div>
   );
 }

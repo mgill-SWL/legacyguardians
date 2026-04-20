@@ -27,11 +27,13 @@ export default async function IntakeKpiSummary() {
       acc.scheduled += n(d.scheduled_intake);
       acc.qualified += n(d.qualified);
       acc.welcomeHeld += n(d.welcome_calls_held);
+      acc.paidConsultHeld += n(d.paid_consult_500_held);
       acc.designHeld += n(d.design_meetings_held);
+      acc.docTours += n(d.doc_tour_held);
       acc.signings += n(d.signing_held);
       return acc;
     },
-    { scheduled: 0, qualified: 0, welcomeHeld: 0, designHeld: 0, signings: 0 }
+    { scheduled: 0, qualified: 0, welcomeHeld: 0, paidConsultHeld: 0, designHeld: 0, docTours: 0, signings: 0 }
   );
 
   const pct = (a: number, b: number) => (b ? Math.round((a / b) * 1000) / 10 : 0);
@@ -65,8 +67,19 @@ export default async function IntakeKpiSummary() {
           </div>
         </div>
         <div className="sw-card sw-card-pad">
+          <div className="sw-muted" style={{ fontSize: 12 }}>$500 consults held</div>
+          <div style={{ fontSize: 28, fontWeight: 900 }}>{totals.paidConsultHeld}</div>
+          <div className="sw-muted" style={{ fontSize: 12, marginTop: 6 }}>
+            {pct(totals.welcomeHeld + totals.paidConsultHeld, totals.scheduled)}% of scheduled (welcome+consult)
+          </div>
+        </div>
+        <div className="sw-card sw-card-pad">
           <div className="sw-muted" style={{ fontSize: 12 }}>Design meetings held</div>
           <div style={{ fontSize: 28, fontWeight: 900 }}>{totals.designHeld}</div>
+        </div>
+        <div className="sw-card sw-card-pad">
+          <div className="sw-muted" style={{ fontSize: 12 }}>Doc tours held</div>
+          <div style={{ fontSize: 28, fontWeight: 900 }}>{totals.docTours}</div>
         </div>
         <div className="sw-card sw-card-pad">
           <div className="sw-muted" style={{ fontSize: 12 }}>Signings held</div>

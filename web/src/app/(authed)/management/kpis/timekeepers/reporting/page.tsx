@@ -21,7 +21,23 @@ const DEFAULT_COLUMNS = [
   { key: "design_meetings_booked", label: "Design Meetings Booked", type: "NUMBER" },
   { key: "welcome_call_conversion", label: "Welcome Call Conversion", type: "PERCENT" },
   { key: "avg_case_value", label: "Avg Case Value", type: "CURRENCY" },
+  { key: "clx_matter_timeliness", label: "CLX Matter Timeliness (1-3)", type: "NUMBER" },
+  { key: "clx_task_timeliness", label: "CLX Task Timeliness (1-3)", type: "NUMBER" },
+  { key: "lm_pipeline_timeliness", label: "LM Pipeline Timeliness (1-3)", type: "NUMBER" },
 ] as const;
+
+async function ensureColumns(tableId: string) {
+  const existing = await prisma.reportColumn.findMany({ where: { tableId } });
+  const byKey = new Set(existing.map((c) => c.key));
+  const max = existing.reduce((m, c) => Math.max(m, c.sortOrder), -1);
+  let next = max + 1;
+  for (const c of DEFAULT_COLUMNS) {
+    if (byKey.has(c.key)) continue;
+    await prisma.reportColumn.create({
+      data: { tableId, key: c.key, label: c.label, type: c.type as any, sortOrder: next++ },
+    });
+  }
+}
 
 export default async function TimekeepersReportingPage() {
   const session = await getServerSession(authOptions);
@@ -49,6 +65,13 @@ export default async function TimekeepersReportingPage() {
         include: { columns: { orderBy: { sortOrder: "asc" } }, rows: { orderBy: { sortOrder: "asc" } } },
       });
 
+  if (table) await ensureColumns(table.id);
+
+  const refreshed = await prisma.reportTable.findUnique({
+    where: { slug: SLUG },
+    include: { columns: { orderBy: { sortOrder: "asc" } }, rows: { orderBy: { sortOrder: "asc" } } },
+  });
+
   return (
     <div className="sw-page">
       <div className="sw-pageHeader">
@@ -58,7 +81,7 @@ export default async function TimekeepersReportingPage() {
         </a>
       </div>
       <p className="sw-muted" style={{ marginTop: 8 }}>Manual entry table.</p>
-      <ReportGrid table={ensured as any} canAdmin={!!canAdmin} />
+      <ReportGrid table={(refreshed || ensured) as any} canAdmin={!!canAdmin} />
     </div>
   );
 }
