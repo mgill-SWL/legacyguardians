@@ -200,7 +200,7 @@ export function TemplatesClient({ initialTemplates, canEdit }: { initialTemplate
           ) : null}
 
           <div className="sw-muted" style={{ fontSize: 12 }}>
-            Template variables (v1): use {{"{{client_name}}"}}, {{"{{start_time}}"}}, {{"{{phone}}"}}. We’ll expand this as we wire automations.
+            Template variables (v1): use <code>{"{{client_name}}"}</code>, <code>{"{{start_time}}"}</code>, <code>{"{{phone}}"}</code>. We’ll expand this as we wire automations.
           </div>
         </div>
       </div>
