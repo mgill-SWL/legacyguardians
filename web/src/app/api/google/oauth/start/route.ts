@@ -26,6 +26,12 @@ export async function GET() {
     "https://www.googleapis.com/auth/calendar.events",
     "https://www.googleapis.com/auth/calendar.readonly",
     "https://www.googleapis.com/auth/calendar.freebusy",
+
+    // Data imports / reporting
+    "https://www.googleapis.com/auth/spreadsheets.readonly",
+
+    // Marketing reporting (Google Ads API)
+    "https://www.googleapis.com/auth/adwords",
   ].join(" ");
 
   const state = crypto.randomUUID();
