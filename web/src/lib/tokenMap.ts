@@ -115,7 +115,6 @@ export function tokenDataFromIntake(intake: IntakeV1) {
   data.Client2SecondAlternateGuardianAddress = formatAddress(gA2);
 
   // Trustees
-  const tPrimary = byId(intake.people, intake.roles.trustees.primary);
   const tA1 = byId(intake.people, intake.roles.trustees.alternate1);
   const tA2 = byId(intake.people, intake.roles.trustees.alternate2);
 
