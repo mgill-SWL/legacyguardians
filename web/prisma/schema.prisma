@@ -109,6 +109,60 @@ enum CrmAppointmentStatus {
   RESCHEDULED
 }
 
+// --- Multi-firm tenancy (v1 scaffolding) ---
+
+enum FirmMemberRole {
+  MEMBER
+  ADMIN
+}
+
+model Firm {
+  id   String @id @default(cuid())
+  name String
+  slug String @unique
+  timeZone String @default("America/New_York")
+
+  members FirmMember[]
+  activeUsers User[] @relation("UserActiveFirm")
+
+  // Firm-scoped records (nullable firmId for now; backfilled in migration step)
+  messageTemplates MessageTemplate[]
+  feeFeatures      FeeFeature[]
+  helpArticles     HelpArticle[]
+  helpTopics       HelpTopic[]
+  managementPages  ManagementPage[]
+  reportTables     ReportTable[]
+
+  matters          Matter[]
+  contacts         Contact[]
+  crmContacts      CrmContact[]
+
+  pipelines        Pipeline[]
+  pipelineStages   PipelineStage[]
+  matterPipelines  MatterPipeline[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FirmMember {
+  id     String @id @default(cuid())
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  role   FirmMemberRole @default(MEMBER)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([firmId, userId])
+  @@index([userId])
+  @@index([firmId])
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -129,6 +183,12 @@ model User {
   ringCentralConnection RingCentralConnection?
 
   googleConnections GoogleConnection[]
+
+  firmMemberships FirmMember[]
+
+  // v1: user's active firm for scoping queries (until we ship a firm switcher UI)
+  activeFirmId String?
+  activeFirm   Firm? @relation("UserActiveFirm", fields: [activeFirmId], references: [id], onDelete: SetNull)
 
   ftmHowOwnerSteps    FtmStep[] @relation("FtmHowOwner")
   ftmEnsureOwnerSteps FtmStep[] @relation("FtmEnsureOwner")
@@ -278,6 +338,8 @@ enum MessageChannel {
 
 model MessageTemplate {
   id      String @id @default(cuid())
+  firmId  String?
+  firm    Firm?  @relation(fields: [firmId], references: [id], onDelete: SetNull)
   key     String @unique
   channel MessageChannel
   name    String
@@ -304,6 +366,8 @@ enum FeeFeatureType {
 
 model FeeFeature {
   id    String @id @default(cuid())
+  firmId String?
+  firm   Firm?  @relation(fields: [firmId], references: [id], onDelete: SetNull)
   key   String @unique
   label String
   group String?
@@ -332,6 +396,8 @@ enum HelpContentFormat {
 
 model HelpArticle {
   id    String @id @default(cuid())
+  firmId String?
+  firm   Firm?  @relation(fields: [firmId], references: [id], onDelete: SetNull)
   slug  String @unique
   title String
   format HelpContentFormat @default(MARKDOWN)
@@ -383,6 +449,8 @@ model VerificationToken {
 
 model Matter {
   id          String       @id @default(cuid())
+  firmId      String?
+  firm        Firm?        @relation(fields: [firmId], references: [id], onDelete: SetNull)
   status      MatterStatus @default(DRAFT)
 
   // v0: keep it simple; later we can normalize people/roles.
@@ -419,6 +487,8 @@ model Matter {
 
 model Contact {
   id            String @id @default(cuid())
+  firmId        String?
+  firm          Firm?   @relation(fields: [firmId], references: [id], onDelete: SetNull)
   displayName   String
   email         String?
   phone         String?
@@ -438,6 +508,8 @@ model Contact {
 
 model ManagementPage {
   id      String @id @default(cuid())
+  firmId  String?
+  firm    Firm?   @relation(fields: [firmId], references: [id], onDelete: SetNull)
   slug    String @unique
   title   String
   content String
@@ -448,6 +520,8 @@ model ManagementPage {
 
 model HelpTopic {
   id    String @id @default(cuid())
+  firmId String?
+  firm   Firm?  @relation(fields: [firmId], references: [id], onDelete: SetNull)
   slug  String @unique
   title String
   body  String
@@ -467,6 +541,8 @@ enum ReportColumnType {
 
 model ReportTable {
   id   String @id @default(cuid())
+  firmId String?
+  firm   Firm?  @relation(fields: [firmId], references: [id], onDelete: SetNull)
   slug String @unique
   name String
 
@@ -541,6 +617,8 @@ model GeneratedDocument {
 
 model CrmContact {
   id        String       @id @default(cuid())
+  firmId    String?
+  firm      Firm?        @relation(fields: [firmId], references: [id], onDelete: SetNull)
   firstName String
   lastName  String
   email     String?
@@ -750,6 +828,8 @@ model CrmDailySpend {
 
 model MatterPipeline {
   id         String @id @default(cuid())
+  firmId     String?
+  firm       Firm?  @relation(fields: [firmId], references: [id], onDelete: SetNull)
 
   matterId   String
   matter     Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
@@ -773,6 +853,8 @@ model MatterPipeline {
 
 model Pipeline {
   id          String @id @default(cuid())
+  firmId      String?
+  firm        Firm?  @relation(fields: [firmId], references: [id], onDelete: SetNull)
   name        String
   description String?
   sortOrder   Int @default(0)
@@ -786,6 +868,8 @@ model Pipeline {
 
 model PipelineStage {
   id         String @id @default(cuid())
+  firmId     String?
+  firm       Firm?  @relation(fields: [firmId], references: [id], onDelete: SetNull)
   pipelineId String
   pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
 
