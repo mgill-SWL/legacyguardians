@@ -33,6 +33,7 @@ export async function POST(
   const data: Record<string, unknown> = {
     ...(tokenDataFromIntake(intake) as Record<string, unknown>),
     FirmName: "Speedwell Law, PLLC",
+    CurrentYear: String(new Date().getFullYear()),
   };
 
   const { makePlaceholderDocx } = await import("@/lib/docx/placeholderDocx");

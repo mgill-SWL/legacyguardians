@@ -23,6 +23,10 @@ function sanitizeWordXml(xml: string) {
   // Strip any leftover Jinja-style value expressions, if present.
   out = out.replace(/\{\{[^}]*\}\}/g, "");
 
+  // Some templates still have a hardcoded year.
+  const year = String(new Date().getFullYear());
+  out = out.replace(/2022/g, year);
+
   return out;
 }
 
