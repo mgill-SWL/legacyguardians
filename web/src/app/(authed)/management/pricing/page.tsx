@@ -14,7 +14,12 @@ export default async function PricingPage() {
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
   const canEdit = user?.role === "ADMIN";
 
-  const features = await prisma.feeFeature.findMany({ orderBy: [{ sortOrder: "asc" }, { key: "asc" }] });
+  const firmId = user?.activeFirmId || undefined;
+
+  const features = await prisma.feeFeature.findMany({
+    where: firmId ? { firmId } : undefined,
+    orderBy: [{ sortOrder: "asc" }, { key: "asc" }],
+  });
 
   return (
     <div className="sw-page">

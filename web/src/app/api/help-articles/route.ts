@@ -23,6 +23,9 @@ export async function POST(req: Request) {
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
   if (!user || user.role !== "ADMIN") return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
 
+  const firmId = user.activeFirmId;
+  if (!firmId) return NextResponse.json({ ok: false, error: "no active firm" }, { status: 400 });
+
   const body = (await req.json().catch(() => null)) as Body | null;
   if (!body?.slug?.trim() || !body?.title?.trim() || !body?.body?.trim()) {
     return NextResponse.json({ ok: false, error: "slug, title, body required" }, { status: 400 });
@@ -32,6 +35,7 @@ export async function POST(req: Request) {
 
   const a = await prisma.helpArticle.create({
     data: {
+      firmId,
       slug: body.slug.trim(),
       title: body.title.trim(),
       format: (body.format || "MARKDOWN") as any,

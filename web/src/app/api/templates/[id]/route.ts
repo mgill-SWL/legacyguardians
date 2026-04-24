@@ -23,12 +23,15 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
   if (!user || user.role !== "ADMIN") return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
 
+  const firmId = user.activeFirmId;
+  if (!firmId) return NextResponse.json({ ok: false, error: "no active firm" }, { status: 400 });
+
   const { id } = await ctx.params;
   const body = (await req.json().catch(() => null)) as Body | null;
   if (!body) return NextResponse.json({ ok: false, error: "body required" }, { status: 400 });
 
-  await prisma.messageTemplate.update({
-    where: { id },
+  const r = await prisma.messageTemplate.updateMany({
+    where: { id, firmId },
     data: {
       key: body.key?.trim() ? body.key.trim() : undefined,
       channel: body.channel as any,
@@ -40,6 +43,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     },
   });
 
+  if (r.count !== 1) return NextResponse.json({ ok: false, error: "not found" }, { status: 404 });
+
   return NextResponse.json({ ok: true });
 }
 
@@ -50,7 +55,11 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
   if (!user || user.role !== "ADMIN") return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
 
+  const firmId = user.activeFirmId;
+  if (!firmId) return NextResponse.json({ ok: false, error: "no active firm" }, { status: 400 });
+
   const { id } = await ctx.params;
-  await prisma.messageTemplate.delete({ where: { id } });
+  const r = await prisma.messageTemplate.deleteMany({ where: { id, firmId } });
+  if (r.count !== 1) return NextResponse.json({ ok: false, error: "not found" }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

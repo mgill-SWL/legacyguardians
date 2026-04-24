@@ -21,12 +21,15 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
   if (!user || user.role !== "ADMIN") return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
 
+  const firmId = user.activeFirmId;
+  if (!firmId) return NextResponse.json({ ok: false, error: "no active firm" }, { status: 400 });
+
   const { id } = await ctx.params;
   const body = (await req.json().catch(() => null)) as Body | null;
   if (!body) return NextResponse.json({ ok: false, error: "body required" }, { status: 400 });
 
-  await prisma.feeFeature.update({
-    where: { id },
+  const r = await prisma.feeFeature.updateMany({
+    where: { id, firmId },
     data: {
       moneyCents: body.moneyCents === undefined ? undefined : body.moneyCents,
       textValue: body.textValue === undefined ? undefined : body.textValue,
@@ -35,6 +38,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       active: body.active === undefined ? undefined : body.active,
     },
   });
+
+  if (r.count !== 1) return NextResponse.json({ ok: false, error: "not found" }, { status: 404 });
 
   return NextResponse.json({ ok: true });
 }

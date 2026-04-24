@@ -14,7 +14,12 @@ export default async function TemplatesPage() {
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
   const canEdit = user?.role === "ADMIN";
 
-  const templates = await prisma.messageTemplate.findMany({ orderBy: { updatedAt: "desc" } });
+  const firmId = user?.activeFirmId || undefined;
+
+  const templates = await prisma.messageTemplate.findMany({
+    where: firmId ? { firmId } : undefined,
+    orderBy: { updatedAt: "desc" },
+  });
 
   return (
     <div className="sw-page">

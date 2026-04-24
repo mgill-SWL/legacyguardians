@@ -29,6 +29,9 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
 
+  const user = await prisma.user.findUnique({ where: { email: session.user.email }, select: { activeFirmId: true } });
+  const firmId = user?.activeFirmId || undefined;
+
   const body = (await req.json().catch(() => null)) as Body | null;
   const messages = body?.messages || [];
   const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content || "";
@@ -39,6 +42,7 @@ export async function POST(req: Request) {
   const helpArticles = await prisma.helpArticle.findMany({
     where: {
       published: true,
+      ...(firmId ? { firmId } : {}),
       OR: terms.length
         ? terms.flatMap((t) => [
             { title: { contains: t, mode: "insensitive" as const } },
@@ -52,7 +56,7 @@ export async function POST(req: Request) {
   });
 
   const feeFeatures = await prisma.feeFeature.findMany({
-    where: { active: true },
+    where: { active: true, ...(firmId ? { firmId } : {}) },
     orderBy: [{ group: "asc" }, { sortOrder: "asc" }],
     take: 200,
   });

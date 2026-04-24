@@ -14,7 +14,12 @@ export default async function HelpTopicsPage() {
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
   const canEdit = user?.role === "ADMIN";
 
-  const articles = await prisma.helpArticle.findMany({ orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }] });
+  const firmId = user?.activeFirmId || undefined;
+
+  const articles = await prisma.helpArticle.findMany({
+    where: firmId ? { firmId } : undefined,
+    orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }],
+  });
 
   return (
     <div className="sw-page">

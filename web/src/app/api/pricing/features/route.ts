@@ -21,6 +21,9 @@ export async function POST(req: Request) {
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
   if (!user || user.role !== "ADMIN") return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
 
+  const firmId = user.activeFirmId;
+  if (!firmId) return NextResponse.json({ ok: false, error: "no active firm" }, { status: 400 });
+
   const body = (await req.json().catch(() => null)) as Body | null;
   if (!body?.key?.trim() || !body?.label?.trim()) return NextResponse.json({ ok: false, error: "key+label required" }, { status: 400 });
 
@@ -28,6 +31,7 @@ export async function POST(req: Request) {
 
   const f = await prisma.feeFeature.create({
     data: {
+      firmId,
       key: body.key.trim(),
       label: body.label.trim(),
       group: body.group || null,
