@@ -14,14 +14,80 @@ export type RenderDocxResult = {
  *
  * We use custom delimiters [[ ]], to match existing template tokens.
  */
-function sanitizeWordXml(xml: string) {
-  // Strip Jinja-style control tags that show up as "random code" in output.
-  // We are *not* using Jinja at render time, so these should never be visible.
-  // Examples: {% if ... %}, {% for ... %}, {% endif %}, etc.
-  let out = xml.replace(/\{%[^%]*%\}/g, "");
+function isTruthyTemplateValue(v: unknown) {
+  if (v == null) return false;
+  if (typeof v === "string") return v.trim().length > 0;
+  if (typeof v === "number") return Number.isFinite(v) && v !== 0;
+  if (typeof v === "boolean") return v;
+  if (Array.isArray(v)) return v.length > 0;
+  if (typeof v === "object") return true;
+  return Boolean(v);
+}
 
-  // Strip any leftover Jinja-style value expressions, if present.
-  out = out.replace(/\{\{[^}]*\}\}/g, "");
+function sanitizeWordXml(xml: string, data: Record<string, unknown>) {
+  let out = xml;
+
+  // Word may inject spellcheck/proofing markers that can split template tags.
+  // Those markers are safe to remove for our purposes.
+  out = out.replace(/<w:proofErr[^>]*\/>/g, "");
+
+  // NotaryRegistrationNumber is currently not collected in IntakeV1.
+  // Older templates sometimes include it as raw text or as a bracket placeholder.
+  // Instead of trying to coerce it into a token (which can create broken [[ ]] delimiters when
+  // Word splits runs), we remove the placeholder so it can't leak into output.
+  out = out.replace(/NotaryRegistrationNumber/g, "");
+
+  // Remove standalone square-bracket runs (common around legacy placeholders like [TOKEN]).
+  // These can accidentally create stray "[" or "]" adjacent to our delimiters and break parsing.
+  out = out.replace(/<w:t([^>]*)>\s*\[\s*<\/w:t>/g, "<w:t$1></w:t>");
+  out = out.replace(/<w:t([^>]*)>\s*\]\s*<\/w:t>/g, "<w:t$1></w:t>");
+
+  // A few templates embed human instructions in brackets.
+  out = out.replace(
+    /\[signature\s*\u2013\s*please print name under this line\]/gi,
+    ""
+  );
+
+  // Convert simple Jinja value expressions into our [[Token]] delimiters.
+  // This is critical for headers/footers that were authored as e.g. "Will of {{Client1FullName}}".
+  // We only support the simplest forms and ignore filters.
+  out = out.replace(
+    /\{\{\s*([A-Za-z0-9_\/]+)(?:\s*\|[^}]*)?\s*\}\}/g,
+    "[[$1]]"
+  );
+
+  // Best-effort handling of simple Jinja conditionals so we don't render “skeleton” clauses.
+  // Supports:
+  //   {% if TOKEN %}...{% endif %}
+  //   {% if not TOKEN %}...{% endif %}
+  out = out.replace(
+    /\{%\s*if\s+(not\s+)?([A-Za-z0-9_\/]+)\s*%\}([\s\S]*?)\{%\s*endif\s*%\}/g,
+    (_m, notWord, token, inner) => {
+      const truthy = isTruthyTemplateValue(data?.[token]);
+      const keep = notWord ? !truthy : truthy;
+      return keep ? inner : "";
+    }
+  );
+
+  // Joint Trust template: suppress the second child slot when CHILD2 is blank.
+  // Template contains:
+  //   ... [[CHILD1FULLNAME]], born [[CHILD1DOB]]; [[CHILD2FULLNAME]], born [[CHILD2DOB]].
+  // Without a second child, it turns into "; , born .".
+  if (!isTruthyTemplateValue(data?.CHILD2FULLNAME)) {
+    out = out.replace(/;\s*\[\[CHILD2FULLNAME\]\],\s*born\s*\[\[CHILD2DOB\]\]/g, "");
+  }
+
+  // Joint Trust template: successor trustee name is missing in some source docs (or gets split into
+  // bracket fragments), producing "succeeded by as the successor Trustee".
+  // Force-inject the alternate/successor trustee name token when the slot is blank.
+  out = out.replace(
+    /succeeded by\s+as the successor Trustee/g,
+    "succeeded by [[FIRSTALTERNATETRUSTEEFULLNAME]] as the successor Trustee"
+  );
+
+  // Strip any remaining Jinja-style control tags that could show up as "random code".
+  // Examples: {% for ... %}, {% endif %}, etc.
+  out = out.replace(/\{%[^%]*%\}/g, "");
 
   // Some templates still have a hardcoded year.
   const year = String(new Date().getFullYear());
@@ -40,19 +106,21 @@ export function renderDocxTemplate({
   const content = fs.readFileSync(templateAbsPath, "binary");
   const zip = new PizZip(content);
 
-  // Sanitize the relevant Word XML parts in-place.
-  const xmlParts = Object.keys(zip.files).filter(
-    (name) =>
-      name === "word/document.xml" ||
-      /^word\/header\d+\.xml$/.test(name) ||
-      /^word\/footer\d+\.xml$/.test(name)
-  );
+  // Sanitize Word XML parts in-place.
+  // NOTE: we sanitize more than just document.xml because headers/footers are a common source of
+  // leftover hardcoded years / Jinja tokens.
+  const xmlParts = Object.keys(zip.files).filter((name) => {
+    if (!name.startsWith("word/")) return false;
+    if (!name.endsWith(".xml")) return false;
+    // Avoid huge embedded binaries (media lives under word/media and isn't .xml anyway).
+    return true;
+  });
 
   for (const name of xmlParts) {
     const f = zip.file(name);
     if (!f) continue;
     const xml = f.asText();
-    const sanitized = sanitizeWordXml(xml);
+    const sanitized = sanitizeWordXml(xml, data);
     if (sanitized !== xml) zip.file(name, sanitized);
   }
 

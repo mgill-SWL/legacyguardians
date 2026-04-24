@@ -68,6 +68,10 @@ export function tokenDataFromIntake(intake: IntakeV1) {
     S1INITIALS: "",
     S2INITIALS: "",
 
+    // Legacy placeholder sometimes appears as [NotaryRegistrationNumber] in older templates.
+    // IntakeV1 doesn't currently collect it, so default to blank rather than leaking placeholder text.
+    NotaryRegistrationNumber: "",
+
     // Email legacy variants
     Client1email: intake.clientEmails?.client1 ?? "",
     Client2email: intake.clientEmails?.client2 ?? "",
@@ -118,16 +122,26 @@ export function tokenDataFromIntake(intake: IntakeV1) {
   const tA1 = byId(intake.people, intake.roles.trustees.alternate1);
   const tA2 = byId(intake.people, intake.roles.trustees.alternate2);
 
-  data.FIRSTALTERNATETRUSTEEFULLNAME = tA1?.name ?? "";
-  data.SECONDALTERNATETRUSTEEFULLNAME = tA2?.name ?? "";
-  data.FIRSTALTERNATETRUSTEERelationship = tA1?.relationship ?? "";
-  data.SECONDALTERNATETRUSTEERelationship = tA2?.relationship ?? "";
+  // Some intake shapes store successor trustees as raw names (string[]) instead of personIds.
+  // Use as a fallback so the Joint Trust "succeeded by ___ as the successor Trustee" clause doesn't go blank.
+  const succ1 = intake.successorTrustees?.[0] ?? "";
+  const succ2 = intake.successorTrustees?.[1] ?? "";
+
+  const trusteeAlt1Name = tA1?.name ?? succ1;
+  const trusteeAlt2Name = tA2?.name ?? succ2;
+  const trusteeAlt1Rel = tA1?.relationship ?? "";
+  const trusteeAlt2Rel = tA2?.relationship ?? "";
+
+  data.FIRSTALTERNATETRUSTEEFULLNAME = trusteeAlt1Name;
+  data.SECONDALTERNATETRUSTEEFULLNAME = trusteeAlt2Name;
+  data.FIRSTALTERNATETRUSTEERelationship = trusteeAlt1Rel;
+  data.SECONDALTERNATETRUSTEERelationship = trusteeAlt2Rel;
 
   // Some templates expect these as client-scoped trustee alternates.
-  data.CLIENT1FIRSTALTERNATETRUSTEEFULLNAME = tA1?.name ?? "";
-  data.CLIENT1SECONDALTERNATETRUSTEEFULLNAME = tA2?.name ?? "";
-  data.CLIENT2FIRSTALTERNATETRUSTEEFULLNAME = tA1?.name ?? "";
-  data.CLIENT2SECONDALTERNATETRUSTEEFULLNAME = tA2?.name ?? "";
+  data.CLIENT1FIRSTALTERNATETRUSTEEFULLNAME = trusteeAlt1Name;
+  data.CLIENT1SECONDALTERNATETRUSTEEFULLNAME = trusteeAlt2Name;
+  data.CLIENT2FIRSTALTERNATETRUSTEEFULLNAME = trusteeAlt1Name;
+  data.CLIENT2SECONDALTERNATETRUSTEEFULLNAME = trusteeAlt2Name;
 
   // POA agents (templates use a mix of casing)
   const poaP = byId(intake.people, intake.roles.financialAgents.primary);
