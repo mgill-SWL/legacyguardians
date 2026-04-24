@@ -141,8 +141,37 @@ model Firm {
   pipelineStages   PipelineStage[]
   matterPipelines  MatterPipeline[]
 
+  locations        FirmLocation[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model FirmLocation {
+  id     String @id @default(cuid())
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  activeUsers User[] @relation("UserActiveLocation")
+
+  name String
+  slug String
+
+  address1 String?
+  address2 String?
+  city String?
+  state String?
+  postalCode String?
+  phone String?
+
+  sortOrder Int @default(0)
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([firmId, slug])
+  @@index([firmId, sortOrder])
 }
 
 model FirmMember {
@@ -189,6 +218,9 @@ model User {
   // v1: user's active firm for scoping queries (until we ship a firm switcher UI)
   activeFirmId String?
   activeFirm   Firm? @relation("UserActiveFirm", fields: [activeFirmId], references: [id], onDelete: SetNull)
+
+  activeLocationId String?
+  activeLocation   FirmLocation? @relation("UserActiveLocation", fields: [activeLocationId], references: [id], onDelete: SetNull)
 
   ftmHowOwnerSteps    FtmStep[] @relation("FtmHowOwner")
   ftmEnsureOwnerSteps FtmStep[] @relation("FtmEnsureOwner")

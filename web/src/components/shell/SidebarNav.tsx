@@ -99,11 +99,30 @@ function NavButton({
   );
 }
 
+type FirmCtx = {
+  ok: boolean;
+  firms: { id: string; name: string; slug: string; role: string }[];
+  activeFirmId: string | null;
+  locations: { id: string; name: string; slug: string }[];
+  activeLocationId: string | null;
+};
+
 export function SidebarNav({ email }: { email: string | null | undefined }) {
   const router = useRouter();
   const pathname = usePathname();
   const { dirty, saveFn, setDirty, registerSaveFn } = useUnsavedChanges();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  const [firmCtx, setFirmCtx] = useState<FirmCtx | null>(null);
+  const activeFirm = useMemo(() => {
+    if (!firmCtx?.activeFirmId) return null;
+    return firmCtx.firms.find((f) => f.id === firmCtx.activeFirmId) || null;
+  }, [firmCtx]);
+
+  const activeLocation = useMemo(() => {
+    if (!firmCtx?.activeLocationId) return null;
+    return firmCtx.locations.find((l) => l.id === firmCtx.activeLocationId) || null;
+  }, [firmCtx]);
 
   const [collapsed, setCollapsed] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -123,6 +142,42 @@ export function SidebarNav({ email }: { email: string | null | undefined }) {
     if (t === "dark" || t === "light") setTheme(t);
     // Default is light.
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/me/tenant");
+        const data = (await res.json().catch(() => null)) as FirmCtx | null;
+        if (!cancelled && data && (data as any).ok) setFirmCtx(data);
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function setActiveFirmId(nextFirmId: string) {
+    await fetch("/api/me/tenant", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ activeFirmId: nextFirmId }),
+    });
+    // Reload to re-run server components under new firm context.
+    window.location.reload();
+  }
+
+  async function setActiveLocationId(nextLocationId: string | null) {
+    await fetch("/api/me/tenant", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ activeLocationId: nextLocationId }),
+    });
+    // Soft reload is enough for client-only filters; but keep it simple for now.
+    window.location.reload();
+  }
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -187,7 +242,48 @@ export function SidebarNav({ email }: { email: string | null | undefined }) {
               {collapsed ? "LG" : "Legacy Guardians"}
             </div>
             {collapsed ? null : (
-              <div style={{ marginTop: 6, fontSize: 12, color: "var(--sw-muted, #aab4d4)" }}>Staff console</div>
+              <div style={{ marginTop: 6, fontSize: 12, color: "var(--sw-muted, #aab4d4)", display: "grid", gap: 8 }}>
+                <div>Staff console</div>
+
+                {firmCtx?.firms?.length ? (
+                  <div style={{ display: "grid", gap: 6 }}>
+                    <select
+                      className="sw-input"
+                      value={firmCtx.activeFirmId || ""}
+                      onChange={(e) => setActiveFirmId(e.target.value)}
+                      title="Active firm"
+                      style={{ fontSize: 12, padding: "8px 10px" }}
+                    >
+                      {firmCtx.firms.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.name}
+                        </option>
+                      ))}
+                    </select>
+
+                    {firmCtx.locations?.length ? (
+                      <select
+                        className="sw-input"
+                        value={firmCtx.activeLocationId || ""}
+                        onChange={(e) => setActiveLocationId(e.target.value || null)}
+                        title="Active location"
+                        style={{ fontSize: 12, padding: "8px 10px" }}
+                      >
+                        {firmCtx.locations.map((l) => (
+                          <option key={l.id} value={l.id}>
+                            {l.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 12 }}>
+                    {activeFirm?.name ? `Firm: ${activeFirm.name}` : null}
+                    {activeLocation?.name ? ` • Location: ${activeLocation.name}` : null}
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
