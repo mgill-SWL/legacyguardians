@@ -83,6 +83,101 @@ enum CrmProvider {
   RINGCENTRAL
 }
 
+enum FinancialSourceSystem {
+  COSMOLEX
+  MANUAL
+  IMPORT
+  OTHER
+}
+
+enum BillingAccountType {
+  TRUST
+  OPERATING
+  ACCOUNTS_RECEIVABLE
+  REVENUE
+  EXPENSE
+  OTHER
+}
+
+enum MatterFinancialEventType {
+  BILLED
+  PAYMENT_RECEIVED
+  TRUST_DEPOSIT
+  TRUST_APPLIED
+  OPERATING_DEPOSIT
+  REFUND
+  WRITE_OFF
+  TRANSFER
+}
+
+enum FinancialAttributionRole {
+  LEAD_ATTORNEY
+  TIMEKEEPER
+  INTAKE_OWNER
+  ORIGINATOR
+  OTHER
+}
+
+enum KpiImportReportType {
+  COLLECTIONS_BY_TIMEKEEPER
+  BILLINGS_BY_TIMEKEEPER
+  TRUST_RECEIPTS_JOURNAL
+  TRUST_DISBURSEMENTS_JOURNAL
+  INVOICE_PAYMENT_ALLOCATIONS
+  OPERATING_RETAINER_BY_MATTER
+}
+
+enum KpiImportBatchStatus {
+  PENDING
+  IMPORTED
+  FAILED
+}
+
+enum FinancialFeedSource {
+  BANK_CSV
+  CARD_CSV
+  MANUAL
+  COSMOLEX
+  OTHER
+}
+
+enum FinancialAccountKind {
+  OPERATING_BANK
+  TRUST_BANK
+  MONEY_MARKET
+  CREDIT_CARD
+  LIABILITY
+  CLEARING
+  OTHER
+}
+
+enum RawTransactionDirection {
+  INFLOW
+  OUTFLOW
+}
+
+enum TransactionReviewStatus {
+  UNREVIEWED
+  NEEDS_INFO
+  MATCHED
+  IGNORED
+}
+
+enum FinancialClassificationType {
+  TRUST_DEPOSIT
+  TRUST_TO_OPERATING_TRANSFER
+  TRUST_MATTER_TRANSFER
+  OPERATING_RETAINER_DEPOSIT
+  OPERATING_RETAINER_APPLICATION
+  DIRECT_FEE_PAYMENT
+  REIMBURSED_COST_PAYMENT
+  REFUND
+  MERCHANT_FEE
+  OWNER_TRANSFER
+  EXPENSE
+  IGNORE
+}
+
 enum CrmMessageDirection {
   INBOUND
   OUTBOUND
@@ -140,6 +235,13 @@ model Firm {
   pipelines        Pipeline[]
   pipelineStages   PipelineStage[]
   matterPipelines  MatterPipeline[]
+
+  billingAccounts  BillingAccount[]
+  kpiImportBatches KpiImportBatch[]
+  financialEvents  MatterFinancialEvent[]
+  financialAccounts FinancialAccount[]
+  financialImportBatches FinancialImportBatch[]
+  rawFinancialTransactions RawFinancialTransaction[]
 
   locations        FirmLocation[]
 
@@ -200,6 +302,7 @@ model User {
   image         String?
 
   role          UserRole  @default(STAFF)
+  cosmolexTimekeeperName String?
 
   accounts      Account[]
   sessions      Session[]
@@ -212,6 +315,12 @@ model User {
   ringCentralConnection RingCentralConnection?
 
   googleConnections GoogleConnection[]
+  uploadedKpiImportBatches KpiImportBatch[] @relation("KpiImportBatchUploadedByUser")
+  createdFinancialEvents MatterFinancialEvent[] @relation("MatterFinancialEventCreatedByUser")
+  financialAttributions MatterFinancialAttribution[]
+  importedFinancialBatches FinancialImportBatch[] @relation("FinancialImportBatchImportedByUser")
+  reviewedTransactionItems TransactionReviewItem[] @relation("TransactionReviewReviewedByUser")
+  createdFinancialClassifications FinancialClassification[] @relation("FinancialClassificationCreatedByUser")
 
   firmMemberships FirmMember[]
 
@@ -262,6 +371,261 @@ model GoogleConnection {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model BillingAccount {
+  id          String @id @default(cuid())
+  firmId      String
+  firm        Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  name        String
+  accountType BillingAccountType
+
+  sourceSystem FinancialSourceSystem @default(MANUAL)
+  externalId   String?
+  active       Boolean @default(true)
+
+  financialEventsFrom MatterFinancialEvent[] @relation("FinancialEventFromAccount")
+  financialEventsTo   MatterFinancialEvent[] @relation("FinancialEventToAccount")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([firmId, name])
+  @@index([firmId, accountType, active])
+}
+
+model FinancialAccount {
+  id        String @id @default(cuid())
+  firmId    String
+  firm      Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  name      String
+  kind      FinancialAccountKind
+
+  institutionName String?
+  last4           String?
+  externalId      String?
+  active          Boolean @default(true)
+
+  importBatches    FinancialImportBatch[]
+  rawTransactions  RawFinancialTransaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([firmId, name])
+  @@index([firmId, kind, active])
+}
+
+model FinancialImportBatch {
+  id        String @id @default(cuid())
+  firmId    String
+  firm      Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  source        FinancialFeedSource
+  accountId     String?
+  account       FinancialAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  sourceFilename String?
+  sourceFileUrl  String?
+  importedByUserId String?
+  importedByUser   User? @relation("FinancialImportBatchImportedByUser", fields: [importedByUserId], references: [id], onDelete: SetNull)
+
+  rawTransactions RawFinancialTransaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([firmId, source, createdAt])
+}
+
+model RawFinancialTransaction {
+  id        String @id @default(cuid())
+  firmId    String
+  firm      Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  accountId String?
+  account   FinancialAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  importBatchId String?
+  importBatch   FinancialImportBatch? @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+
+  source          FinancialFeedSource
+  transactionDate DateTime
+  postedDate      DateTime?
+
+  amountCents Int
+  direction   RawTransactionDirection
+
+  payee             String?
+  description       String
+  memo              String?
+  externalReference String?
+
+  rawData    Json
+  dedupeHash String
+
+  reviewItems      TransactionReviewItem[]
+  classifications FinancialClassification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([firmId, dedupeHash])
+  @@index([firmId, transactionDate])
+  @@index([accountId, transactionDate])
+  @@index([importBatchId])
+}
+
+model TransactionReviewItem {
+  id        String @id @default(cuid())
+
+  rawTransactionId String
+  rawTransaction   RawFinancialTransaction @relation(fields: [rawTransactionId], references: [id], onDelete: Cascade)
+
+  status            TransactionReviewStatus @default(UNREVIEWED)
+  suggestedCategory FinancialClassificationType?
+  reviewNotes       String?
+
+  reviewedByUserId String?
+  reviewedByUser   User? @relation("TransactionReviewReviewedByUser", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  reviewedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([rawTransactionId])
+}
+
+model FinancialClassification {
+  id        String @id @default(cuid())
+
+  rawTransactionId String
+  rawTransaction   RawFinancialTransaction @relation(fields: [rawTransactionId], references: [id], onDelete: Cascade)
+
+  classificationType FinancialClassificationType
+
+  effectiveDate DateTime
+  amountCents   Int
+
+  matterId String?
+  matter   Matter? @relation(fields: [matterId], references: [id], onDelete: SetNull)
+
+  contactId String?
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  invoiceNumber String?
+  notes         String?
+  confidence    Int?
+
+  createdByUserId String?
+  createdByUser   User? @relation("FinancialClassificationCreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([classificationType, effectiveDate])
+  @@index([matterId])
+  @@index([invoiceNumber])
+  @@index([rawTransactionId])
+}
+
+model KpiImportBatch {
+  id        String @id @default(cuid())
+  firmId    String
+  firm      Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  sourceSystem FinancialSourceSystem @default(COSMOLEX)
+  reportType   KpiImportReportType
+  status       KpiImportBatchStatus @default(PENDING)
+
+  rangeStart DateTime?
+  rangeEnd   DateTime?
+
+  sourceFilename String?
+  sourceFileUrl  String?
+  errorMessage   String?
+
+  uploadedByUserId String?
+  uploadedByUser   User? @relation("KpiImportBatchUploadedByUser", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+
+  financialEvents MatterFinancialEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([firmId, reportType, createdAt])
+  @@index([status])
+}
+
+model MatterFinancialEvent {
+  id        String @id @default(cuid())
+  firmId    String
+  firm      Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  matterId  String?
+  matter    Matter? @relation(fields: [matterId], references: [id], onDelete: SetNull)
+
+  eventType MatterFinancialEventType
+  eventDate DateTime
+
+  amountCents Int
+  currency    String @default("USD")
+
+  sourceSystem        FinancialSourceSystem @default(IMPORT)
+  sourceReference     String?
+  sourceInvoiceNumber String?
+  sourceMatterFileNumber String?
+  sourceClientName    String?
+  sourceMatterName    String?
+  notes               String?
+
+  fromAccountId String?
+  fromAccount   BillingAccount? @relation("FinancialEventFromAccount", fields: [fromAccountId], references: [id], onDelete: SetNull)
+
+  toAccountId String?
+  toAccount   BillingAccount? @relation("FinancialEventToAccount", fields: [toAccountId], references: [id], onDelete: SetNull)
+
+  importBatchId String?
+  importBatch   KpiImportBatch? @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+
+  createdByUserId String?
+  createdByUser   User? @relation("MatterFinancialEventCreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  attributions MatterFinancialAttribution[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([firmId, eventType, eventDate])
+  @@index([matterId, eventDate])
+  @@index([importBatchId])
+  @@index([sourceInvoiceNumber])
+}
+
+model MatterFinancialAttribution {
+  id        String @id @default(cuid())
+
+  financialEventId String
+  financialEvent   MatterFinancialEvent @relation(fields: [financialEventId], references: [id], onDelete: Cascade)
+
+  userId      String?
+  user        User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  displayName String
+  role        FinancialAttributionRole @default(TIMEKEEPER)
+
+  amountCents   Int
+  percentageBps Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([financialEventId])
+  @@index([userId])
+  @@index([displayName])
 }
 
 // --- Scheduling / automations (v1) ---
@@ -512,6 +876,7 @@ model Matter {
   intake      IntakeResponse?
   documents   GeneratedDocument[]
   pipelineLinks MatterPipeline[]
+  financialEvents MatterFinancialEvent[]
 
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt

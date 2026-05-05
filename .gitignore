@@ -6,6 +6,9 @@
 
 # Local / generated
 exports/
+inbox/tmp/
+inbox/normalized/
+memory/.dreams/
 
 # Node / Next
 node_modules/
