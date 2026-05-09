@@ -86,6 +86,7 @@ type AssetBuckets = {
   vehicles: { approxTotalCents?: number; items: Array<{ description?: string; notes?: string; approxValueCents?: number }>; notes?: string };
   personalProperty: { approxTotalCents?: number; notes?: string };
   realEstate: { approxTotalCents?: number; properties: RealEstateItem[]; notes?: string; transactionsNext24Months?: boolean };
+  alternativeAssets: { approxTotalCents?: number; items: Array<{ description?: string; notes?: string; approxValueCents?: number }>; notes?: string };
 };
 
 const SECTIONS: Array<{ key: string; label: string }> = [
@@ -258,6 +259,17 @@ function ensureAssets(intake: Intake): AssetBuckets {
       properties: Array.isArray(a?.realEstate?.properties) ? a.realEstate.properties.map(re) : [],
       notes: typeof a?.realEstate?.notes === "string" ? a.realEstate.notes : "",
       transactionsNext24Months: Boolean(a?.realEstate?.transactionsNext24Months),
+    },
+    alternativeAssets: {
+      approxTotalCents: Number.isFinite(a?.alternativeAssets?.approxTotalCents) ? Number(a.alternativeAssets.approxTotalCents) : undefined,
+      items: Array.isArray(a?.alternativeAssets?.items)
+        ? a.alternativeAssets.items.map((x: any) => ({
+            description: x?.description || "",
+            notes: x?.notes || "",
+            approxValueCents: Number.isFinite(x?.approxValueCents) ? Number(x.approxValueCents) : undefined,
+          }))
+        : [],
+      notes: typeof a?.alternativeAssets?.notes === "string" ? a.alternativeAssets.notes : "",
     },
   };
 }
@@ -1197,6 +1209,96 @@ export function EpisEditorStaffFullClient({ matterId }: { matterId: string }) {
               </div>
             </div>
           ))}
+
+          <div style={{ padding: 12, border: "1px solid var(--sw-border)", borderRadius: "var(--sw-radius-sm)", background: "rgba(255,255,255,0.03)" }}>
+            <div style={{ fontWeight: 800 }}>Alternative / unusual assets</div>
+            <div style={{ marginTop: 6, color: "var(--sw-muted)", fontSize: 13 }}>
+              For anything nonstandard (collectibles, private placements, crypto, etc.). High-level description only.
+            </div>
+
+            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+              <label style={{ display: "grid", gap: 6, maxWidth: 320 }}>
+                <span style={{ color: "var(--sw-muted)" }}>Approx. total ($)</span>
+                <input
+                  value={assets.alternativeAssets.approxTotalCents ? moneyCentsToDollars(assets.alternativeAssets.approxTotalCents!) : ""}
+                  onChange={(e) => {
+                    queueSave({
+                      ...intake,
+                      assets: {
+                        ...assets,
+                        alternativeAssets: {
+                          ...assets.alternativeAssets,
+                          approxTotalCents: moneyDollarsToCents(e.target.value),
+                        },
+                      },
+                    });
+                  }}
+                  inputMode="decimal"
+                  style={input}
+                />
+              </label>
+
+              {assets.alternativeAssets.items.map((it: any, idx: number) => (
+                <div key={idx} style={{ display: "grid", gap: 10, gridTemplateColumns: "2fr 1fr" }}>
+                  <input
+                    value={it.description || ""}
+                    onChange={(e) => {
+                      const next = [...assets.alternativeAssets.items];
+                      next[idx] = { ...it, description: e.target.value };
+                      queueSave({ ...intake, assets: { ...assets, alternativeAssets: { ...assets.alternativeAssets, items: next } } });
+                    }}
+                    placeholder="Description (e.g., baseball card collection)"
+                    style={input}
+                  />
+                  <input
+                    value={it.approxValueCents ? moneyCentsToDollars(it.approxValueCents) : ""}
+                    onChange={(e) => {
+                      const next = [...assets.alternativeAssets.items];
+                      next[idx] = { ...it, approxValueCents: moneyDollarsToCents(e.target.value) };
+                      queueSave({ ...intake, assets: { ...assets, alternativeAssets: { ...assets.alternativeAssets, items: next } } });
+                    }}
+                    placeholder="Approx. value ($)"
+                    inputMode="decimal"
+                    style={input}
+                  />
+                  <textarea
+                    value={it.notes || ""}
+                    onChange={(e) => {
+                      const next = [...assets.alternativeAssets.items];
+                      next[idx] = { ...it, notes: e.target.value };
+                      queueSave({ ...intake, assets: { ...assets, alternativeAssets: { ...assets.alternativeAssets, items: next } } });
+                    }}
+                    placeholder="Notes (optional)"
+                    rows={2}
+                    style={{ ...input, gridColumn: "1 / -1", fontFamily: "ui-sans-serif, system-ui, -apple-system", resize: "vertical" }}
+                  />
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => {
+                  const next = [...assets.alternativeAssets.items, { description: "", notes: "" }];
+                  queueSave({ ...intake, assets: { ...assets, alternativeAssets: { ...assets.alternativeAssets, items: next } } });
+                }}
+                style={btnSecondary}
+              >
+                + Add alternative asset
+              </button>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ color: "var(--sw-muted)" }}>Notes (optional)</span>
+                <textarea
+                  value={assets.alternativeAssets.notes || ""}
+                  onChange={(e) => {
+                    queueSave({ ...intake, assets: { ...assets, alternativeAssets: { ...assets.alternativeAssets, notes: e.target.value } } });
+                  }}
+                  rows={3}
+                  style={{ ...input, fontFamily: "ui-sans-serif, system-ui, -apple-system", resize: "vertical" }}
+                />
+              </label>
+            </div>
+          </div>
         </div>
       </section>
 
