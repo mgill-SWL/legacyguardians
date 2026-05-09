@@ -53,6 +53,14 @@ type Advisors = {
     phone?: string;
     okToDiscuss?: boolean;
   };
+  other: Array<{
+    kind?: string;
+    name?: string;
+    company?: string;
+    email?: string;
+    phone?: string;
+    okToDiscuss?: boolean;
+  }>;
 };
 
 function ensureWishes(intake: Intake): Wishes {
@@ -109,6 +117,16 @@ function ensureAdvisors(intake: Intake): Advisors {
   return {
     financialAdvisor: pick(a.financialAdvisor),
     cpa: pick(a.cpa),
+    other: Array.isArray(a.other)
+      ? a.other.map((x: any) => ({
+          kind: x?.kind || "",
+          name: x?.name || "",
+          company: x?.company || "",
+          email: x?.email || "",
+          phone: x?.phone || "",
+          okToDiscuss: Boolean(x?.okToDiscuss),
+        }))
+      : [],
   };
 }
 
@@ -851,6 +869,125 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
           />
           <span>OK to discuss my plan with my CPA / tax preparer</span>
         </label>
+
+        <div style={{ fontWeight: 800, marginTop: 18 }}>Other advisors (optional)</div>
+        <div style={{ marginTop: 10, display: "grid", gap: 12 }}>
+          {advisors.other.length ? (
+            advisors.other.map((o, idx) => (
+              <div
+                key={idx}
+                style={{
+                  padding: 12,
+                  borderRadius: "var(--sw-radius-sm)",
+                  border: "1px solid var(--sw-border)",
+                  background: "rgba(255,255,255,0.03)",
+                  display: "grid",
+                  gap: 10,
+                }}
+              >
+                <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                  <div style={{ fontWeight: 800 }}>Advisor {idx + 1}</div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = [...advisors.other];
+                      next.splice(idx, 1);
+                      queueSave({ ...intake, advisors: { ...advisors, other: next } });
+                    }}
+                    style={btnSecondary}
+                  >
+                    Remove
+                  </button>
+                </div>
+                <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+                  <input
+                    value={o.kind || ""}
+                    onChange={(e) => {
+                      const next = [...advisors.other];
+                      next[idx] = { ...o, kind: e.target.value };
+                      queueSave({ ...intake, advisors: { ...advisors, other: next } });
+                    }}
+                    placeholder="Type (e.g., Insurance Agent, Mortgage Lender)"
+                    style={input}
+                  />
+                  <input
+                    value={o.name || ""}
+                    onChange={(e) => {
+                      const next = [...advisors.other];
+                      next[idx] = { ...o, name: e.target.value };
+                      queueSave({ ...intake, advisors: { ...advisors, other: next } });
+                    }}
+                    placeholder="Name"
+                    style={input}
+                  />
+                  <input
+                    value={o.company || ""}
+                    onChange={(e) => {
+                      const next = [...advisors.other];
+                      next[idx] = { ...o, company: e.target.value };
+                      queueSave({ ...intake, advisors: { ...advisors, other: next } });
+                    }}
+                    placeholder="Company"
+                    style={input}
+                  />
+                  <input
+                    value={o.email || ""}
+                    onChange={(e) => {
+                      const next = [...advisors.other];
+                      next[idx] = { ...o, email: e.target.value };
+                      queueSave({ ...intake, advisors: { ...advisors, other: next } });
+                    }}
+                    placeholder="Email"
+                    style={input}
+                  />
+                  <input
+                    value={o.phone || ""}
+                    onChange={(e) => {
+                      const next = [...advisors.other];
+                      next[idx] = { ...o, phone: e.target.value };
+                      queueSave({ ...intake, advisors: { ...advisors, other: next } });
+                    }}
+                    placeholder="Phone"
+                    style={input}
+                  />
+                </div>
+                <label style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(o.okToDiscuss)}
+                    onChange={(e) => {
+                      const next = [...advisors.other];
+                      next[idx] = { ...o, okToDiscuss: e.target.checked };
+                      queueSave({ ...intake, advisors: { ...advisors, other: next } });
+                    }}
+                  />
+                  <span>OK to discuss my plan with this advisor</span>
+                </label>
+              </div>
+            ))
+          ) : (
+            <div style={{ color: "var(--sw-muted)" }}>None listed.</div>
+          )}
+
+          <button
+            type="button"
+            onClick={() =>
+              queueSave({
+                ...intake,
+                advisors: {
+                  ...advisors,
+                  other: [
+                    ...advisors.other,
+                    { kind: "", name: "", company: "", email: "", phone: "", okToDiscuss: false },
+                  ],
+                },
+              })
+            }
+            style={btnSecondary}
+          >
+            + Add other advisor
+          </button>
+        </div>
       </section>
     </main>
   );
