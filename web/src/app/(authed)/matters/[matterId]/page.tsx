@@ -175,6 +175,26 @@ export default async function MatterDetailPage({
           borderRadius: "var(--sw-radius)",
           background: "var(--sw-card)",
           border: "1px solid var(--sw-border)",
+          display: "grid",
+          gap: 10,
+        }}
+      >
+        <div style={{ fontWeight: 800 }}>Forms</div>
+        <Link
+          href={`/matters/${matter.id}/epis`}
+          style={{ color: "var(--sw-text)", textDecoration: "none", fontWeight: 800 }}
+        >
+          Open EPIS (staff) →
+        </Link>
+      </section>
+
+      <section
+        style={{
+          marginTop: 14,
+          padding: 18,
+          borderRadius: "var(--sw-radius)",
+          background: "var(--sw-card)",
+          border: "1px solid var(--sw-border)",
         }}
       >
         <div style={{ fontWeight: 800, marginBottom: 10 }}>Generate</div>
