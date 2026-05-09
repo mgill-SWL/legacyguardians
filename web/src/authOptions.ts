@@ -1,11 +1,9 @@
 import type { NextAuthOptions } from "next-auth";
 import EmailProvider from "next-auth/providers/email";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
-import { Resend } from "resend";
 
 import { prisma } from "./lib/prisma";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { getResend } from "./lib/resend";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -14,6 +12,7 @@ export const authOptions: NextAuthOptions = {
       from: process.env.EMAIL_FROM,
       // We override email sending to use Resend instead of SMTP.
       async sendVerificationRequest({ identifier, url, provider }) {
+        const resend = getResend();
         const from = provider.from ?? process.env.EMAIL_FROM;
         if (!from) throw new Error("EMAIL_FROM is required");
 
