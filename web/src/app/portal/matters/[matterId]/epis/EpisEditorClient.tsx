@@ -63,6 +63,31 @@ type Advisors = {
   }>;
 };
 
+type FinancialAccountItem = {
+  institution?: string;
+  accountType?: string; // e.g. Checking, Savings, IRA, 401(k), Brokerage
+  last4?: string;
+  notes?: string;
+  approxValueCents?: number;
+};
+
+type RealEstateItem = {
+  address?: string;
+  notes?: string;
+  approxValueCents?: number;
+};
+
+type AssetBuckets = {
+  retirement: { approxTotalCents?: number; accounts: FinancialAccountItem[]; notes?: string };
+  bank: { approxTotalCents?: number; accounts: FinancialAccountItem[]; notes?: string };
+  brokerage: { approxTotalCents?: number; accounts: FinancialAccountItem[]; notes?: string };
+  lifeInsurance: { approxTotalCents?: number; policies: Array<{ carrier?: string; last4?: string; notes?: string; benefitCents?: number }> ; notes?: string };
+  businessInterests: { approxTotalCents?: number; items: Array<{ name?: string; notes?: string; approxValueCents?: number }>; notes?: string };
+  vehicles: { approxTotalCents?: number; items: Array<{ description?: string; notes?: string; approxValueCents?: number }>; notes?: string };
+  personalProperty: { approxTotalCents?: number; notes?: string };
+  realEstate: { approxTotalCents?: number; properties: RealEstateItem[]; notes?: string; transactionsNext24Months?: boolean };
+};
+
 function ensureWishes(intake: Intake): Wishes {
   const empty: Wishes = {
     healthcare: { spouse1: {}, spouse2: {} },
@@ -128,6 +153,81 @@ function ensureAdvisors(intake: Intake): Advisors {
         }))
       : [],
   };
+}
+
+function ensureAssets(intake: Intake): AssetBuckets {
+  const a = (intake?.assets ?? {}) as any;
+  const fa = (x: any): FinancialAccountItem => ({
+    institution: x?.institution || "",
+    accountType: x?.accountType || "",
+    last4: x?.last4 || "",
+    notes: x?.notes || "",
+    approxValueCents: Number.isFinite(x?.approxValueCents) ? Number(x.approxValueCents) : undefined,
+  });
+  const re = (x: any): RealEstateItem => ({
+    address: x?.address || "",
+    notes: x?.notes || "",
+    approxValueCents: Number.isFinite(x?.approxValueCents) ? Number(x.approxValueCents) : undefined,
+  });
+  const policy = (x: any) => ({
+    carrier: x?.carrier || "",
+    last4: x?.last4 || "",
+    notes: x?.notes || "",
+    benefitCents: Number.isFinite(x?.benefitCents) ? Number(x.benefitCents) : undefined,
+  });
+  const withAccounts = (node: any) => ({
+    approxTotalCents: Number.isFinite(node?.approxTotalCents) ? Number(node.approxTotalCents) : undefined,
+    accounts: Array.isArray(node?.accounts) ? node.accounts.map(fa) : [],
+    notes: typeof node?.notes === "string" ? node.notes : "",
+  });
+  return {
+    retirement: withAccounts(a.retirement),
+    bank: withAccounts(a.bank),
+    brokerage: withAccounts(a.brokerage),
+    lifeInsurance: {
+      approxTotalCents: Number.isFinite(a?.lifeInsurance?.approxTotalCents) ? Number(a.lifeInsurance.approxTotalCents) : undefined,
+      policies: Array.isArray(a?.lifeInsurance?.policies) ? a.lifeInsurance.policies.map(policy) : [],
+      notes: typeof a?.lifeInsurance?.notes === "string" ? a.lifeInsurance.notes : "",
+    },
+    businessInterests: {
+      approxTotalCents: Number.isFinite(a?.businessInterests?.approxTotalCents) ? Number(a.businessInterests.approxTotalCents) : undefined,
+      items: Array.isArray(a?.businessInterests?.items)
+        ? a.businessInterests.items.map((x: any) => ({
+            name: x?.name || "",
+            notes: x?.notes || "",
+            approxValueCents: Number.isFinite(x?.approxValueCents) ? Number(x.approxValueCents) : undefined,
+          }))
+        : [],
+      notes: typeof a?.businessInterests?.notes === "string" ? a.businessInterests.notes : "",
+    },
+    vehicles: {
+      approxTotalCents: Number.isFinite(a?.vehicles?.approxTotalCents) ? Number(a.vehicles.approxTotalCents) : undefined,
+      items: Array.isArray(a?.vehicles?.items)
+        ? a.vehicles.items.map((x: any) => ({
+            description: x?.description || "",
+            notes: x?.notes || "",
+            approxValueCents: Number.isFinite(x?.approxValueCents) ? Number(x.approxValueCents) : undefined,
+          }))
+        : [],
+      notes: typeof a?.vehicles?.notes === "string" ? a.vehicles.notes : "",
+    },
+    personalProperty: {
+      approxTotalCents: Number.isFinite(a?.personalProperty?.approxTotalCents) ? Number(a.personalProperty.approxTotalCents) : undefined,
+      notes: typeof a?.personalProperty?.notes === "string" ? a.personalProperty.notes : "",
+    },
+    realEstate: {
+      approxTotalCents: Number.isFinite(a?.realEstate?.approxTotalCents) ? Number(a.realEstate.approxTotalCents) : undefined,
+      properties: Array.isArray(a?.realEstate?.properties) ? a.realEstate.properties.map(re) : [],
+      notes: typeof a?.realEstate?.notes === "string" ? a.realEstate.notes : "",
+      transactionsNext24Months: Boolean(a?.realEstate?.transactionsNext24Months),
+    },
+  };
+}
+
+function sanitizeLast4(s: string) {
+  const digits = String(s || "").replace(/\D/g, "");
+  if (!digits) return "";
+  return digits.slice(-4);
 }
 
 function moneyDollarsToCents(s: string) {
@@ -555,6 +655,7 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
   const wishes = ensureWishes(intake);
   const pets = ensurePets(intake);
   const advisors = ensureAdvisors(intake);
+  const assets = ensureAssets(intake);
 
   return (
     <main style={{ maxWidth: 980, margin: "0 auto", padding: "44px 18px 64px" }}>
@@ -987,6 +1088,99 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
           >
             + Add other advisor
           </button>
+        </div>
+      </section>
+
+      <section style={card}>
+        <div style={{ fontWeight: 800, marginBottom: 6 }}>Financial assets (MVP)</div>
+        <div style={{ color: "var(--sw-muted)", fontSize: 13, lineHeight: 1.4 }}>
+          Please do <strong>not</strong> enter full account numbers. If helpful, enter only the <strong>last 4 digits</strong>.
+          Approximate values are OK.
+        </div>
+
+        <div style={{ marginTop: 12, display: "grid", gap: 14 }}>
+          {([
+            ["Retirement", "retirement"],
+            ["Bank accounts", "bank"],
+            ["Brokerage", "brokerage"],
+          ] as const).map(([label, key]) => (
+            <div key={key} style={{ padding: 12, border: "1px solid var(--sw-border)", borderRadius: "var(--sw-radius-sm)", background: "rgba(255,255,255,0.03)" }}>
+              <div style={{ fontWeight: 800 }}>{label}</div>
+              <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                <label style={{ display: "grid", gap: 6, maxWidth: 320 }}>
+                  <span style={{ color: "var(--sw-muted)" }}>Approx. total ($)</span>
+                  <input
+                    value={assets[key].approxTotalCents ? moneyCentsToDollars(assets[key].approxTotalCents!) : ""}
+                    onChange={(e) => {
+                      const nextAssets = { ...assets, [key]: { ...assets[key], approxTotalCents: moneyDollarsToCents(e.target.value) } };
+                      queueSave({ ...intake, assets: nextAssets });
+                    }}
+                    inputMode="decimal"
+                    style={input}
+                  />
+                </label>
+
+                {assets[key].accounts.map((acct: any, idx: number) => (
+                  <div key={idx} style={{ display: "grid", gap: 10, gridTemplateColumns: "2fr 1fr 1fr" }}>
+                    <input
+                      value={acct.institution || ""}
+                      onChange={(e) => {
+                        const next = [...assets[key].accounts];
+                        next[idx] = { ...acct, institution: e.target.value };
+                        queueSave({ ...intake, assets: { ...assets, [key]: { ...assets[key], accounts: next } } });
+                      }}
+                      placeholder="Institution (e.g., Vanguard)"
+                      style={input}
+                    />
+                    <input
+                      value={acct.accountType || ""}
+                      onChange={(e) => {
+                        const next = [...assets[key].accounts];
+                        next[idx] = { ...acct, accountType: e.target.value };
+                        queueSave({ ...intake, assets: { ...assets, [key]: { ...assets[key], accounts: next } } });
+                      }}
+                      placeholder="Type (e.g., IRA)"
+                      style={input}
+                    />
+                    <input
+                      value={acct.last4 || ""}
+                      onChange={(e) => {
+                        const next = [...assets[key].accounts];
+                        next[idx] = { ...acct, last4: sanitizeLast4(e.target.value) };
+                        queueSave({ ...intake, assets: { ...assets, [key]: { ...assets[key], accounts: next } } });
+                      }}
+                      placeholder="Last 4"
+                      inputMode="numeric"
+                      maxLength={4}
+                      style={input}
+                    />
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = [...assets[key].accounts, { institution: "", accountType: "", last4: "", notes: "" }];
+                    queueSave({ ...intake, assets: { ...assets, [key]: { ...assets[key], accounts: next } } });
+                  }}
+                  style={btnSecondary}
+                >
+                  + Add account
+                </button>
+
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ color: "var(--sw-muted)" }}>Notes (optional)</span>
+                  <textarea
+                    value={assets[key].notes || ""}
+                    onChange={(e) => {
+                      queueSave({ ...intake, assets: { ...assets, [key]: { ...assets[key], notes: e.target.value } } });
+                    }}
+                    rows={3}
+                    style={{ ...input, fontFamily: "ui-sans-serif, system-ui, -apple-system", resize: "vertical" }}
+                  />
+                </label>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
     </main>
