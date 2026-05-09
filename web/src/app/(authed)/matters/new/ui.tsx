@@ -6,7 +6,7 @@ import { useUnsavedChanges } from "@/components/unsaved/UnsavedChangesProvider";
 
 type Child = { name: string; dob: string };
 
-type MatterType =
+type Offering =
   | "JOINT_TRUST"
   | "RECIPROCAL_TRUSTS"
   | "WILL_ONLY"
@@ -130,7 +130,7 @@ export function NewMatterForm() {
   const lastSavedSnapshot = useRef<string | null>(null);
 
   const [displayName, setDisplayName] = useState("");
-  const [matterType, setMatterType] = useState<MatterType>("JOINT_TRUST");
+  const [offering, setOffering] = useState<Offering>("JOINT_TRUST");
   const [grantor1, setGrantor1] = useState("");
   const [grantor2, setGrantor2] = useState("");
 
@@ -200,7 +200,9 @@ export function NewMatterForm() {
 
   const intakePayload = useMemo(() => {
     return {
-      matterType,
+      offering,
+      // Back-compat: older saved intakes used matterType.
+      matterType: offering,
       grantors: [grantor1.trim(), grantor2.trim()],
       hasMinorChildren,
       clientAddress: {
@@ -233,7 +235,7 @@ export function NewMatterForm() {
       distributionScheme: scheme,
     };
   }, [
-    matterType,
+    offering,
     grantor1,
     grantor2,
     hasMinorChildren,
@@ -279,7 +281,7 @@ export function NewMatterForm() {
       guardians,
       children,
       scheme,
-      matterType,
+      offering,
     });
   }, [
     displayName,
@@ -303,7 +305,7 @@ export function NewMatterForm() {
     guardians,
     children,
     scheme,
-    matterType,
+    offering,
   ]);
 
   useEffect(() => {
@@ -426,7 +428,7 @@ export function NewMatterForm() {
           <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
             <label style={{ display: "grid", gap: 6 }}>
               <span style={{ color: "var(--sw-muted)" }}>Offering</span>
-              <select value={matterType} onChange={(e) => setMatterType(e.target.value as MatterType)} style={inputStyle}>
+              <select value={offering} onChange={(e) => setOffering(e.target.value as Offering)} style={inputStyle}>
                 <option value="JOINT_TRUST">Joint trust (packet)</option>
                 <option value="RECIPROCAL_TRUSTS">Reciprocal individual trusts (packet)</option>
                 <option value="WILL_ONLY">Wills only</option>

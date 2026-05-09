@@ -37,8 +37,14 @@ export type Child = {
   dob?: string; // ISO date (YYYY-MM-DD)
 };
 
+export type Offering = "JOINT_TRUST" | "RECIPROCAL_TRUSTS" | "WILL_ONLY" | "WILL_AND_INCAPACITY" | "INCAPACITY_ONLY";
+
 export type IntakeV1 = {
-  matterType: "JOINT_TRUST" | "RECIPROCAL_TRUSTS" | "WILL_ONLY" | "WILL_AND_INCAPACITY" | "INCAPACITY_ONLY";
+  /** Product/offering selected for this matter. */
+  offering: Offering;
+
+  /** @deprecated legacy name; keep for back-compat when loading older saved intakes */
+  matterType?: Offering;
 
   grantors: [string, string];
   hasMinorChildren: boolean;

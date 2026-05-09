@@ -1,11 +1,11 @@
-export type MatterType =
+export type Offering =
   | "JOINT_TRUST"
   | "RECIPROCAL_TRUSTS"
   | "WILL_ONLY"
   | "WILL_AND_INCAPACITY"
   | "INCAPACITY_ONLY";
 
-export const matterTypeLabels: Record<MatterType, string> = {
+export const offeringLabels: Record<Offering, string> = {
   JOINT_TRUST: "Joint trust (packet)",
   RECIPROCAL_TRUSTS: "Reciprocal individual trusts (packet)",
   WILL_ONLY: "Wills only",
