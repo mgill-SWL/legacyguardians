@@ -1211,6 +1211,411 @@ export function EpisEditorStaffFullClient({ matterId }: { matterId: string }) {
           ))}
 
           <div style={{ padding: 12, border: "1px solid var(--sw-border)", borderRadius: "var(--sw-radius-sm)", background: "rgba(255,255,255,0.03)" }}>
+            <div style={{ fontWeight: 800 }}>Real estate</div>
+            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+              <label style={{ display: "grid", gap: 6, maxWidth: 320 }}>
+                <span style={{ color: "var(--sw-muted)" }}>Approx. total ($)</span>
+                <input
+                  value={assets.realEstate.approxTotalCents ? moneyCentsToDollars(assets.realEstate.approxTotalCents!) : ""}
+                  onChange={(e) =>
+                    queueSave({
+                      ...intake,
+                      assets: { ...assets, realEstate: { ...assets.realEstate, approxTotalCents: moneyDollarsToCents(e.target.value) } },
+                    })
+                  }
+                  inputMode="decimal"
+                  style={input}
+                />
+              </label>
+
+              {assets.realEstate.properties.map((prop: any, idx: number) => (
+                <div key={idx} style={{ display: "grid", gap: 10 }}>
+                  <div style={{ display: "grid", gap: 10, gridTemplateColumns: "2fr 1fr" }}>
+                    <input
+                      value={prop.address || ""}
+                      onChange={(e) => {
+                        const next = [...assets.realEstate.properties];
+                        next[idx] = { ...prop, address: e.target.value };
+                        queueSave({ ...intake, assets: { ...assets, realEstate: { ...assets.realEstate, properties: next } } });
+                      }}
+                      placeholder="Property address"
+                      style={input}
+                    />
+                    <input
+                      value={prop.approxValueCents ? moneyCentsToDollars(prop.approxValueCents) : ""}
+                      onChange={(e) => {
+                        const next = [...assets.realEstate.properties];
+                        next[idx] = { ...prop, approxValueCents: moneyDollarsToCents(e.target.value) };
+                        queueSave({ ...intake, assets: { ...assets, realEstate: { ...assets.realEstate, properties: next } } });
+                      }}
+                      placeholder="Approx. value ($)"
+                      inputMode="decimal"
+                      style={input}
+                    />
+                  </div>
+                  <textarea
+                    value={prop.notes || ""}
+                    onChange={(e) => {
+                      const next = [...assets.realEstate.properties];
+                      next[idx] = { ...prop, notes: e.target.value };
+                      queueSave({ ...intake, assets: { ...assets, realEstate: { ...assets.realEstate, properties: next } } });
+                    }}
+                    placeholder="Notes (e.g., primary residence, rental, how titled)"
+                    rows={2}
+                    style={{ ...input, fontFamily: "ui-sans-serif, system-ui, -apple-system", resize: "vertical" }}
+                  />
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => {
+                  const next = [...assets.realEstate.properties, { address: "", notes: "" }];
+                  queueSave({ ...intake, assets: { ...assets, realEstate: { ...assets.realEstate, properties: next } } });
+                }}
+                style={btnSecondary}
+              >
+                + Add property
+              </button>
+
+              <label style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <input
+                  type="checkbox"
+                  checked={Boolean(assets.realEstate.transactionsNext24Months)}
+                  onChange={(e) =>
+                    queueSave({
+                      ...intake,
+                      assets: {
+                        ...assets,
+                        realEstate: { ...assets.realEstate, transactionsNext24Months: e.target.checked },
+                      },
+                    })
+                  }
+                />
+                <span>Expect to buy or sell real estate in the next 24 months</span>
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ color: "var(--sw-muted)" }}>Notes (optional)</span>
+                <textarea
+                  value={assets.realEstate.notes || ""}
+                  onChange={(e) =>
+                    queueSave({
+                      ...intake,
+                      assets: { ...assets, realEstate: { ...assets.realEstate, notes: e.target.value } },
+                    })
+                  }
+                  rows={3}
+                  style={{ ...input, fontFamily: "ui-sans-serif, system-ui, -apple-system", resize: "vertical" }}
+                />
+              </label>
+            </div>
+          </div>
+
+          <div style={{ padding: 12, border: "1px solid var(--sw-border)", borderRadius: "var(--sw-radius-sm)", background: "rgba(255,255,255,0.03)" }}>
+            <div style={{ fontWeight: 800 }}>Life insurance</div>
+            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+              <label style={{ display: "grid", gap: 6, maxWidth: 320 }}>
+                <span style={{ color: "var(--sw-muted)" }}>Approx. total death benefit ($)</span>
+                <input
+                  value={assets.lifeInsurance.approxTotalCents ? moneyCentsToDollars(assets.lifeInsurance.approxTotalCents!) : ""}
+                  onChange={(e) =>
+                    queueSave({
+                      ...intake,
+                      assets: { ...assets, lifeInsurance: { ...assets.lifeInsurance, approxTotalCents: moneyDollarsToCents(e.target.value) } },
+                    })
+                  }
+                  inputMode="decimal"
+                  style={input}
+                />
+              </label>
+
+              {assets.lifeInsurance.policies.map((pol: any, idx: number) => (
+                <div key={idx} style={{ display: "grid", gap: 10 }}>
+                  <div style={{ display: "grid", gap: 10, gridTemplateColumns: "2fr 1fr 1fr" }}>
+                    <input
+                      value={pol.carrier || ""}
+                      onChange={(e) => {
+                        const next = [...assets.lifeInsurance.policies];
+                        next[idx] = { ...pol, carrier: e.target.value };
+                        queueSave({ ...intake, assets: { ...assets, lifeInsurance: { ...assets.lifeInsurance, policies: next } } });
+                      }}
+                      placeholder="Carrier"
+                      style={input}
+                    />
+                    <input
+                      value={pol.last4 || ""}
+                      onChange={(e) => {
+                        const next = [...assets.lifeInsurance.policies];
+                        next[idx] = { ...pol, last4: sanitizeLast4(e.target.value) };
+                        queueSave({ ...intake, assets: { ...assets, lifeInsurance: { ...assets.lifeInsurance, policies: next } } });
+                      }}
+                      placeholder="Policy last 4"
+                      inputMode="numeric"
+                      maxLength={4}
+                      style={input}
+                    />
+                    <input
+                      value={pol.benefitCents ? moneyCentsToDollars(pol.benefitCents) : ""}
+                      onChange={(e) => {
+                        const next = [...assets.lifeInsurance.policies];
+                        next[idx] = { ...pol, benefitCents: moneyDollarsToCents(e.target.value) };
+                        queueSave({ ...intake, assets: { ...assets, lifeInsurance: { ...assets.lifeInsurance, policies: next } } });
+                      }}
+                      placeholder="Benefit ($)"
+                      inputMode="decimal"
+                      style={input}
+                    />
+                  </div>
+                  <textarea
+                    value={pol.notes || ""}
+                    onChange={(e) => {
+                      const next = [...assets.lifeInsurance.policies];
+                      next[idx] = { ...pol, notes: e.target.value };
+                      queueSave({ ...intake, assets: { ...assets, lifeInsurance: { ...assets.lifeInsurance, policies: next } } });
+                    }}
+                    placeholder="Notes (optional)"
+                    rows={2}
+                    style={{ ...input, fontFamily: "ui-sans-serif, system-ui, -apple-system", resize: "vertical" }}
+                  />
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => {
+                  const next = [...assets.lifeInsurance.policies, { carrier: "", last4: "", notes: "" }];
+                  queueSave({ ...intake, assets: { ...assets, lifeInsurance: { ...assets.lifeInsurance, policies: next } } });
+                }}
+                style={btnSecondary}
+              >
+                + Add policy
+              </button>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ color: "var(--sw-muted)" }}>Notes (optional)</span>
+                <textarea
+                  value={assets.lifeInsurance.notes || ""}
+                  onChange={(e) =>
+                    queueSave({
+                      ...intake,
+                      assets: { ...assets, lifeInsurance: { ...assets.lifeInsurance, notes: e.target.value } },
+                    })
+                  }
+                  rows={3}
+                  style={{ ...input, fontFamily: "ui-sans-serif, system-ui, -apple-system", resize: "vertical" }}
+                />
+              </label>
+            </div>
+          </div>
+
+          <div style={{ padding: 12, border: "1px solid var(--sw-border)", borderRadius: "var(--sw-radius-sm)", background: "rgba(255,255,255,0.03)" }}>
+            <div style={{ fontWeight: 800 }}>Business interests</div>
+            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+              <label style={{ display: "grid", gap: 6, maxWidth: 320 }}>
+                <span style={{ color: "var(--sw-muted)" }}>Approx. total ($)</span>
+                <input
+                  value={assets.businessInterests.approxTotalCents ? moneyCentsToDollars(assets.businessInterests.approxTotalCents!) : ""}
+                  onChange={(e) =>
+                    queueSave({
+                      ...intake,
+                      assets: { ...assets, businessInterests: { ...assets.businessInterests, approxTotalCents: moneyDollarsToCents(e.target.value) } },
+                    })
+                  }
+                  inputMode="decimal"
+                  style={input}
+                />
+              </label>
+
+              {assets.businessInterests.items.map((it: any, idx: number) => (
+                <div key={idx} style={{ display: "grid", gap: 10 }}>
+                  <div style={{ display: "grid", gap: 10, gridTemplateColumns: "2fr 1fr" }}>
+                    <input
+                      value={it.name || ""}
+                      onChange={(e) => {
+                        const next = [...assets.businessInterests.items];
+                        next[idx] = { ...it, name: e.target.value };
+                        queueSave({ ...intake, assets: { ...assets, businessInterests: { ...assets.businessInterests, items: next } } });
+                      }}
+                      placeholder="Business / entity name"
+                      style={input}
+                    />
+                    <input
+                      value={it.approxValueCents ? moneyCentsToDollars(it.approxValueCents) : ""}
+                      onChange={(e) => {
+                        const next = [...assets.businessInterests.items];
+                        next[idx] = { ...it, approxValueCents: moneyDollarsToCents(e.target.value) };
+                        queueSave({ ...intake, assets: { ...assets, businessInterests: { ...assets.businessInterests, items: next } } });
+                      }}
+                      placeholder="Approx. value ($)"
+                      inputMode="decimal"
+                      style={input}
+                    />
+                  </div>
+                  <textarea
+                    value={it.notes || ""}
+                    onChange={(e) => {
+                      const next = [...assets.businessInterests.items];
+                      next[idx] = { ...it, notes: e.target.value };
+                      queueSave({ ...intake, assets: { ...assets, businessInterests: { ...assets.businessInterests, items: next } } });
+                    }}
+                    placeholder="Notes (optional)"
+                    rows={2}
+                    style={{ ...input, fontFamily: "ui-sans-serif, system-ui, -apple-system", resize: "vertical" }}
+                  />
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => {
+                  const next = [...assets.businessInterests.items, { name: "", notes: "" }];
+                  queueSave({ ...intake, assets: { ...assets, businessInterests: { ...assets.businessInterests, items: next } } });
+                }}
+                style={btnSecondary}
+              >
+                + Add business interest
+              </button>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ color: "var(--sw-muted)" }}>Notes (optional)</span>
+                <textarea
+                  value={assets.businessInterests.notes || ""}
+                  onChange={(e) =>
+                    queueSave({
+                      ...intake,
+                      assets: { ...assets, businessInterests: { ...assets.businessInterests, notes: e.target.value } },
+                    })
+                  }
+                  rows={3}
+                  style={{ ...input, fontFamily: "ui-sans-serif, system-ui, -apple-system", resize: "vertical" }}
+                />
+              </label>
+            </div>
+          </div>
+
+          <div style={{ padding: 12, border: "1px solid var(--sw-border)", borderRadius: "var(--sw-radius-sm)", background: "rgba(255,255,255,0.03)" }}>
+            <div style={{ fontWeight: 800 }}>Vehicles</div>
+            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+              <label style={{ display: "grid", gap: 6, maxWidth: 320 }}>
+                <span style={{ color: "var(--sw-muted)" }}>Approx. total ($)</span>
+                <input
+                  value={assets.vehicles.approxTotalCents ? moneyCentsToDollars(assets.vehicles.approxTotalCents!) : ""}
+                  onChange={(e) =>
+                    queueSave({
+                      ...intake,
+                      assets: { ...assets, vehicles: { ...assets.vehicles, approxTotalCents: moneyDollarsToCents(e.target.value) } },
+                    })
+                  }
+                  inputMode="decimal"
+                  style={input}
+                />
+              </label>
+
+              {assets.vehicles.items.map((it: any, idx: number) => (
+                <div key={idx} style={{ display: "grid", gap: 10 }}>
+                  <div style={{ display: "grid", gap: 10, gridTemplateColumns: "2fr 1fr" }}>
+                    <input
+                      value={it.description || ""}
+                      onChange={(e) => {
+                        const next = [...assets.vehicles.items];
+                        next[idx] = { ...it, description: e.target.value };
+                        queueSave({ ...intake, assets: { ...assets, vehicles: { ...assets.vehicles, items: next } } });
+                      }}
+                      placeholder="Description"
+                      style={input}
+                    />
+                    <input
+                      value={it.approxValueCents ? moneyCentsToDollars(it.approxValueCents) : ""}
+                      onChange={(e) => {
+                        const next = [...assets.vehicles.items];
+                        next[idx] = { ...it, approxValueCents: moneyDollarsToCents(e.target.value) };
+                        queueSave({ ...intake, assets: { ...assets, vehicles: { ...assets.vehicles, items: next } } });
+                      }}
+                      placeholder="Approx. value ($)"
+                      inputMode="decimal"
+                      style={input}
+                    />
+                  </div>
+                  <textarea
+                    value={it.notes || ""}
+                    onChange={(e) => {
+                      const next = [...assets.vehicles.items];
+                      next[idx] = { ...it, notes: e.target.value };
+                      queueSave({ ...intake, assets: { ...assets, vehicles: { ...assets.vehicles, items: next } } });
+                    }}
+                    placeholder="Notes (optional)"
+                    rows={2}
+                    style={{ ...input, fontFamily: "ui-sans-serif, system-ui, -apple-system", resize: "vertical" }}
+                  />
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => {
+                  const next = [...assets.vehicles.items, { description: "", notes: "" }];
+                  queueSave({ ...intake, assets: { ...assets, vehicles: { ...assets.vehicles, items: next } } });
+                }}
+                style={btnSecondary}
+              >
+                + Add vehicle
+              </button>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ color: "var(--sw-muted)" }}>Notes (optional)</span>
+                <textarea
+                  value={assets.vehicles.notes || ""}
+                  onChange={(e) =>
+                    queueSave({
+                      ...intake,
+                      assets: { ...assets, vehicles: { ...assets.vehicles, notes: e.target.value } },
+                    })
+                  }
+                  rows={3}
+                  style={{ ...input, fontFamily: "ui-sans-serif, system-ui, -apple-system", resize: "vertical" }}
+                />
+              </label>
+            </div>
+          </div>
+
+          <div style={{ padding: 12, border: "1px solid var(--sw-border)", borderRadius: "var(--sw-radius-sm)", background: "rgba(255,255,255,0.03)" }}>
+            <div style={{ fontWeight: 800 }}>Personal property / valuables</div>
+            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+              <label style={{ display: "grid", gap: 6, maxWidth: 320 }}>
+                <span style={{ color: "var(--sw-muted)" }}>Approx. total ($)</span>
+                <input
+                  value={assets.personalProperty.approxTotalCents ? moneyCentsToDollars(assets.personalProperty.approxTotalCents!) : ""}
+                  onChange={(e) =>
+                    queueSave({
+                      ...intake,
+                      assets: { ...assets, personalProperty: { ...assets.personalProperty, approxTotalCents: moneyDollarsToCents(e.target.value) } },
+                    })
+                  }
+                  inputMode="decimal"
+                  style={input}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ color: "var(--sw-muted)" }}>Notes (optional)</span>
+                <textarea
+                  value={assets.personalProperty.notes || ""}
+                  onChange={(e) =>
+                    queueSave({
+                      ...intake,
+                      assets: { ...assets, personalProperty: { ...assets.personalProperty, notes: e.target.value } },
+                    })
+                  }
+                  placeholder="Examples: jewelry, art, firearms, collectibles"
+                  rows={3}
+                  style={{ ...input, fontFamily: "ui-sans-serif, system-ui, -apple-system", resize: "vertical" }}
+                />
+              </label>
+            </div>
+          </div>
+
+          <div style={{ padding: 12, border: "1px solid var(--sw-border)", borderRadius: "var(--sw-radius-sm)", background: "rgba(255,255,255,0.03)" }}>
             <div style={{ fontWeight: 800 }}>Alternative / unusual assets</div>
             <div style={{ marginTop: 6, color: "var(--sw-muted)", fontSize: 13 }}>
               For anything nonstandard (collectibles, private placements, crypto, etc.). High-level description only.
