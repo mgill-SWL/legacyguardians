@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { burialWishesPresets, distributionWishesPresets, healthcareWishesPresets, type Preset } from "@/lib/episPresets";
+
 type Intake = any;
 
 function newPersonId() {
@@ -17,6 +19,94 @@ type RankedRoles = {
   healthAgents: RankGroup[];
   guardians: RankGroup[];
 };
+
+type Wish = { presetKey?: string; text?: string };
+type Wishes = {
+  healthcare: { spouse1: Wish; spouse2: Wish };
+  burial: { spouse1: Wish; spouse2: Wish };
+  distribution: { spouse1: Wish; spouse2: Wish };
+};
+
+function ensureWishes(intake: Intake): Wishes {
+  const empty: Wishes = {
+    healthcare: { spouse1: {}, spouse2: {} },
+    burial: { spouse1: {}, spouse2: {} },
+    distribution: { spouse1: {}, spouse2: {} },
+  };
+  const w = intake?.wishes;
+  if (!w || typeof w !== "object") return empty;
+  const pick = (x: any) => ({ presetKey: x?.presetKey, text: x?.text });
+  return {
+    healthcare: {
+      spouse1: pick((w as any)?.healthcare?.spouse1),
+      spouse2: pick((w as any)?.healthcare?.spouse2),
+    },
+    burial: {
+      spouse1: pick((w as any)?.burial?.spouse1),
+      spouse2: pick((w as any)?.burial?.spouse2),
+    },
+    distribution: {
+      spouse1: pick((w as any)?.distribution?.spouse1),
+      spouse2: pick((w as any)?.distribution?.spouse2),
+    },
+  };
+}
+
+function PresetBlock({
+  title,
+  presets,
+  value,
+  onChange,
+}: {
+  title: string;
+  presets: Preset[];
+  value: Wish;
+  onChange: (next: Wish) => void;
+}) {
+  const selected = presets.find((p) => p.key === (value.presetKey || ""));
+
+  return (
+    <section style={card}>
+      <div style={{ fontWeight: 800, marginBottom: 10 }}>{title}</div>
+      <div style={{ display: "grid", gap: 10 }}>
+        <select
+          value={value.presetKey || ""}
+          onChange={(e) => onChange({ ...value, presetKey: e.target.value || undefined })}
+          style={input}
+        >
+          <option value="">— Choose a starting point —</option>
+          {presets.map((p) => (
+            <option key={p.key} value={p.key}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+
+        {selected && selected.text ? (
+          <div style={{ color: "var(--sw-muted)", fontSize: 13, lineHeight: 1.4 }}>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>Preset text</div>
+            <div style={{ whiteSpace: "pre-wrap" }}>{selected.text}</div>
+            <button
+              type="button"
+              onClick={() => onChange({ ...value, text: selected.text })}
+              style={{ ...btnSecondary, marginTop: 8 }}
+            >
+              Use preset (overwrite)
+            </button>
+          </div>
+        ) : null}
+
+        <textarea
+          value={value.text || ""}
+          onChange={(e) => onChange({ ...value, text: e.target.value })}
+          placeholder="Draft your own…"
+          rows={4}
+          style={{ ...input, fontFamily: "ui-sans-serif, system-ui, -apple-system", resize: "vertical" }}
+        />
+      </div>
+    </section>
+  );
+}
 
 function ensureRankedRoles(intake: Intake): RankedRoles {
   const base: RankedRoles = {
@@ -371,6 +461,7 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
   }
 
   const ranked: RankedRoles = ensureRankedRoles(intake);
+  const wishes = ensureWishes(intake);
 
   return (
     <main style={{ maxWidth: 980, margin: "0 auto", padding: "44px 18px 64px" }}>
@@ -441,6 +532,45 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
         defaultSpouseGroup={{ enabled: spouseIds.length === 2, spouseIds }}
         onChange={(groups) => queueSave({ ...intake, rankedRoles: { ...ranked, guardians: groups } })}
       />
+
+      <PresetBlock
+        title="Health care wishes — Spouse 1"
+        presets={healthcareWishesPresets}
+        value={wishes.healthcare.spouse1}
+        onChange={(spouse1) => queueSave({ ...intake, wishes: { ...wishes, healthcare: { ...wishes.healthcare, spouse1 } } })}
+      />
+      <PresetBlock
+        title="Health care wishes — Spouse 2"
+        presets={healthcareWishesPresets}
+        value={wishes.healthcare.spouse2}
+        onChange={(spouse2) => queueSave({ ...intake, wishes: { ...wishes, healthcare: { ...wishes.healthcare, spouse2 } } })}
+      />
+
+      <PresetBlock
+        title="Burial wishes — Spouse 1"
+        presets={burialWishesPresets}
+        value={wishes.burial.spouse1}
+        onChange={(spouse1) => queueSave({ ...intake, wishes: { ...wishes, burial: { ...wishes.burial, spouse1 } } })}
+      />
+      <PresetBlock
+        title="Burial wishes — Spouse 2"
+        presets={burialWishesPresets}
+        value={wishes.burial.spouse2}
+        onChange={(spouse2) => queueSave({ ...intake, wishes: { ...wishes, burial: { ...wishes.burial, spouse2 } } })}
+      />
+
+      <PresetBlock
+        title="Distribution wishes — Spouse 1"
+        presets={distributionWishesPresets}
+        value={wishes.distribution.spouse1}
+        onChange={(spouse1) => queueSave({ ...intake, wishes: { ...wishes, distribution: { ...wishes.distribution, spouse1 } } })}
+      />
+      <PresetBlock
+        title="Distribution wishes — Spouse 2"
+        presets={distributionWishesPresets}
+        value={wishes.distribution.spouse2}
+        onChange={(spouse2) => queueSave({ ...intake, wishes: { ...wishes, distribution: { ...wishes.distribution, spouse2 } } })}
+      />
     </main>
   );
 }
@@ -481,4 +611,3 @@ const btnDanger: React.CSSProperties = {
   color: "var(--sw-text)",
   cursor: "pointer",
 };
-
