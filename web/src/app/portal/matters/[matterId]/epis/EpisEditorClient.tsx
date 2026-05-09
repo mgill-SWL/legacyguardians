@@ -27,6 +27,34 @@ type Wishes = {
   distribution: { spouse1: Wish; spouse2: Wish };
 };
 
+type Pets = {
+  hasPets: boolean;
+  count: number;
+  perPetAmountCents: number;
+  caregiverPersonId?: string;
+  alternateCaregiverPersonId?: string;
+  usePetTrust: boolean;
+  petTrustEndowmentCents?: number;
+  notes?: string;
+};
+
+type Advisors = {
+  financialAdvisor?: {
+    name?: string;
+    company?: string;
+    email?: string;
+    phone?: string;
+    okToDiscuss?: boolean;
+  };
+  cpa?: {
+    name?: string;
+    company?: string;
+    email?: string;
+    phone?: string;
+    okToDiscuss?: boolean;
+  };
+};
+
 function ensureWishes(intake: Intake): Wishes {
   const empty: Wishes = {
     healthcare: { spouse1: {}, spouse2: {} },
@@ -50,6 +78,51 @@ function ensureWishes(intake: Intake): Wishes {
       spouse2: pick((w as any)?.distribution?.spouse2),
     },
   };
+}
+
+function ensurePets(intake: Intake): Pets {
+  const p = (intake?.pets ?? {}) as any;
+  return {
+    hasPets: Boolean(p?.hasPets),
+    count: Number.isFinite(p?.count) ? Number(p.count) : 0,
+    perPetAmountCents: Number.isFinite(p?.perPetAmountCents) ? Number(p.perPetAmountCents) : 5000 * 100,
+    caregiverPersonId: p?.caregiverPersonId || undefined,
+    alternateCaregiverPersonId: p?.alternateCaregiverPersonId || undefined,
+    usePetTrust: Boolean(p?.usePetTrust),
+    petTrustEndowmentCents: Number.isFinite(p?.petTrustEndowmentCents) ? Number(p.petTrustEndowmentCents) : undefined,
+    notes: typeof p?.notes === "string" ? p.notes : "",
+  };
+}
+
+function ensureAdvisors(intake: Intake): Advisors {
+  const a = (intake?.advisors ?? {}) as any;
+  const pick = (x: any) =>
+    x && typeof x === "object"
+      ? {
+          name: x.name || "",
+          company: x.company || "",
+          email: x.email || "",
+          phone: x.phone || "",
+          okToDiscuss: Boolean(x.okToDiscuss),
+        }
+      : { name: "", company: "", email: "", phone: "", okToDiscuss: false };
+  return {
+    financialAdvisor: pick(a.financialAdvisor),
+    cpa: pick(a.cpa),
+  };
+}
+
+function moneyDollarsToCents(s: string) {
+  const cleaned = String(s || "").replace(/[^0-9.]/g, "");
+  if (!cleaned) return 0;
+  const n = Number(cleaned);
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n * 100);
+}
+
+function moneyCentsToDollars(cents: number) {
+  const n = Number.isFinite(cents) ? cents : 0;
+  return (n / 100).toFixed(2);
 }
 
 function PresetBlock({
@@ -462,6 +535,8 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
 
   const ranked: RankedRoles = ensureRankedRoles(intake);
   const wishes = ensureWishes(intake);
+  const pets = ensurePets(intake);
+  const advisors = ensureAdvisors(intake);
 
   return (
     <main style={{ maxWidth: 980, margin: "0 auto", padding: "44px 18px 64px" }}>
@@ -571,6 +646,212 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
         value={wishes.distribution.spouse2}
         onChange={(spouse2) => queueSave({ ...intake, wishes: { ...wishes, distribution: { ...wishes.distribution, spouse2 } } })}
       />
+
+      <section style={card}>
+        <div style={{ fontWeight: 800, marginBottom: 10 }}>Pets</div>
+        <label style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <input
+            type="checkbox"
+            checked={pets.hasPets}
+            onChange={(e) => queueSave({ ...intake, pets: { ...pets, hasPets: e.target.checked } })}
+          />
+          <span>I have pets</span>
+        </label>
+
+        {pets.hasPets ? (
+          <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+            <label style={{ display: "grid", gap: 6, maxWidth: 240 }}>
+              <span style={{ color: "var(--sw-muted)" }}>Number of pets</span>
+              <input
+                value={String(pets.count || "")}
+                onChange={(e) => queueSave({ ...intake, pets: { ...pets, count: Number(e.target.value || 0) } })}
+                inputMode="numeric"
+                style={input}
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: 6, maxWidth: 300 }}>
+              <span style={{ color: "var(--sw-muted)" }}>$ per pet to caregiver</span>
+              <input
+                value={moneyCentsToDollars(pets.perPetAmountCents)}
+                onChange={(e) =>
+                  queueSave({
+                    ...intake,
+                    pets: { ...pets, perPetAmountCents: moneyDollarsToCents(e.target.value) },
+                  })
+                }
+                inputMode="decimal"
+                style={input}
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={{ color: "var(--sw-muted)" }}>Caregiver</span>
+              <select
+                value={pets.caregiverPersonId || ""}
+                onChange={(e) => queueSave({ ...intake, pets: { ...pets, caregiverPersonId: e.target.value || undefined } })}
+                style={input}
+              >
+                <option value="">—</option>
+                {intake.people.map((p: any) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name || "(unnamed)"}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={{ color: "var(--sw-muted)" }}>Alternate caregiver</span>
+              <select
+                value={pets.alternateCaregiverPersonId || ""}
+                onChange={(e) =>
+                  queueSave({
+                    ...intake,
+                    pets: { ...pets, alternateCaregiverPersonId: e.target.value || undefined },
+                  })
+                }
+                style={input}
+              >
+                <option value="">—</option>
+                {intake.people.map((p: any) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name || "(unnamed)"}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <input
+                type="checkbox"
+                checked={pets.usePetTrust}
+                onChange={(e) => queueSave({ ...intake, pets: { ...pets, usePetTrust: e.target.checked } })}
+              />
+              <span>Use a pet trust instead</span>
+            </label>
+
+            {pets.usePetTrust ? (
+              <label style={{ display: "grid", gap: 6, maxWidth: 320 }}>
+                <span style={{ color: "var(--sw-muted)" }}>Pet trust endowment ($)</span>
+                <input
+                  value={pets.petTrustEndowmentCents ? moneyCentsToDollars(pets.petTrustEndowmentCents) : ""}
+                  onChange={(e) =>
+                    queueSave({
+                      ...intake,
+                      pets: { ...pets, petTrustEndowmentCents: moneyDollarsToCents(e.target.value) },
+                    })
+                  }
+                  inputMode="decimal"
+                  style={input}
+                />
+              </label>
+            ) : null}
+
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={{ color: "var(--sw-muted)" }}>Notes (optional)</span>
+              <textarea
+                value={pets.notes || ""}
+                onChange={(e) => queueSave({ ...intake, pets: { ...pets, notes: e.target.value } })}
+                rows={3}
+                style={{ ...input, fontFamily: "ui-sans-serif, system-ui, -apple-system", resize: "vertical" }}
+              />
+            </label>
+          </div>
+        ) : null}
+      </section>
+
+      <section style={card}>
+        <div style={{ fontWeight: 800, marginBottom: 10 }}>Professional advisors</div>
+
+        <div style={{ fontWeight: 800, marginTop: 6 }}>Financial advisor</div>
+        <div style={{ marginTop: 10, display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+          <input
+            value={advisors.financialAdvisor?.name || ""}
+            onChange={(e) => queueSave({ ...intake, advisors: { ...advisors, financialAdvisor: { ...(advisors.financialAdvisor || {}), name: e.target.value } } })}
+            placeholder="Name"
+            style={input}
+          />
+          <input
+            value={advisors.financialAdvisor?.company || ""}
+            onChange={(e) => queueSave({ ...intake, advisors: { ...advisors, financialAdvisor: { ...(advisors.financialAdvisor || {}), company: e.target.value } } })}
+            placeholder="Company"
+            style={input}
+          />
+          <input
+            value={advisors.financialAdvisor?.email || ""}
+            onChange={(e) => queueSave({ ...intake, advisors: { ...advisors, financialAdvisor: { ...(advisors.financialAdvisor || {}), email: e.target.value } } })}
+            placeholder="Email"
+            style={input}
+          />
+          <input
+            value={advisors.financialAdvisor?.phone || ""}
+            onChange={(e) => queueSave({ ...intake, advisors: { ...advisors, financialAdvisor: { ...(advisors.financialAdvisor || {}), phone: e.target.value } } })}
+            placeholder="Phone"
+            style={input}
+          />
+        </div>
+        <label style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 10 }}>
+          <input
+            type="checkbox"
+            checked={Boolean(advisors.financialAdvisor?.okToDiscuss)}
+            onChange={(e) =>
+              queueSave({
+                ...intake,
+                advisors: {
+                  ...advisors,
+                  financialAdvisor: { ...(advisors.financialAdvisor || {}), okToDiscuss: e.target.checked },
+                },
+              })
+            }
+          />
+          <span>OK to discuss my plan with my financial advisor</span>
+        </label>
+
+        <div style={{ fontWeight: 800, marginTop: 18 }}>CPA / tax preparer</div>
+        <div style={{ marginTop: 10, display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+          <input
+            value={advisors.cpa?.name || ""}
+            onChange={(e) => queueSave({ ...intake, advisors: { ...advisors, cpa: { ...(advisors.cpa || {}), name: e.target.value } } })}
+            placeholder="Name"
+            style={input}
+          />
+          <input
+            value={advisors.cpa?.company || ""}
+            onChange={(e) => queueSave({ ...intake, advisors: { ...advisors, cpa: { ...(advisors.cpa || {}), company: e.target.value } } })}
+            placeholder="Company"
+            style={input}
+          />
+          <input
+            value={advisors.cpa?.email || ""}
+            onChange={(e) => queueSave({ ...intake, advisors: { ...advisors, cpa: { ...(advisors.cpa || {}), email: e.target.value } } })}
+            placeholder="Email"
+            style={input}
+          />
+          <input
+            value={advisors.cpa?.phone || ""}
+            onChange={(e) => queueSave({ ...intake, advisors: { ...advisors, cpa: { ...(advisors.cpa || {}), phone: e.target.value } } })}
+            placeholder="Phone"
+            style={input}
+          />
+        </div>
+        <label style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 10 }}>
+          <input
+            type="checkbox"
+            checked={Boolean(advisors.cpa?.okToDiscuss)}
+            onChange={(e) =>
+              queueSave({
+                ...intake,
+                advisors: {
+                  ...advisors,
+                  cpa: { ...(advisors.cpa || {}), okToDiscuss: e.target.checked },
+                },
+              })
+            }
+          />
+          <span>OK to discuss my plan with my CPA / tax preparer</span>
+        </label>
+      </section>
     </main>
   );
 }
