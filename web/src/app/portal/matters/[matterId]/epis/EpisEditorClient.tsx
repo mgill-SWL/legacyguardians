@@ -1,0 +1,484 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+
+type Intake = any;
+
+function newPersonId() {
+  return `p_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
+}
+
+type ActingMode = "EITHER" | "JOINT";
+type RankGroup = { actingMode: ActingMode; personIds: string[] };
+type RankedRoles = {
+  trustees: RankGroup[];
+  executors: RankGroup[];
+  financialAgents: RankGroup[];
+  healthAgents: RankGroup[];
+  guardians: RankGroup[];
+};
+
+function ensureRankedRoles(intake: Intake): RankedRoles {
+  const base: RankedRoles = {
+    trustees: [],
+    executors: [],
+    financialAgents: [],
+    healthAgents: [],
+    guardians: [],
+  };
+  const existing = intake?.rankedRoles;
+  if (!existing || typeof existing !== "object") return base;
+  return {
+    trustees: Array.isArray(existing.trustees) ? existing.trustees : [],
+    executors: Array.isArray(existing.executors) ? existing.executors : [],
+    financialAgents: Array.isArray(existing.financialAgents) ? existing.financialAgents : [],
+    healthAgents: Array.isArray(existing.healthAgents) ? existing.healthAgents : [],
+    guardians: Array.isArray(existing.guardians) ? existing.guardians : [],
+  };
+}
+
+function normalizeLegacyRolesFromRanked(intake: Intake) {
+  const ranked = ensureRankedRoles(intake);
+  const pick = (groups: RankGroup[]) => {
+    const flat = groups.map((g) => g.personIds?.[0]).filter(Boolean);
+    return {
+      primary: flat[0],
+      alternate1: flat[1],
+      alternate2: flat[2],
+    };
+  };
+
+  intake.roles = intake.roles || {};
+  intake.roles.trustees = pick(ranked.trustees);
+  intake.roles.executors = pick(ranked.executors);
+  intake.roles.financialAgents = pick(ranked.financialAgents);
+  intake.roles.healthAgents = pick(ranked.healthAgents);
+  intake.roles.guardians = pick(ranked.guardians);
+}
+
+function PeopleEditor({
+  people,
+  setPeople,
+}: {
+  people: any[];
+  setPeople: (p: any[]) => void;
+}) {
+  return (
+    <section style={card}>
+      <div style={{ fontWeight: 800, marginBottom: 10 }}>People</div>
+      <div style={{ display: "grid", gap: 10 }}>
+        {people.map((p, idx) => (
+          <div
+            key={p.id}
+            style={{ display: "grid", gap: 8, gridTemplateColumns: "2fr 1fr 1fr" }}
+          >
+            <input
+              value={p.name || ""}
+              onChange={(e) => {
+                const next = [...people];
+                next[idx] = { ...p, name: e.target.value };
+                setPeople(next);
+              }}
+              placeholder="Full name"
+              style={input}
+            />
+            <input
+              value={p.email || ""}
+              onChange={(e) => {
+                const next = [...people];
+                next[idx] = { ...p, email: e.target.value };
+                setPeople(next);
+              }}
+              placeholder="Email (optional)"
+              style={input}
+            />
+            <input
+              value={p.phone || ""}
+              onChange={(e) => {
+                const next = [...people];
+                next[idx] = { ...p, phone: e.target.value };
+                setPeople(next);
+              }}
+              placeholder="Phone (optional)"
+              style={input}
+            />
+          </div>
+        ))}
+
+        <button
+          type="button"
+          onClick={() =>
+            setPeople([
+              ...people,
+              {
+                id: newPersonId(),
+                name: "",
+                email: "",
+                phone: "",
+              },
+            ])
+          }
+          style={btnSecondary}
+        >
+          + Add person
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function RoleRankEditor({
+  title,
+  people,
+  groups,
+  onChange,
+  defaultSpouseGroup,
+}: {
+  title: string;
+  people: any[];
+  groups: RankGroup[];
+  onChange: (next: RankGroup[]) => void;
+  defaultSpouseGroup: { enabled: boolean; spouseIds: string[] };
+}) {
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+
+  function labelFor(id: string) {
+    return people.find((p) => p.id === id)?.name || "(unnamed)";
+  }
+
+  function addGroup() {
+    onChange([...groups, { actingMode: "JOINT", personIds: [] }]);
+  }
+
+  return (
+    <section style={card}>
+      <div style={{ fontWeight: 800, marginBottom: 10 }}>{title}</div>
+
+      {defaultSpouseGroup.enabled ? (
+        <div style={{ marginBottom: 10, color: "var(--sw-muted)", fontSize: 13 }}>
+          Spouse default is Rank 1 (removable).
+        </div>
+      ) : null}
+
+      <div style={{ display: "grid", gap: 10 }}>
+        {groups.map((g, idx) => (
+          <div
+            key={idx}
+            draggable
+            onDragStart={() => setDragIdx(idx)}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={() => {
+              if (dragIdx === null || dragIdx === idx) return;
+              const next = [...groups];
+              const [moved] = next.splice(dragIdx, 1);
+              next.splice(idx, 0, moved);
+              setDragIdx(null);
+              onChange(next);
+            }}
+            style={{
+              padding: 12,
+              borderRadius: "var(--sw-radius-sm)",
+              border: "1px solid var(--sw-border)",
+              background: "rgba(255,255,255,0.03)",
+            }}
+          >
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ fontWeight: 800 }}>Rank {idx + 1}</div>
+              <select
+                value={g.actingMode}
+                onChange={(e) => {
+                  const next = [...groups];
+                  next[idx] = { ...g, actingMode: e.target.value as ActingMode };
+                  onChange(next);
+                }}
+                style={{ ...input, maxWidth: 180 }}
+              >
+                <option value="EITHER">Either may act</option>
+                <option value="JOINT">Must act jointly</option>
+              </select>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const next = [...groups];
+                  next.splice(idx, 1);
+                  onChange(next);
+                }}
+                style={btnDanger}
+              >
+                Remove rank
+              </button>
+              <div style={{ marginLeft: "auto", color: "var(--sw-muted)", fontSize: 12 }}>
+                Drag to reorder
+              </div>
+            </div>
+
+            <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+              {g.personIds.map((pid, pidx) => (
+                <div key={pidx} style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <div style={{ flex: 1, fontWeight: 700 }}>{labelFor(pid)}</div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = [...groups];
+                      const ids = [...(g.personIds || [])];
+                      ids.splice(pidx, 1);
+                      next[idx] = { ...g, personIds: ids };
+                      onChange(next);
+                    }}
+                    style={btnSecondary}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <select
+                  value=""
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    if (!id) return;
+                    const next = [...groups];
+                    const ids = Array.from(new Set([...(g.personIds || []), id]));
+                    next[idx] = { ...g, personIds: ids };
+                    onChange(next);
+                  }}
+                  style={{ ...input, minWidth: 260 }}
+                >
+                  <option value="">+ Add co-fiduciary…</option>
+                  {people
+                    .filter((p) => p?.id)
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name || "(unnamed)"}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        <button type="button" onClick={addGroup} style={btnSecondary}>
+          + Add rank
+        </button>
+      </div>
+    </section>
+  );
+}
+
+export function EpisEditorClient({ matterId }: { matterId: string }) {
+  const [loading, setLoading] = useState(true);
+  const [intake, setIntake] = useState<Intake | null>(null);
+  const [status, setStatus] = useState<string>("");
+  const [lastSavedAt, setLastSavedAt] = useState<string>("");
+  const saveTimer = useRef<any>(null);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const res = await fetch(`/api/portal/matters/${matterId}/epis`, { cache: "no-store" });
+      if (!res.ok) {
+        setStatus(res.status === 403 ? "Access denied" : `Error (${res.status})`);
+        setLoading(false);
+        return;
+      }
+      const data = (await res.json()) as { intake: any };
+      const incoming = data.intake || {};
+      // Ensure a couple of expected shapes.
+      incoming.people = Array.isArray(incoming.people) ? incoming.people : [];
+      incoming.clientEmails = incoming.clientEmails || {};
+      incoming.clientPhones = incoming.clientPhones || {};
+      incoming.clientAddress = incoming.clientAddress || { street: "", city: "", state: "", zip: "" };
+      incoming.grantors = Array.isArray(incoming.grantors) ? incoming.grantors : ["", ""];
+      incoming.rankedRoles = ensureRankedRoles(incoming);
+      setIntake(incoming);
+      setLoading(false);
+    })();
+  }, [matterId]);
+
+  const spouseIds = useMemo(() => {
+    // Heuristic: treat first two people entries that match grantor names as spouse people.
+    if (!intake) return [] as string[];
+    const [g1, g2] = intake.grantors || ["", ""];
+    const norm = (s: string) => (s || "").toLowerCase().trim();
+    const p1 = intake.people.find((p: any) => norm(p.name) === norm(g1));
+    const p2 = intake.people.find((p: any) => norm(p.name) === norm(g2));
+    return [p1?.id, p2?.id].filter(Boolean);
+  }, [intake]);
+
+  // Ensure spouse default Rank 1 group exists for all roles (removable by user).
+  useEffect(() => {
+    if (!intake) return;
+    if (spouseIds.length !== 2) return;
+    const ranked = ensureRankedRoles(intake);
+    const ensure = (arr: RankGroup[]) => {
+      if (arr.length && Array.isArray(arr[0]?.personIds)) return arr;
+      return [{ actingMode: "EITHER" as ActingMode, personIds: [...spouseIds] }, ...arr];
+    };
+    const next = { ...ranked };
+    next.trustees = ensure(next.trustees);
+    next.executors = ensure(next.executors);
+    next.financialAgents = ensure(next.financialAgents);
+    next.healthAgents = ensure(next.healthAgents);
+    next.guardians = ensure(next.guardians);
+    const updated = { ...intake, rankedRoles: next };
+    setIntake(updated);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spouseIds.join("|"), !!intake]);
+
+  function queueSave(nextIntake: any) {
+    setIntake(nextIntake);
+    setStatus("Unsaved changes…");
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      try {
+        setStatus("Saving…");
+        const toSave = JSON.parse(JSON.stringify(nextIntake));
+        normalizeLegacyRolesFromRanked(toSave);
+        const res = await fetch(`/api/portal/matters/${matterId}/epis`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ intake: toSave }),
+        });
+        if (!res.ok) {
+          setStatus(`Save failed (${res.status})`);
+          return;
+        }
+        const data = (await res.json()) as { updatedAt?: string };
+        setLastSavedAt(data.updatedAt ? new Date(data.updatedAt).toLocaleString() : new Date().toLocaleString());
+        setStatus("Saved");
+      } catch (e: any) {
+        setStatus(e?.message || "Save failed");
+      }
+    }, 1000);
+  }
+
+  if (loading) {
+    return (
+      <main style={{ maxWidth: 980, margin: "0 auto", padding: "44px 18px 64px" }}>
+        Loading…
+      </main>
+    );
+  }
+  if (!intake) {
+    return (
+      <main style={{ maxWidth: 980, margin: "0 auto", padding: "44px 18px 64px" }}>
+        <div>{status || "Unable to load."}</div>
+      </main>
+    );
+  }
+
+  const ranked: RankedRoles = ensureRankedRoles(intake);
+
+  return (
+    <main style={{ maxWidth: 980, margin: "0 auto", padding: "44px 18px 64px" }}>
+      <header style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline", flexWrap: "wrap" }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 28 }}>EPIS (Draft)</h1>
+          <div style={{ marginTop: 6, color: "var(--sw-muted)", fontSize: 13 }}>
+            Autosave is on. {lastSavedAt ? `Last saved: ${lastSavedAt}.` : ""} {status}
+          </div>
+        </div>
+      </header>
+
+      <section style={card}>
+        <div style={{ fontWeight: 800, marginBottom: 10 }}>Client emails</div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+          <input
+            value={intake.clientEmails?.client1 || ""}
+            onChange={(e) => queueSave({ ...intake, clientEmails: { ...(intake.clientEmails || {}), client1: e.target.value } })}
+            placeholder="Spouse 1 email"
+            style={input}
+          />
+          <input
+            value={intake.clientEmails?.client2 || ""}
+            onChange={(e) => queueSave({ ...intake, clientEmails: { ...(intake.clientEmails || {}), client2: e.target.value } })}
+            placeholder="Spouse 2 email"
+            style={input}
+          />
+        </div>
+      </section>
+
+      <PeopleEditor
+        people={intake.people}
+        setPeople={(people) => queueSave({ ...intake, people })}
+      />
+
+      <RoleRankEditor
+        title="Trustees (ranked)"
+        people={intake.people}
+        groups={ranked.trustees}
+        defaultSpouseGroup={{ enabled: spouseIds.length === 2, spouseIds }}
+        onChange={(groups) => queueSave({ ...intake, rankedRoles: { ...ranked, trustees: groups } })}
+      />
+      <RoleRankEditor
+        title="Executors (ranked)"
+        people={intake.people}
+        groups={ranked.executors}
+        defaultSpouseGroup={{ enabled: spouseIds.length === 2, spouseIds }}
+        onChange={(groups) => queueSave({ ...intake, rankedRoles: { ...ranked, executors: groups } })}
+      />
+      <RoleRankEditor
+        title="Financial agents (ranked)"
+        people={intake.people}
+        groups={ranked.financialAgents}
+        defaultSpouseGroup={{ enabled: spouseIds.length === 2, spouseIds }}
+        onChange={(groups) => queueSave({ ...intake, rankedRoles: { ...ranked, financialAgents: groups } })}
+      />
+      <RoleRankEditor
+        title="Health care agents (ranked)"
+        people={intake.people}
+        groups={ranked.healthAgents}
+        defaultSpouseGroup={{ enabled: spouseIds.length === 2, spouseIds }}
+        onChange={(groups) => queueSave({ ...intake, rankedRoles: { ...ranked, healthAgents: groups } })}
+      />
+      <RoleRankEditor
+        title="Guardians (ranked)"
+        people={intake.people}
+        groups={ranked.guardians}
+        defaultSpouseGroup={{ enabled: spouseIds.length === 2, spouseIds }}
+        onChange={(groups) => queueSave({ ...intake, rankedRoles: { ...ranked, guardians: groups } })}
+      />
+    </main>
+  );
+}
+
+const card: React.CSSProperties = {
+  marginTop: 18,
+  padding: 18,
+  borderRadius: "var(--sw-radius)",
+  background: "var(--sw-card)",
+  border: "1px solid var(--sw-border)",
+};
+
+const input: React.CSSProperties = {
+  padding: "10px 12px",
+  borderRadius: "var(--sw-radius-sm)",
+  border: "1px solid var(--sw-border)",
+  background: "rgba(255,255,255,0.04)",
+  color: "var(--sw-text)",
+  outline: "none",
+};
+
+const btnSecondary: React.CSSProperties = {
+  padding: "10px 12px",
+  borderRadius: "var(--sw-radius-sm)",
+  border: "1px solid var(--sw-border)",
+  background: "rgba(255,255,255,0.04)",
+  fontWeight: 700,
+  color: "var(--sw-text)",
+  cursor: "pointer",
+};
+
+const btnDanger: React.CSSProperties = {
+  padding: "8px 10px",
+  borderRadius: "var(--sw-radius-sm)",
+  border: "1px solid rgba(239, 68, 68, 0.45)",
+  background: "rgba(239, 68, 68, 0.08)",
+  fontWeight: 800,
+  color: "var(--sw-text)",
+  cursor: "pointer",
+};
+
