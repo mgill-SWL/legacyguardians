@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 
 import { prisma } from "@/lib/prisma";
 import { googleCreateEvent, googleFreeBusy } from "@/lib/google/google";
+import { authOptions } from "@/authOptions";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,12 @@ function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number) {
 }
 
 export async function POST(req: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+
+  const actor = await prisma.user.findUnique({ where: { email: session.user.email } });
+  if (!actor?.activeFirmId) return NextResponse.json({ ok: false, error: "no active firm" }, { status: 400 });
+
   const body = (await req.json().catch(() => null)) as Body | null;
   if (!body?.startsAtIso) return NextResponse.json({ ok: false, error: "startsAtIso required" }, { status: 400 });
 
@@ -126,6 +134,7 @@ export async function POST(req: Request) {
 
   await prisma.scheduledJob.createMany({
     data: jobs.map((j) => ({
+      firmId: actor.activeFirmId!,
       runAt: j.runAt,
       type: j.type,
       payload: j.payload as any,

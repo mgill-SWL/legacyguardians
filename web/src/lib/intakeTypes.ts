@@ -1,7 +1,23 @@
 export type Person = {
   id: string;
   name: string;
+  /**
+   * Legacy single-string relationship label (e.g., "brother", "friend").
+   * Prefer the relationshipPhrase* fields for document rendering.
+   */
   relationship?: string;
+
+  /**
+   * Relationship phrases used for drafting.
+   * These should already include the right determiner/possessive, e.g.:
+   *  - "my brother" (spouse1 POV)
+   *  - "my brother-in-law" (spouse2 POV)
+   *  - "John's brother" or "our friend" (joint POV)
+   */
+  relationshipPhraseToSpouse1?: string;
+  relationshipPhraseToSpouse2?: string;
+  relationshipPhraseJoint?: string;
+
   addressStreet?: string;
   addressCity?: string;
   addressState?: string;

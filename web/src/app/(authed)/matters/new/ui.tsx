@@ -20,13 +20,23 @@ type DistributionScheme =
 type Person = {
   id: string;
   name: string;
+  /**
+   * Legacy bare relationship label (e.g. "brother", "friend").
+   * Prefer the relationshipPhrase* fields for drafting.
+   */
   relationship?: string;
+
+  /** Drafting phrases that already include the right determiner/possessive. */
+  relationshipPhraseToSpouse1?: string; // e.g. "my brother"
+  relationshipPhraseToSpouse2?: string; // e.g. "my brother-in-law"
+  relationshipPhraseJoint?: string; // e.g. "John's brother" or "our friend"
+
   email?: string;
   phone?: string;
-  street?: string;
-  city?: string;
-  state?: string;
-  zip?: string;
+  addressStreet?: string;
+  addressCity?: string;
+  addressState?: string;
+  addressZip?: string;
 };
 
 type RoleAssignment = {
@@ -146,12 +156,15 @@ export function NewMatterForm() {
       id: newId(),
       name: "",
       relationship: "",
+      relationshipPhraseToSpouse1: "",
+      relationshipPhraseToSpouse2: "",
+      relationshipPhraseJoint: "",
       email: "",
       phone: "",
-      street: "",
-      city: "",
-      state: "",
-      zip: "",
+      addressStreet: "",
+      addressCity: "",
+      addressState: "",
+      addressZip: "",
     },
   ]);
 
@@ -638,6 +651,66 @@ export function NewMatterForm() {
                         style={inputStyle}
                       />
                     </label>
+
+                    <label style={{ display: "grid", gap: 6 }}>
+                      <span style={{ color: "var(--sw-muted)" }}>
+                        Relationship phrase (Client 1 POV)
+                      </span>
+                      <input
+                        value={p.relationshipPhraseToSpouse1 ?? ""}
+                        onChange={(e) =>
+                          setPeople((prev) =>
+                            prev.map((x) =>
+                              x.id === p.id
+                                ? { ...x, relationshipPhraseToSpouse1: e.target.value }
+                                : x
+                            )
+                          )
+                        }
+                        placeholder='e.g., "my brother"'
+                        style={inputStyle}
+                      />
+                    </label>
+
+                    <label style={{ display: "grid", gap: 6 }}>
+                      <span style={{ color: "var(--sw-muted)" }}>
+                        Relationship phrase (Client 2 POV)
+                      </span>
+                      <input
+                        value={p.relationshipPhraseToSpouse2 ?? ""}
+                        onChange={(e) =>
+                          setPeople((prev) =>
+                            prev.map((x) =>
+                              x.id === p.id
+                                ? { ...x, relationshipPhraseToSpouse2: e.target.value }
+                                : x
+                            )
+                          )
+                        }
+                        placeholder='e.g., "my brother-in-law"'
+                        style={inputStyle}
+                      />
+                    </label>
+
+                    <label style={{ display: "grid", gap: 6 }}>
+                      <span style={{ color: "var(--sw-muted)" }}>
+                        Relationship phrase (joint docs)
+                      </span>
+                      <input
+                        value={p.relationshipPhraseJoint ?? ""}
+                        onChange={(e) =>
+                          setPeople((prev) =>
+                            prev.map((x) =>
+                              x.id === p.id
+                                ? { ...x, relationshipPhraseJoint: e.target.value }
+                                : x
+                            )
+                          )
+                        }
+                        placeholder={`e.g., "our friend" or "John's brother"`}
+                        style={inputStyle}
+                      />
+                    </label>
                     <label style={{ display: "grid", gap: 6 }}>
                       <span style={{ color: "var(--sw-muted)" }}>Email</span>
                       <input
@@ -668,10 +741,10 @@ export function NewMatterForm() {
                     <label style={{ display: "grid", gap: 6 }}>
                       <span style={{ color: "var(--sw-muted)" }}>Street</span>
                       <input
-                        value={p.street ?? ""}
+                        value={p.addressStreet ?? ""}
                         onChange={(e) =>
                           setPeople((prev) =>
-                            prev.map((x) => (x.id === p.id ? { ...x, street: e.target.value } : x))
+                            prev.map((x) => (x.id === p.id ? { ...x, addressStreet: e.target.value } : x))
                           )
                         }
                         style={inputStyle}
@@ -680,10 +753,10 @@ export function NewMatterForm() {
                     <label style={{ display: "grid", gap: 6 }}>
                       <span style={{ color: "var(--sw-muted)" }}>City</span>
                       <input
-                        value={p.city ?? ""}
+                        value={p.addressCity ?? ""}
                         onChange={(e) =>
                           setPeople((prev) =>
-                            prev.map((x) => (x.id === p.id ? { ...x, city: e.target.value } : x))
+                            prev.map((x) => (x.id === p.id ? { ...x, addressCity: e.target.value } : x))
                           )
                         }
                         style={inputStyle}
@@ -692,10 +765,10 @@ export function NewMatterForm() {
                     <label style={{ display: "grid", gap: 6 }}>
                       <span style={{ color: "var(--sw-muted)" }}>State</span>
                       <input
-                        value={p.state ?? ""}
+                        value={p.addressState ?? ""}
                         onChange={(e) =>
                           setPeople((prev) =>
-                            prev.map((x) => (x.id === p.id ? { ...x, state: e.target.value } : x))
+                            prev.map((x) => (x.id === p.id ? { ...x, addressState: e.target.value } : x))
                           )
                         }
                         style={inputStyle}
@@ -704,10 +777,10 @@ export function NewMatterForm() {
                     <label style={{ display: "grid", gap: 6 }}>
                       <span style={{ color: "var(--sw-muted)" }}>Zip</span>
                       <input
-                        value={p.zip ?? ""}
+                        value={p.addressZip ?? ""}
                         onChange={(e) =>
                           setPeople((prev) =>
-                            prev.map((x) => (x.id === p.id ? { ...x, zip: e.target.value } : x))
+                            prev.map((x) => (x.id === p.id ? { ...x, addressZip: e.target.value } : x))
                           )
                         }
                         style={inputStyle}

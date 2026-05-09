@@ -1,0 +1,111 @@
+import { NextResponse } from "next/server";
+
+import { prisma } from "@/lib/prisma";
+import { renderTemplate } from "@/lib/automation/templateRender";
+import { sendAutomationSms } from "@/lib/ringcentralAutomation";
+import { sendAutomationEmail } from "@/lib/automation/sendAutomationEmail";
+
+export const dynamic = "force-dynamic";
+
+const MAX_BATCH = 25;
+const MAX_ATTEMPTS = 5;
+
+function authOk(req: Request) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return false;
+  const auth = req.headers.get("authorization") || "";
+  return auth === `Bearer ${secret}`;
+}
+
+function templateKeyFor(kind: string, channel: "SMS" | "EMAIL") {
+  const k = String(kind || "").toLowerCase();
+  if (channel === "SMS") return `discovery_${k}_sms`;
+  return `discovery_${k}_email`;
+}
+
+export async function GET(req: Request) {
+  if (!authOk(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  const now = new Date();
+
+  const pending = await prisma.scheduledJob.findMany({
+    where: { status: "PENDING", runAt: { lte: now }, attempts: { lt: MAX_ATTEMPTS } },
+    orderBy: [{ runAt: "asc" }],
+    take: MAX_BATCH,
+  });
+
+  let processed = 0;
+  let done = 0;
+  let failed = 0;
+  const errors: Array<{ id: string; error: string }> = [];
+
+  for (const job of pending) {
+    // Claim job
+    const claim = await prisma.scheduledJob.updateMany({
+      where: { id: job.id, status: "PENDING" },
+      data: { status: "IN_PROGRESS", attempts: { increment: 1 }, lastError: null },
+    });
+    if (claim.count !== 1) continue;
+
+    processed += 1;
+    try {
+      const payload: any = job.payload || {};
+
+      if (payload.kind && payload.apptId) {
+        const appt = await prisma.appointment.findUnique({ where: { id: payload.apptId } });
+        if (!appt) throw new Error("Appointment not found");
+
+        const vars = {
+          client_name: appt.clientName || "",
+          start_time: appt.startsAt.toISOString(),
+          phone: appt.clientPhone || "",
+          email: appt.clientEmail || "",
+        };
+
+        if (job.type === "SEND_SMS") {
+          if (!appt.clientPhone) throw new Error("Missing client phone");
+          const tplKey = templateKeyFor(payload.kind, "SMS");
+          const tpl = await prisma.messageTemplate.findUnique({
+            where: { firmId_key: { firmId: job.firmId, key: tplKey } },
+          });
+          if (!tpl) throw new Error(`Missing SMS template: ${tplKey}`);
+          const text = renderTemplate(tpl.body, vars);
+          await sendAutomationSms(appt.clientPhone, text);
+        } else if (job.type === "SEND_EMAIL") {
+          if (!appt.clientEmail) throw new Error("Missing client email");
+          const tplKey = templateKeyFor(payload.kind, "EMAIL");
+          const tpl = await prisma.messageTemplate.findUnique({
+            where: { firmId_key: { firmId: job.firmId, key: tplKey } },
+          });
+          if (!tpl) throw new Error(`Missing email template: ${tplKey}`);
+          const subject = renderTemplate(tpl.subject || tpl.name || "(no subject)", vars);
+          const text = renderTemplate(tpl.body, vars);
+          await sendAutomationEmail({ to: appt.clientEmail, subject, text, html: tpl.isHtml ? text : null });
+        } else {
+          throw new Error(`Unknown job type: ${job.type}`);
+        }
+
+        await prisma.scheduledJob.update({ where: { id: job.id }, data: { status: "DONE", lastError: null } });
+        done += 1;
+        continue;
+      }
+
+      throw new Error("Unsupported job payload");
+    } catch (e: any) {
+      const msg = e?.message || "Failed";
+      errors.push({ id: job.id, error: msg });
+      failed += 1;
+
+      // If more attempts remain, re-queue; otherwise fail hard.
+      const updated = await prisma.scheduledJob.update({
+        where: { id: job.id },
+        data: { status: job.attempts + 1 >= MAX_ATTEMPTS ? "FAILED" : "PENDING", lastError: msg },
+        select: { status: true },
+      });
+      void updated;
+    }
+  }
+
+  return NextResponse.json({ ok: true, processed, done, failed, errors });
+}
+

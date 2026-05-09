@@ -27,6 +27,18 @@ export async function POST(request: Request) {
 
   const parsed = parseTrustReceiptsJournal(await file.text());
 
+  const trustAccount = await prisma.billingAccount.upsert({
+    where: { firmId_name: { firmId: user.activeFirmId, name: "Trust" } },
+    update: { accountType: "TRUST", active: true },
+    create: {
+      firmId: user.activeFirmId,
+      name: "Trust",
+      accountType: "TRUST",
+      sourceSystem: "MANUAL",
+      active: true,
+    },
+  });
+
   const batch = await prisma.kpiImportBatch.create({
     data: {
       firmId: user.activeFirmId,
@@ -54,6 +66,7 @@ export async function POST(request: Request) {
           sourceReference: file.name,
           sourceClientName: row.receivedFrom,
           sourceMatterName: row.clientMatter,
+          toAccountId: trustAccount.id,
           notes: [row.purposeOfFunds ? `purpose=${row.purposeOfFunds}` : null, row.method ? `method=${row.method}` : null]
             .filter(Boolean)
             .join("; "),

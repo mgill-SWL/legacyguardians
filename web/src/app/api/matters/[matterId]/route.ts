@@ -14,6 +14,7 @@ type Body = {
   estimatedValueCents?: number;
   intakeSpecialistId?: string | null;
   leadAttorneyId?: string | null;
+  primaryLocationId?: string | null;
 };
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ matterId: string }> }) {
@@ -29,6 +30,29 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ matterId: str
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
   if (!user) return NextResponse.json({ error: "user not found" }, { status: 401 });
 
+  if (!user.activeFirmId) return NextResponse.json({ error: "no active firm" }, { status: 400 });
+
+  const matter = await prisma.matter.findUnique({ where: { id: matterId }, select: { id: true, firmId: true } });
+  if (!matter) return NextResponse.json({ error: "matter not found" }, { status: 404 });
+
+  // v1: backfill firmId on first touch.
+  if (!matter.firmId) {
+    await prisma.matter.update({ where: { id: matter.id }, data: { firmId: user.activeFirmId } });
+  } else if (matter.firmId !== user.activeFirmId) {
+    return NextResponse.json({ error: "matter not in active firm" }, { status: 403 });
+  }
+
+  let primaryLocationId: string | null | undefined = undefined;
+  if (body.primaryLocationId !== undefined) {
+    if (body.primaryLocationId === null) {
+      primaryLocationId = null;
+    } else {
+      const loc = await prisma.firmLocation.findFirst({ where: { id: body.primaryLocationId, firmId: user.activeFirmId } });
+      if (!loc) return NextResponse.json({ error: "invalid primaryLocationId" }, { status: 400 });
+      primaryLocationId = loc.id;
+    }
+  }
+
   const updated = await prisma.matter.update({
     where: { id: matterId },
     data: {
@@ -38,6 +62,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ matterId: str
       estimatedValueCents: body.estimatedValueCents === undefined ? undefined : body.estimatedValueCents,
       intakeSpecialistId: body.intakeSpecialistId === undefined ? undefined : body.intakeSpecialistId,
       leadAttorneyId: body.leadAttorneyId === undefined ? undefined : body.leadAttorneyId,
+      primaryLocationId,
       status: body.intake ? "INTAKE_IN_PROGRESS" : undefined,
       intake: body.intake
         ? {

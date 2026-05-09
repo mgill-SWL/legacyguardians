@@ -8,8 +8,59 @@ function byId(people: Person[], id?: string) {
 
 function formatAddress(p?: Person) {
   if (!p) return "";
-  const parts = [p.addressStreet, p.addressCity, p.addressState, p.addressZip].filter(Boolean);
+  // Back-compat: older saved intakes used street/city/state/zip keys.
+  const anyP = p as Person & {
+    street?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+  };
+  const parts = [
+    p.addressStreet ?? anyP.street,
+    p.addressCity ?? anyP.city,
+    p.addressState ?? anyP.state,
+    p.addressZip ?? anyP.zip,
+  ].filter(Boolean);
   return parts.join(", ");
+}
+
+function cleanRelationshipPhrase(s?: string) {
+  return (s || "").trim();
+}
+
+function deriveJointRelationshipPhrase({
+  person,
+  client1First,
+}: {
+  person?: Person;
+  client1First: string;
+}) {
+  if (!person) return "";
+
+  const joint = cleanRelationshipPhrase(person.relationshipPhraseJoint);
+  if (joint) return joint;
+
+  const s1 = cleanRelationshipPhrase(person.relationshipPhraseToSpouse1);
+  const s2 = cleanRelationshipPhrase(person.relationshipPhraseToSpouse2);
+
+  // If both sides entered the same first-person phrase (e.g. "my friend" / "my friend"),
+  // convert to a joint phrase ("our friend").
+  if (s1 && s2 && s1.toLowerCase() === s2.toLowerCase()) {
+    if (s1.toLowerCase().startsWith("my ")) return `our ${s1.slice(3)}`.trim();
+    return `our ${s1}`.trim();
+  }
+
+  // If spouse1 provided a first-person phrase ("my brother"), convert to "{Client1}'s brother".
+  if (s1) {
+    if (s1.toLowerCase().startsWith("my ")) return `${client1First}'s ${s1.slice(3)}`.trim();
+    return `${client1First}'s ${s1}`.trim();
+  }
+
+  // Final fallback: legacy label.
+  const rel = (person.relationship || "").trim();
+  if (rel) return `${client1First}'s ${rel}`.trim();
+
+  return "";
 }
 
 export function tokenDataFromIntake(intake: IntakeV1) {
@@ -107,10 +158,35 @@ export function tokenDataFromIntake(intake: IntakeV1) {
   data.SECONDALTERNATEGUARDIANFULLNAME = gA2?.name ?? "";
 
   // Relationship/address variants
-  data.Client1FirstAlternateGuardianRelationship = gA1?.relationship ?? "";
-  data.Client1SecondAlternateGuardianRelationship = gA2?.relationship ?? "";
-  data.Client2FirstAlternateGuardianRelationship = gA1?.relationship ?? "";
-  data.Client2SecondAlternateGuardianRelationship = gA2?.relationship ?? "";
+  // Prefer phrase tokens when available.
+  data.Client1FirstAlternateGuardianRelationship =
+    cleanRelationshipPhrase(gA1?.relationshipPhraseToSpouse1) || (gA1?.relationship ?? "");
+  data.Client1SecondAlternateGuardianRelationship =
+    cleanRelationshipPhrase(gA2?.relationshipPhraseToSpouse1) || (gA2?.relationship ?? "");
+  data.Client2FirstAlternateGuardianRelationship =
+    cleanRelationshipPhrase(gA1?.relationshipPhraseToSpouse2) || (gA1?.relationship ?? "");
+  data.Client2SecondAlternateGuardianRelationship =
+    cleanRelationshipPhrase(gA2?.relationshipPhraseToSpouse2) || (gA2?.relationship ?? "");
+
+  // Template uses these exact tokens in at least one joint template.
+  data.firstalternateguardianrelationshiptospouse1 =
+    cleanRelationshipPhrase(gA1?.relationshipPhraseToSpouse1) || (gA1?.relationship ?? "");
+  data.firstalternateguardianrelationshiptospouse2 =
+    cleanRelationshipPhrase(gA1?.relationshipPhraseToSpouse2) || (gA1?.relationship ?? "");
+  data.secondalternateguardianrelationshiptospouse1 =
+    cleanRelationshipPhrase(gA2?.relationshipPhraseToSpouse1) || (gA2?.relationship ?? "");
+  data.secondalternateguardianrelationshiptospouse2 =
+    cleanRelationshipPhrase(gA2?.relationshipPhraseToSpouse2) || (gA2?.relationship ?? "");
+
+  // New joint-POV relationship phrase tokens (used by joint docs to avoid hardcoding "our").
+  data.FIRSTALTERNATEGUARDIANRELATIONSHIPPHRASEJOINT = deriveJointRelationshipPhrase({
+    person: gA1,
+    client1First,
+  });
+  data.SECONDALTERNATEGUARDIANRELATIONSHIPPHRASEJOINT = deriveJointRelationshipPhrase({
+    person: gA2,
+    client1First,
+  });
 
   data.Client1FirstAlternateGuardianAddress = formatAddress(gA1);
   data.Client1SecondAlternateGuardianAddress = formatAddress(gA2);
@@ -155,8 +231,10 @@ export function tokenDataFromIntake(intake: IntakeV1) {
 
   data.CLIENT1FIRSTALTERNATEPOAFULLNAME = poaA1?.name ?? "";
   data.CLIENT1SECONDALTERNATEPOAFULLNAME = poaA2?.name ?? "";
-  data.client1firstalternatepoarelationship = poaA1?.relationship ?? "";
-  data.client1secondalternatepoarelationship = poaA2?.relationship ?? "";
+  data.client1firstalternatepoarelationship =
+    cleanRelationshipPhrase(poaA1?.relationshipPhraseToSpouse1) || (poaA1?.relationship ?? "");
+  data.client1secondalternatepoarelationship =
+    cleanRelationshipPhrase(poaA2?.relationshipPhraseToSpouse1) || (poaA2?.relationship ?? "");
   data.client1firstalternatepoaphonenumber = poaA1?.phone ?? "";
   data.client1secondalternatepoaphonenumber = poaA2?.phone ?? "";
   data.Client1FirstAlternatePOAEmail = poaA1?.email ?? "";
@@ -176,8 +254,10 @@ export function tokenDataFromIntake(intake: IntakeV1) {
 
   data.CLIENT1FIRSTALTERNATEAMDFULLNAME = amdA1?.name ?? "";
   data.CLIENT1SECONDALTERNATEAMDFULLNAME = amdA2?.name ?? "";
-  data.client1firstalternateamdrelationship = amdA1?.relationship ?? "";
-  data.client1secondalternateamdrelationship = amdA2?.relationship ?? "";
+  data.client1firstalternateamdrelationship =
+    cleanRelationshipPhrase(amdA1?.relationshipPhraseToSpouse1) || (amdA1?.relationship ?? "");
+  data.client1secondalternateamdrelationship =
+    cleanRelationshipPhrase(amdA2?.relationshipPhraseToSpouse1) || (amdA2?.relationship ?? "");
   data.client1firstalternateamdphonenumber = amdA1?.phone ?? "";
   data.client1secondalternateamdphonenumber = amdA2?.phone ?? "";
   data.Client1FirstAlternateAMDEmail = amdA1?.email ?? "";
@@ -197,8 +277,10 @@ export function tokenDataFromIntake(intake: IntakeV1) {
 
   data.CLIENT2FIRSTALTERNATEPOAFULLNAME = poa2A1?.name ?? "";
   data.CLIENT2SECONDALTERNATEPOAFULLNAME = poa2A2?.name ?? "";
-  data.client2firstalternatepoarelationship = poa2A1?.relationship ?? "";
-  data.client2secondalternatepoarelationship = poa2A2?.relationship ?? "";
+  data.client2firstalternatepoarelationship =
+    cleanRelationshipPhrase(poa2A1?.relationshipPhraseToSpouse2) || (poa2A1?.relationship ?? "");
+  data.client2secondalternatepoarelationship =
+    cleanRelationshipPhrase(poa2A2?.relationshipPhraseToSpouse2) || (poa2A2?.relationship ?? "");
   data.client2firstalternatepoaphonenumber = poa2A1?.phone ?? "";
   data.client2secondalternatepoaphonenumber = poa2A2?.phone ?? "";
   data.Client2FirstAlternatePOAEmail = poa2A1?.email ?? "";
@@ -217,8 +299,10 @@ export function tokenDataFromIntake(intake: IntakeV1) {
 
   data.CLIENT2FIRSTALTERNATEAMDFULLNAME = amd2A1?.name ?? "";
   data.CLIENT2SECONDALTERNATEAMDFULLNAME = amd2A2?.name ?? "";
-  data.client2firstalternateamdrelationship = amd2A1?.relationship ?? "";
-  data.client2secondalternateamdrelationship = amd2A2?.relationship ?? "";
+  data.client2firstalternateamdrelationship =
+    cleanRelationshipPhrase(amd2A1?.relationshipPhraseToSpouse2) || (amd2A1?.relationship ?? "");
+  data.client2secondalternateamdrelationship =
+    cleanRelationshipPhrase(amd2A2?.relationshipPhraseToSpouse2) || (amd2A2?.relationship ?? "");
   data.client2firstalternateamdphonenumber = amd2A1?.phone ?? "";
   data.client2secondalternateamdphonenumber = amd2A2?.phone ?? "";
   data.Client2FirstAlternateAMDEmail = amd2A1?.email ?? "";

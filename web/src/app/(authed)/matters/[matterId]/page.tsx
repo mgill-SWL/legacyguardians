@@ -5,6 +5,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/authOptions";
 import { prisma } from "@/lib/prisma";
 import { PipelineFieldsForm } from "./PipelineFieldsForm";
+import { TimeEntriesCard } from "./TimeEntriesCard";
+import { MatterLocationForm } from "./MatterLocationForm";
+import { BillingCard } from "./BillingCard";
 
 export default async function MatterDetailPage({
   params,
@@ -13,6 +16,9 @@ export default async function MatterDetailPage({
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
+
+  const email = session.user.email;
+  const user = email ? await prisma.user.findUnique({ where: { email } }) : null;
 
   const { matterId } = await params;
   const matter = await prisma.matter.findUnique({
@@ -23,6 +29,36 @@ export default async function MatterDetailPage({
   const users = await prisma.user.findMany({
     orderBy: { email: "asc" },
     select: { id: true, email: true, name: true },
+  });
+
+  const locations = user?.activeFirmId
+    ? await prisma.firmLocation.findMany({
+        where: { firmId: user.activeFirmId, active: true },
+        select: { id: true, name: true, slug: true },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      })
+    : [];
+
+  const allFirmLocations = user?.activeFirmId
+    ? await prisma.firmLocation.findMany({
+        where: { firmId: user.activeFirmId },
+        select: { id: true, name: true, slug: true, active: true },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      })
+    : [];
+
+  const timeEntries = await prisma.timeEntry.findMany({
+    where: { matterId },
+    orderBy: [{ workDate: "desc" }, { createdAt: "desc" }],
+    take: 200,
+    include: { timekeeper: { select: { id: true, email: true, name: true } } },
+  });
+
+  const invoices = await prisma.invoice.findMany({
+    where: { matterId: matterId },
+    orderBy: [{ createdAt: "desc" }],
+    take: 50,
+    select: { id: true, invoiceNumber: true, status: true, subtotalCents: true, totalCents: true, createdAt: true },
   });
 
   if (!matter) {
@@ -62,6 +98,49 @@ export default async function MatterDetailPage({
           users={users}
         />
       </section>
+
+      <section
+        style={{
+          marginTop: 18,
+          padding: 18,
+          borderRadius: "var(--sw-radius)",
+          background: "var(--sw-card)",
+          border: "1px solid var(--sw-border)",
+        }}
+      >
+        <div style={{ fontWeight: 800, marginBottom: 10 }}>Location</div>
+        <MatterLocationForm matterId={matter.id} primaryLocationId={matter.primaryLocationId ?? null} locations={allFirmLocations} />
+      </section>
+
+      <TimeEntriesCard
+        matterId={matter.id}
+        users={users}
+        locations={locations}
+        initialEntries={timeEntries.map((t) => ({
+          id: t.id,
+          workDate: t.workDate.toISOString(),
+          narrative: t.narrative,
+          pricingMode: t.pricingMode,
+          durationMinutes: t.durationMinutes,
+          hourlyRateCents: t.hourlyRateCents,
+          flatAmountCents: t.flatAmountCents,
+          billable: t.billable,
+          status: t.status,
+          timekeeper: t.timekeeper,
+        }))}
+      />
+
+      <BillingCard
+        matterId={matter.id}
+        invoices={invoices.map((i) => ({
+          id: i.id,
+          invoiceNumber: i.invoiceNumber,
+          status: i.status,
+          subtotalCents: i.subtotalCents,
+          totalCents: i.totalCents,
+          createdAt: i.createdAt.toISOString(),
+        }))}
+      />
 
       <section
         style={{

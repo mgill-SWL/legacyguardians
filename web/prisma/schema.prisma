@@ -110,12 +110,54 @@ enum MatterFinancialEventType {
   TRANSFER
 }
 
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  VOID
+}
+
+enum InvoiceLineType {
+  FEE
+  ADVANCED_CLIENT_COST
+}
+
+enum PaymentMethod {
+  CHECK
+  ACH
+  WIRE
+  CASH
+  CARD
+  OTHER
+}
+
+enum PaymentStatus {
+  POSTED
+  VOID
+}
+
+enum PaymentDirection {
+  INFLOW
+  OUTFLOW
+}
+
 enum FinancialAttributionRole {
   LEAD_ATTORNEY
   TIMEKEEPER
   INTAKE_OWNER
   ORIGINATOR
   OTHER
+}
+
+enum TimeEntryPricingMode {
+  HOURLY
+  FLAT
+}
+
+enum TimeEntryStatus {
+  DRAFT
+  INVOICED
+  VOID
 }
 
 enum KpiImportReportType {
@@ -214,7 +256,7 @@ enum FirmMemberRole {
 model Firm {
   id   String @id @default(cuid())
   name String
-  slug String @unique
+  slug String @unique @db.VarChar(4)
   timeZone String @default("America/New_York")
 
   members FirmMember[]
@@ -245,8 +287,96 @@ model Firm {
 
   locations        FirmLocation[]
 
+  timeEntries      TimeEntry[]
+  owners           FirmOwner[]
+  ownershipStakes  FirmOwnershipStake[]
+  revenueSplits    FirmRevenueSplit[]
+
+  invoiceNumberSequences InvoiceNumberSequence[]
+  invoices Invoice[]
+  payments Payment[]
+
+  scheduledJobs ScheduledJob[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+enum FirmOwnerStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum RevenueSplitRecipient {
+  LEGACY_GUARDIANS_MSO
+}
+
+model FirmOwner {
+  id     String @id @default(cuid())
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  // PLLC ownership: attorney-person only.
+  fullName String
+  barNumber String?
+  barState String?
+
+  email String?
+
+  status FirmOwnerStatus @default(ACTIVE)
+
+  stakes FirmOwnershipStake[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([firmId, status])
+  @@index([firmId, fullName])
+}
+
+model FirmRevenueSplit {
+  id     String @id @default(cuid())
+
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  recipient RevenueSplitRecipient
+
+  // Percent of revenue allocated to the recipient (bps; 100% = 10000).
+  // Example: 15% = 1500, 30% = 3000.
+  percentBps Int @default(0)
+
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([firmId, recipient, effectiveFrom])
+  @@index([firmId, effectiveTo])
+}
+
+model FirmOwnershipStake {
+  id      String @id @default(cuid())
+
+  firmId  String
+  firm    Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  ownerId String
+  owner   FirmOwner @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // Ownership percent in basis points (100% = 10000).
+  percentBps Int
+
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([firmId, effectiveFrom])
+  @@index([ownerId, effectiveFrom])
+  @@index([firmId, effectiveTo])
 }
 
 model FirmLocation {
@@ -255,6 +385,13 @@ model FirmLocation {
   firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
 
   activeUsers User[] @relation("UserActiveLocation")
+  defaultUsers User[] @relation("UserDefaultLocation")
+
+  members FirmLocationMember[]
+
+  matters Matter[]
+  timeEntries TimeEntry[]
+  invoices Invoice[]
 
   name String
   slug String
@@ -274,6 +411,26 @@ model FirmLocation {
 
   @@unique([firmId, slug])
   @@index([firmId, sortOrder])
+}
+
+model FirmLocationMember {
+  id String @id @default(cuid())
+
+  firmLocationId String
+  firmLocation   FirmLocation @relation(fields: [firmLocationId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Mirror firm membership roles (simple for v1)
+  role FirmMemberRole @default(MEMBER)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // v1: assume each user belongs to exactly one location.
+  @@unique([userId])
+  @@index([firmLocationId])
 }
 
 model FirmMember {
@@ -322,6 +479,12 @@ model User {
   reviewedTransactionItems TransactionReviewItem[] @relation("TransactionReviewReviewedByUser")
   createdFinancialClassifications FinancialClassification[] @relation("FinancialClassificationCreatedByUser")
 
+  timeEntriesCreated TimeEntry[] @relation("TimeEntriesCreatedBy")
+  timeEntriesAsTimekeeper TimeEntry[] @relation("TimeEntriesTimekeeper")
+
+  invoicesCreated Invoice[] @relation("InvoicesCreatedBy")
+  paymentsCreated Payment[] @relation("PaymentsCreatedBy")
+
   firmMemberships FirmMember[]
 
   // v1: user's active firm for scoping queries (until we ship a firm switcher UI)
@@ -330,6 +493,12 @@ model User {
 
   activeLocationId String?
   activeLocation   FirmLocation? @relation("UserActiveLocation", fields: [activeLocationId], references: [id], onDelete: SetNull)
+
+  // v1: default/home location for scoping views like P&L by location.
+  defaultLocationId String?
+  defaultLocation   FirmLocation? @relation("UserDefaultLocation", fields: [defaultLocationId], references: [id], onDelete: SetNull)
+
+  locationMemberships FirmLocationMember[]
 
   ftmHowOwnerSteps    FtmStep[] @relation("FtmHowOwner")
   ftmEnsureOwnerSteps FtmStep[] @relation("FtmEnsureOwner")
@@ -708,12 +877,17 @@ enum ScheduledJobType {
 
 enum ScheduledJobStatus {
   PENDING
+  IN_PROGRESS
   DONE
   FAILED
 }
 
 model ScheduledJob {
   id     String @id @default(cuid())
+
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
   runAt  DateTime
   type   ScheduledJobType
   status ScheduledJobStatus @default(PENDING)
@@ -725,6 +899,7 @@ model ScheduledJob {
   updatedAt DateTime @updatedAt
 
   @@index([status, runAt])
+  @@index([firmId, status, runAt])
 }
 
 enum MessageChannel {
@@ -734,9 +909,9 @@ enum MessageChannel {
 
 model MessageTemplate {
   id      String @id @default(cuid())
-  firmId  String?
-  firm    Firm?  @relation(fields: [firmId], references: [id], onDelete: SetNull)
-  key     String @unique
+  firmId  String
+  firm    Firm  @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  key     String
   channel MessageChannel
   name    String
 
@@ -749,6 +924,9 @@ model MessageTemplate {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([firmId, key])
+  @@index([firmId, channel])
 }
 
 // --- Fee quote configurable price/features (v1) ---
@@ -868,6 +1046,10 @@ model Matter {
   primaryContactId String?
   primaryContact   Contact? @relation(fields: [primaryContactId], references: [id], onDelete: SetNull)
 
+  // Location attribution for reporting (P&L by location)
+  primaryLocationId String?
+  primaryLocation   FirmLocation? @relation(fields: [primaryLocationId], references: [id], onDelete: SetNull)
+
   convertedFromLeads CrmLeadPipeline[] @relation("LeadConvertedMatter")
 
   createdById String
@@ -877,9 +1059,210 @@ model Matter {
   documents   GeneratedDocument[]
   pipelineLinks MatterPipeline[]
   financialEvents MatterFinancialEvent[]
+  timeEntries TimeEntry[]
+  financialClassifications FinancialClassification[]
+
+  invoices Invoice[]
 
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
+
+  @@index([firmId, primaryLocationId])
+}
+
+model TimeEntry {
+  id     String @id @default(cuid())
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  matterId String
+  matter   Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
+
+  locationId String?
+  location   FirmLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
+  // Who did the work (billable timekeeper)
+  timekeeperId String
+  timekeeper   User @relation("TimeEntriesTimekeeper", fields: [timekeeperId], references: [id], onDelete: Restrict)
+
+  // Who created/edited the entry (admin/staff)
+  createdByUserId String?
+  createdByUser   User? @relation("TimeEntriesCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  workDate DateTime
+  narrative String
+
+  pricingMode TimeEntryPricingMode @default(HOURLY)
+
+  // For HOURLY entries (store minutes; UI can accept tenths-of-hour)
+  durationMinutes Int @default(0)
+  hourlyRateCents Int?
+
+  // For FLAT entries (amount is stored directly on the entry)
+  flatAmountCents Int?
+
+  billable Boolean @default(true)
+  status   TimeEntryStatus @default(DRAFT)
+
+  // Future: link to invoice line item
+  invoiceId String?
+  invoiceLineId String?
+
+  invoice Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  invoiceLine InvoiceLine? @relation(fields: [invoiceLineId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([firmId, workDate])
+  @@index([matterId, workDate])
+  @@index([timekeeperId, workDate])
+  @@index([status, workDate])
+  @@index([firmId, locationId, workDate])
+}
+
+model InvoiceNumberSequence {
+  id     String @id @default(cuid())
+
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  year   Int
+  nextSeq Int @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([firmId, year])
+  @@index([firmId, year])
+}
+
+model Invoice {
+  id     String @id @default(cuid())
+
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  matterId String
+  matter   Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
+
+  locationId String?
+  location   FirmLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
+  status InvoiceStatus @default(DRAFT)
+
+  // Immutable numbering
+  firmSlugAtIssue String @db.VarChar(4)
+  invoiceYear Int
+  invoiceSeq  Int
+  invoiceNumber String
+
+  issueDate DateTime?
+  dueDate   DateTime?
+
+  currency String @default("USD")
+  notes String?
+
+  subtotalCents Int @default(0)
+  totalCents    Int @default(0)
+
+  createdByUserId String?
+  createdByUser   User? @relation("InvoicesCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  lines InvoiceLine[]
+  allocations PaymentAllocation[]
+  timeEntries TimeEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([firmId, invoiceNumber])
+  @@unique([firmId, invoiceYear, invoiceSeq])
+  @@index([firmId, status, createdAt])
+  @@index([matterId, createdAt])
+  @@index([firmId, locationId, createdAt])
+}
+
+model InvoiceLine {
+  id String @id @default(cuid())
+
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  lineType InvoiceLineType @default(FEE)
+
+  description String
+  quantityTenths Int @default(0)
+  unitPriceCents Int @default(0)
+  amountCents Int
+
+  timeEntryId String?
+
+  sortOrder Int @default(0)
+
+  timeEntries TimeEntry[]
+  allocations PaymentAllocation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([invoiceId, sortOrder])
+  @@index([lineType])
+}
+
+model Payment {
+  id String @id @default(cuid())
+
+  firmId String
+  firm   Firm @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  receivedAt DateTime
+  method PaymentMethod @default(OTHER)
+  status PaymentStatus @default(POSTED)
+
+  direction PaymentDirection @default(INFLOW)
+
+  payerName String?
+  reference String?
+
+  amountCents Int
+  currency String @default("USD")
+
+  createdByUserId String?
+  createdByUser   User? @relation("PaymentsCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  allocations PaymentAllocation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([firmId, receivedAt])
+  @@index([status, receivedAt])
+  @@index([firmId, direction, receivedAt])
+}
+
+model PaymentAllocation {
+  id String @id @default(cuid())
+
+  firmId String
+
+  paymentId String
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  invoiceLineId String?
+  invoiceLine   InvoiceLine? @relation(fields: [invoiceLineId], references: [id], onDelete: SetNull)
+
+  amountCents Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([firmId, invoiceId])
+  @@index([firmId, paymentId])
+  @@index([invoiceLineId])
 }
 
 model Contact {
@@ -894,6 +1277,8 @@ model Contact {
   notes         String?
 
   matters       Matter[]
+
+  financialClassifications FinancialClassification[]
 
   convertedFromLeads CrmLeadPipeline[] @relation("LeadConvertedContact")
 

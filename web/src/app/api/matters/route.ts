@@ -20,10 +20,21 @@ export async function POST(req: Request) {
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
   if (!user) return NextResponse.json({ error: "user not found" }, { status: 401 });
 
+  if (!user.activeFirmId) return NextResponse.json({ error: "no active firm" }, { status: 400 });
+
+  // Default matter location from user's location.
+  const defaultLocationId = user.defaultLocationId || user.activeLocationId || null;
+  if (defaultLocationId) {
+    const loc = await prisma.firmLocation.findFirst({ where: { id: defaultLocationId, firmId: user.activeFirmId } });
+    if (!loc) return NextResponse.json({ error: "user default location is invalid" }, { status: 400 });
+  }
+
   const matter = await prisma.matter.create({
     data: {
       displayName: body.displayName,
+      firmId: user.activeFirmId,
       createdById: user.id,
+      primaryLocationId: defaultLocationId,
       status: body.intake ? "INTAKE_IN_PROGRESS" : "DRAFT",
       intake: body.intake
         ? {

@@ -42,6 +42,31 @@ export async function POST(request: Request) {
 
   const parsed = parseTrustDisbursementsJournal(await file.text());
 
+  const [trustAccount, operatingAccount] = await Promise.all([
+    prisma.billingAccount.upsert({
+      where: { firmId_name: { firmId: user.activeFirmId, name: "Trust" } },
+      update: { accountType: "TRUST", active: true },
+      create: {
+        firmId: user.activeFirmId,
+        name: "Trust",
+        accountType: "TRUST",
+        sourceSystem: "MANUAL",
+        active: true,
+      },
+    }),
+    prisma.billingAccount.upsert({
+      where: { firmId_name: { firmId: user.activeFirmId, name: "Operating" } },
+      update: { accountType: "OPERATING", active: true },
+      create: {
+        firmId: user.activeFirmId,
+        name: "Operating",
+        accountType: "OPERATING",
+        sourceSystem: "MANUAL",
+        active: true,
+      },
+    }),
+  ]);
+
   const batch = await prisma.kpiImportBatch.create({
     data: {
       firmId: user.activeFirmId,
@@ -74,6 +99,8 @@ export async function POST(request: Request) {
           sourceReference: file.name,
           sourceClientName: row.paidTo,
           sourceMatterName: row.clientMatter,
+          fromAccountId: trustAccount.id,
+          toAccountId: classification.eventType === "TRANSFER" ? operatingAccount.id : null,
           notes: [
             row.methodRef ? `method_ref=${row.methodRef}` : null,
             row.purposeOfPayment ? `purpose=${row.purposeOfPayment}` : null,
