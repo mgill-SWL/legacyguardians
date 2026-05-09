@@ -27,6 +27,8 @@ export async function POST(
   if (!matter) return NextResponse.json({ error: "not found" }, { status: 404 });
 
   const intake = (matter.intake?.data ?? {}) as unknown as import("@/lib/intakeTypes").IntakeV1;
+  const offering = (intake?.offering ?? intake?.matterType ?? "JOINT_TRUST") as
+    import("@/lib/intakeTypes").Offering;
 
   const { tokenDataFromIntake } = await import("@/lib/tokenMap");
 
@@ -43,8 +45,8 @@ export async function POST(
   const rendered: Array<{ name: string; missingTokens: string[]; template: string; bytes: number }> = [];
 
   try {
-    // 01 Joint Trust
-    {
+    // 01 Trust (offering-dependent)
+    if (offering === "JOINT_TRUST") {
       const r = renderOrThrow("templates/canonical/joint.docx", data);
       zip.file(`01_Joint_Trust_${matterId}.docx`, r.buffer);
       rendered.push({
@@ -53,6 +55,17 @@ export async function POST(
         template: r.templateAbsPath,
         bytes: fs.statSync(r.templateAbsPath).size,
       });
+    } else if (offering === "RECIPROCAL_TRUSTS") {
+      const r = renderOrThrow("templates/canonical/reciprocal.docx", data);
+      zip.file(`01_Reciprocal_Trusts_${matterId}.docx`, r.buffer);
+      rendered.push({
+        name: "01_Reciprocal_Trusts",
+        missingTokens: r.missingTokens,
+        template: r.templateAbsPath,
+        bytes: fs.statSync(r.templateAbsPath).size,
+      });
+    } else {
+      // No trust doc for WILL_ONLY / WILL_AND_INCAPACITY / INCAPACITY_ONLY (for now)
     }
 
     // 02/03 Wills

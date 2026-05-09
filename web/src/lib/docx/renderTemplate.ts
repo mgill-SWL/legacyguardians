@@ -71,8 +71,16 @@ function sanitizeWordXml(xml: string, data: Record<string, unknown>) {
     "[[FIRSTALTERNATETRUSTEEFULLNAME]]"
   );
   out = out.replace(
+    /\{\{\s*appointments\.trustees\[0\]\.alternate1\.relationship\s*\}\}/g,
+    "[[FIRSTALTERNATETRUSTEERelationship]]"
+  );
+  out = out.replace(
     /\{\{\s*appointments\.trustees\[0\]\.alternate2\.name\s*\}\}/g,
     "[[SECONDALTERNATETRUSTEEFULLNAME]]"
+  );
+  out = out.replace(
+    /\{\{\s*appointments\.trustees\[0\]\.alternate2\.relationship\s*\}\}/g,
+    "[[SECONDALTERNATETRUSTEERelationship]]"
   );
 
   out = out.replace(
