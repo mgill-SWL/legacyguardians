@@ -81,7 +81,7 @@ type AssetBuckets = {
   retirement: { approxTotalCents?: number; accounts: FinancialAccountItem[]; notes?: string };
   bank: { approxTotalCents?: number; accounts: FinancialAccountItem[]; notes?: string };
   brokerage: { approxTotalCents?: number; accounts: FinancialAccountItem[]; notes?: string };
-  lifeInsurance: { approxTotalCents?: number; policies: Array<{ carrier?: string; last4?: string; notes?: string; benefitCents?: number }> ; notes?: string };
+  lifeInsurance: { approxTotalCents?: number; policies: Array<{ carrier?: string; policyNumber?: string; notes?: string; benefitCents?: number }> ; notes?: string };
   businessInterests: { approxTotalCents?: number; items: Array<{ name?: string; notes?: string; approxValueCents?: number }>; notes?: string };
   vehicles: { approxTotalCents?: number; items: Array<{ description?: string; notes?: string; approxValueCents?: number }>; notes?: string };
   personalProperty: { approxTotalCents?: number; notes?: string };
@@ -210,7 +210,7 @@ function ensureAssets(intake: Intake): AssetBuckets {
   });
   const policy = (x: any) => ({
     carrier: x?.carrier || "",
-    last4: x?.last4 || "",
+    policyNumber: x?.policyNumber || x?.last4 || "",
     notes: x?.notes || "",
     benefitCents: Number.isFinite(x?.benefitCents) ? Number(x.benefitCents) : undefined,
   });
@@ -1344,15 +1344,13 @@ export function EpisEditorStaffFullClient({ matterId }: { matterId: string }) {
                       style={input}
                     />
                     <input
-                      value={pol.last4 || ""}
+                      value={pol.policyNumber || ""}
                       onChange={(e) => {
                         const next = [...assets.lifeInsurance.policies];
-                        next[idx] = { ...pol, last4: sanitizeLast4(e.target.value) };
+                        next[idx] = { ...pol, policyNumber: e.target.value };
                         queueSave({ ...intake, assets: { ...assets, lifeInsurance: { ...assets.lifeInsurance, policies: next } } });
                       }}
-                      placeholder="Policy last 4"
-                      inputMode="numeric"
-                      maxLength={4}
+                      placeholder="Policy number"
                       style={input}
                     />
                     <input
@@ -1384,7 +1382,7 @@ export function EpisEditorStaffFullClient({ matterId }: { matterId: string }) {
               <button
                 type="button"
                 onClick={() => {
-                  const next = [...assets.lifeInsurance.policies, { carrier: "", last4: "", notes: "" }];
+                  const next = [...assets.lifeInsurance.policies, { carrier: "", policyNumber: "", notes: "" }];
                   queueSave({ ...intake, assets: { ...assets, lifeInsurance: { ...assets.lifeInsurance, policies: next } } });
                 }}
                 style={btnSecondary}
