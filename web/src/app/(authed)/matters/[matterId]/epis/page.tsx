@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/authOptions";
 
-import { EpisEditorStaffClient } from "./EpisEditorStaffClient";
+import { EpisEditorStaffFullClient } from "./EpisEditorStaffFullClient";
 
 export const dynamic = "force-dynamic";
 
@@ -25,8 +25,7 @@ export default async function StaffEpisPage({
           ← Back to matter
         </Link>
       </div>
-      <EpisEditorStaffClient matterId={matterId} />
+      <EpisEditorStaffFullClient matterId={matterId} />
     </>
   );
 }
-
