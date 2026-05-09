@@ -77,6 +77,12 @@ function sanitizeWordXml(xml: string, data: Record<string, unknown>) {
     out = out.replace(/;\s*\[\[CHILD2FULLNAME\]\],\s*born\s*\[\[CHILD2DOB\]\]/g, "");
   }
 
+  // Joint Trust template: suppress second alternate guardian/agent slots when blank.
+  // Used in the embedded minor-children POA / health-care sections.
+  if (!isTruthyTemplateValue(data?.SECONDALTERNATEGUARDIANFULLNAME)) {
+    out = out.replace(/\s+and\s+our\s*\[\[SECONDALTERNATEGUARDIANFULLNAME\]\],/g, "");
+  }
+
   // Joint Trust template: successor trustee name is missing in some source docs (or gets split into
   // bracket fragments), producing "succeeded by as the successor Trustee".
   // Force-inject the alternate/successor trustee name token when the slot is blank.
