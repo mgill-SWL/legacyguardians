@@ -128,6 +128,14 @@ export function tokenDataFromIntake(intake: IntakeV1) {
     Client2email: intake.clientEmails?.client2 ?? "",
   };
 
+  // Trust protector (optional). Templates must include the relevant tokens/conditionals.
+  const tpEnabled = Boolean(intake.trustProtector?.enabled);
+  const tpName = (intake.trustProtector?.name || "").trim();
+  data.TrustProtectorEnabled = tpEnabled ? "YES" : "";
+  data.TRUSTPROTECTORENABLED = tpEnabled ? "YES" : "";
+  data.TrustProtectorName = tpName;
+  data.TRUSTPROTECTORNAME = tpName;
+
   // Children (MVP: first two only)
   const c1 = intake.children?.[0];
   const c2 = intake.children?.[1];

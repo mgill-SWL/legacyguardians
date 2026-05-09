@@ -694,6 +694,8 @@ export function EpisEditorStaffFullClient({ matterId }: { matterId: string }) {
   if (loading) return <div>Loading…</div>;
   if (!intake || !ranked || !wishes || !pets || !advisors || !assets) return <div>{status || "Unable to load."}</div>;
 
+  const trustProtector = (intake.trustProtector ?? {}) as { enabled?: boolean; name?: string };
+
   return (
     <main style={{ maxWidth: 1200, margin: "0 auto", padding: "44px 18px 64px" }}>
       <h1 style={{ margin: 0, fontSize: 28 }}>EPIS (staff)</h1>
@@ -730,6 +732,42 @@ export function EpisEditorStaffFullClient({ matterId }: { matterId: string }) {
         groups={ranked.trustees}
         onChange={(groups) => queueSave({ ...intake, rankedRoles: { ...ranked, trustees: groups } })}
       />
+
+      <section style={card}>
+        <div style={{ fontWeight: 800, marginBottom: 10 }}>Trust protector (optional)</div>
+        <label style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <input
+            type="checkbox"
+            checked={Boolean(trustProtector.enabled)}
+            onChange={(e) =>
+              queueSave({
+                ...intake,
+                trustProtector: { ...(trustProtector || {}), enabled: e.target.checked },
+              })
+            }
+          />
+          <span>Include a trust protector</span>
+        </label>
+        {trustProtector.enabled ? (
+          <div style={{ marginTop: 10, display: "grid", gap: 6, maxWidth: 520 }}>
+            <span style={{ color: "var(--sw-muted)" }}>Trust protector name (optional)</span>
+            <input
+              value={trustProtector.name || ""}
+              onChange={(e) =>
+                queueSave({
+                  ...intake,
+                  trustProtector: { ...(trustProtector || {}), name: e.target.value },
+                })
+              }
+              placeholder="Full name"
+              style={input}
+            />
+            <div style={{ color: "var(--sw-muted)", fontSize: 12, lineHeight: 1.35 }}>
+              This controls whether trust protector language is included in generated documents (once wired into the templates).
+            </div>
+          </div>
+        ) : null}
+      </section>
       <RoleRankEditor
         title="Executors (ranked)"
         people={intake.people}

@@ -668,6 +668,7 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
   const pets = ensurePets(intake);
   const advisors = ensureAdvisors(intake);
   const assets = ensureAssets(intake);
+  const trustProtector = (intake.trustProtector ?? {}) as { enabled?: boolean; name?: string };
 
   return (
     <main style={{ maxWidth: 980, margin: "0 auto", padding: "44px 18px 64px" }}>
@@ -710,6 +711,42 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
         defaultSpouseGroup={{ enabled: spouseIds.length === 2, spouseIds }}
         onChange={(groups) => queueSave({ ...intake, rankedRoles: { ...ranked, trustees: groups } })}
       />
+
+      <section style={card}>
+        <div style={{ fontWeight: 800, marginBottom: 10 }}>Trust protector (optional)</div>
+        <label style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <input
+            type="checkbox"
+            checked={Boolean(trustProtector.enabled)}
+            onChange={(e) =>
+              queueSave({
+                ...intake,
+                trustProtector: { ...(trustProtector || {}), enabled: e.target.checked },
+              })
+            }
+          />
+          <span>Include a trust protector</span>
+        </label>
+        {trustProtector.enabled ? (
+          <div style={{ marginTop: 10, display: "grid", gap: 6, maxWidth: 520 }}>
+            <span style={{ color: "var(--sw-muted)" }}>Trust protector name (optional)</span>
+            <input
+              value={trustProtector.name || ""}
+              onChange={(e) =>
+                queueSave({
+                  ...intake,
+                  trustProtector: { ...(trustProtector || {}), name: e.target.value },
+                })
+              }
+              placeholder="Full name"
+              style={input}
+            />
+            <div style={{ color: "var(--sw-muted)", fontSize: 12, lineHeight: 1.35 }}>
+              This controls whether trust protector language is included in generated documents (once wired into the templates).
+            </div>
+          </div>
+        ) : null}
+      </section>
       <RoleRankEditor
         title="Executors (ranked)"
         people={intake.people}

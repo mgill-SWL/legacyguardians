@@ -81,4 +81,10 @@ export type IntakeV1 = {
   children: Child[];
   successorTrustees: string[];
   distributionScheme: string;
+
+  /** Optional: trust protector (v1 EPIS). */
+  trustProtector?: {
+    enabled?: boolean;
+    name?: string;
+  };
 };
