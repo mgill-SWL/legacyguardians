@@ -37,6 +37,10 @@ function sanitizeWordXml(xml: string, data: Record<string, unknown>) {
   // Word splits runs), we remove the placeholder so it can't leak into output.
   out = out.replace(/NotaryRegistrationNumber/g, "");
 
+  // Also remove the literal opening bracket that appears in some templates as:
+  //   "Notary registration number: ["
+  out = out.replace(/Notary registration number:\s*\[/g, "Notary registration number: ");
+
   // Remove standalone square-bracket runs (common around legacy placeholders like [TOKEN]).
   // These can accidentally create stray "[" or "]" adjacent to our delimiters and break parsing.
   out = out.replace(/<w:t([^>]*)>\s*\[\s*<\/w:t>/g, "<w:t$1></w:t>");
@@ -48,6 +52,10 @@ function sanitizeWordXml(xml: string, data: Record<string, unknown>) {
     ""
   );
 
+  // Legacy individual template uses these shorter bracket instructions.
+  out = out.replace(/\[\s*signature\s*\]/gi, "");
+  out = out.replace(/\[\s*please\s*print\s*name\s*\]/gi, "");
+
   // Convert simple Jinja value expressions into our [[Token]] delimiters.
   // This is critical for headers/footers that were authored as e.g. "Will of {{Client1FullName}}".
   // We only support the simplest forms and ignore filters.
@@ -55,6 +63,62 @@ function sanitizeWordXml(xml: string, data: Record<string, unknown>) {
     /\{\{\s*([A-Za-z0-9_\/]+)(?:\s*\|[^}]*)?\s*\}\}/g,
     "[[$1]]"
   );
+
+  // Convert known legacy dotted-path Jinja expressions into our token names.
+  // (Individual template in particular contains these.)
+  out = out.replace(
+    /\{\{\s*appointments\.trustees\[0\]\.alternate1\.name\s*\}\}/g,
+    "[[FIRSTALTERNATETRUSTEEFULLNAME]]"
+  );
+  out = out.replace(
+    /\{\{\s*appointments\.trustees\[0\]\.alternate2\.name\s*\}\}/g,
+    "[[SECONDALTERNATETRUSTEEFULLNAME]]"
+  );
+
+  out = out.replace(
+    /\{\{\s*clients\[0\]\.address\.zip\s*\}\}/g,
+    "[[Zip]]"
+  );
+
+  // Guardians (individual template)
+  out = out.replace(
+    /\{\{\s*appointments\.guardian\[0\]\.primary\.name\s*\}\}/g,
+    "[[PRIMARYGUARDIANFULLNAME]]"
+  );
+  out = out.replace(
+    /\{\{\s*appointments\.guardian\[1\]\.primary\.relationship\s*\}\}/g,
+    "[[PRIMARYGUARDIANRELATIONSHIP]]"
+  );
+  out = out.replace(
+    /\{\{\s*appointments\.guardian\[0\]\.alternate1\.name\s*\}\}/g,
+    "[[FIRSTALTERNATEGUARDIANFULLNAME]]"
+  );
+  out = out.replace(
+    /\{\{\s*appointments\.guardian\[1\]\.alternate1\.relationship\s*\}\}/g,
+    "[[FIRSTALTERNATEGUARDIANRELATIONSHIP]]"
+  );
+
+  // Fix legacy hybrid prefix "[[firstalternateguardianrelationshiptospouse1]/..." by stripping the prefix.
+  // After we convert the Jinja fragments above into real tokens, leaving the "/" would break docxtemplater.
+  out = out.replace(
+    /\[\[(first|second)alternateguardianrelationshiptospouse(1|2)\]\]\s*\//g,
+    ""
+  );
+  out = out.replace(
+    /\[\[(first|second)alternateguardianrelationshiptospouse(1|2)\]\//g,
+    ""
+  );
+
+  // Fix common "unclosed token" mistakes like "[[TOKEN]," or "[[TOKEN]," (note the single closing bracket)
+  // where the closing "]]" is missing. This comes up in notary blocks and other legacy sections.
+  out = out.replace(/\[\[([A-Za-z0-9_\/]+)\],/g, "[[$1]],");
+  out = out.replace(/\[\[([A-Za-z0-9_\/]+),/g, "[[$1]],");
+
+  // Fix hybrid legacy placeholders like:
+  //   [[token]/{{ ... }}
+  // by stripping the Jinja fragment and keeping the token.
+  out = out.replace(/\[\[([A-Za-z0-9_\/]+)\]\/\{\{[\s\S]*?\}\}/g, "[[$1]]");
+  out = out.replace(/\[\[([A-Za-z0-9_\/]+)\/\{\{[\s\S]*?\}\}/g, "[[$1]]");
 
   // Best-effort handling of simple Jinja conditionals so we don't render “skeleton” clauses.
   // Supports:
@@ -94,6 +158,10 @@ function sanitizeWordXml(xml: string, data: Record<string, unknown>) {
   // Strip any remaining Jinja-style control tags that could show up as "random code".
   // Examples: {% for ... %}, {% endif %}, etc.
   out = out.replace(/\{%[^%]*%\}/g, "");
+
+  // Strip any remaining Jinja variable blocks we didn't convert.
+  // These often contain dotted paths or function calls we don't support.
+  out = out.replace(/\{\{[\s\S]*?\}\}/g, "");
 
   // Some templates still have a hardcoded year.
   const year = String(new Date().getFullYear());

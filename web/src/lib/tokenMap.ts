@@ -79,6 +79,7 @@ export function tokenDataFromIntake(intake: IntakeV1) {
   const client2First = client2.split(" ")[0] ?? "";
   const client1Surname = client1.trim().split(/\s+/).slice(-1)[0] ?? "";
   const client2Surname = client2.trim().split(/\s+/).slice(-1)[0] ?? "";
+  const clientState = intake.clientAddress.state;
 
   const data: Record<string, unknown> = {
     // canonical
@@ -108,13 +109,29 @@ export function tokenDataFromIntake(intake: IntakeV1) {
 
     ClientStreetAddress: intake.clientAddress.street,
     ClientCity: intake.clientAddress.city,
+    ClientState: clientState,
+    CLIENTSTATE: clientState,
 
     // Templates sometimes use these combined labels.
     "County/City": intake.clientAddress.city,
     "ClientCity/County": intake.clientAddress.city,
+    "ClientCounty/City": intake.clientAddress.city,
 
     Zip: intake.clientAddress.zip,
 
+    // Individual-trust templates sometimes use singular CLIENT* tokens.
+    CLIENTFULLNAME: client1,
+    CLIENTFIRSTNAME: client1First,
+    CLIENTSURNAME: client1Surname,
+    Clientfirstname: client1First,
+    Clientsurname: client1Surname,
+    CLIENTINITIALS: "",
+    CLIENTemail: intake.clientEmails?.client1 ?? "",
+
+    // Law firm (legacy individual template tokens)
+    "LawFirmCounty/City": "Alexandria",
+    LawFirmCountyOrCity: "Alexandria",
+  
     // If templates still reference initials tokens, keep them defined (empty by design).
     S1INITIALS: "",
     S2INITIALS: "",
@@ -122,6 +139,10 @@ export function tokenDataFromIntake(intake: IntakeV1) {
     // Legacy placeholder sometimes appears as [NotaryRegistrationNumber] in older templates.
     // IntakeV1 doesn't currently collect it, so default to blank rather than leaking placeholder text.
     NotaryRegistrationNumber: "",
+
+    // Notary expiration date is not collected in the MVP.
+    NotaryExpirationDate: "",
+    NOTARYNAME: "",
 
     // Email legacy variants
     Client1email: intake.clientEmails?.client1 ?? "",
@@ -153,9 +174,24 @@ export function tokenDataFromIntake(intake: IntakeV1) {
   const gA1 = byId(intake.people, intake.roles.guardians.alternate1);
   const gA2 = byId(intake.people, intake.roles.guardians.alternate2);
 
+  // Individual template (legacy) expects explicit primary guardian tokens.
+  data.PRIMARYGUARDIANFULLNAME = gPrimary?.name ?? "";
+  data.PRIMARYGUARDIANRELATIONSHIP =
+    cleanRelationshipPhrase(gPrimary?.relationshipPhraseToSpouse1) || (gPrimary?.relationship ?? "");
+  data.FIRSTALTERNATEGUARDIANRELATIONSHIP =
+    cleanRelationshipPhrase(gA1?.relationshipPhraseToSpouse1) || (gA1?.relationship ?? "");
+
   // Will template tokens (client1-based)
   data.CLIENT1FIRSTALTERNATEGUARDIANFULLNAME = gA1?.name ?? "";
   data.CLIENT1SECONDALTERNATEGUARDIANFULLNAME = gA2?.name ?? "";
+
+  // Legacy individual template tokens (no client number + weird casing)
+  data.CLIENTFIRSTALTERNATEGUARDIANFULLNAME = gA1?.name ?? "";
+  data.CLIENTSECONDALTERNATEGUARDIANFULLNAME = gA2?.name ?? "";
+  data.CLIENTFIRSTALTERNATEGUARDIANRelationship =
+    cleanRelationshipPhrase(gA1?.relationshipPhraseToSpouse1) || (gA1?.relationship ?? "");
+  data.CLIENTSECONDALTERNATEGUARDIANRelationship =
+    cleanRelationshipPhrase(gA2?.relationshipPhraseToSpouse1) || (gA2?.relationship ?? "");
 
   // Some templates reference the same guardians under client2 token names.
   data.CLIENT2FIRSTALTERNATEGUARDIANFULLNAME = gA1?.name ?? "";
@@ -221,6 +257,12 @@ export function tokenDataFromIntake(intake: IntakeV1) {
   data.FIRSTALTERNATETRUSTEERelationship = trusteeAlt1Rel;
   data.SECONDALTERNATETRUSTEERelationship = trusteeAlt2Rel;
 
+  // Legacy individual template token: expects a relationship phrase that stands alone after
+  // "succeeded by" (original template paired it with a separate Jinja-inserted name).
+  data.CLIENTFirstAlternateTrusteeRelationship = trusteeAlt1Rel
+    ? `my ${trusteeAlt1Rel}`.trim()
+    : "";
+
   // Some templates expect these as client-scoped trustee alternates.
   data.CLIENT1FIRSTALTERNATETRUSTEEFULLNAME = trusteeAlt1Name;
   data.CLIENT1SECONDALTERNATETRUSTEEFULLNAME = trusteeAlt2Name;
@@ -250,6 +292,19 @@ export function tokenDataFromIntake(intake: IntakeV1) {
   data.Client1FirstAlternatePOAAddress = formatAddress(poaA1);
   data.Client1SecondAlternatePOAAddress = formatAddress(poaA2);
 
+  // Legacy individual template tokens (no client number + inconsistent casing)
+  data.CLIENTFIRSTALTERNATEPOAFULLNAME = poaA1?.name ?? "";
+  data.CLIENTSECONDALTERNATEPOAFULLNAME = poaA2?.name ?? "";
+  data.CLIENTFirstalternatepoafullname = poaA1?.name ?? "";
+  data.CLIENTFIRSTALTERNATEPOAAddress = formatAddress(poaA1);
+  data.CLIENTSECONDALTERNATEPOAAddress = formatAddress(poaA2);
+  data.CLIENTFIRSTALTERNATEPOARelationship =
+    cleanRelationshipPhrase(poaA1?.relationshipPhraseToSpouse1) || (poaA1?.relationship ?? "");
+  data.CLIENTSECONDALTERNATEPOARelationship =
+    cleanRelationshipPhrase(poaA2?.relationshipPhraseToSpouse1) || (poaA2?.relationship ?? "");
+  data.CLIENTsecondalternatepoarelationship =
+    cleanRelationshipPhrase(poaA2?.relationshipPhraseToSpouse1) || (poaA2?.relationship ?? "");
+
   // AMD agents (best-effort)
   const amdP = byId(intake.people, intake.roles.healthAgents.primary);
   const amdA1 = byId(intake.people, intake.roles.healthAgents.alternate1);
@@ -264,6 +319,9 @@ export function tokenDataFromIntake(intake: IntakeV1) {
   data.CLIENT1SECONDALTERNATEAMDFULLNAME = amdA2?.name ?? "";
   data.client1firstalternateamdrelationship =
     cleanRelationshipPhrase(amdA1?.relationshipPhraseToSpouse1) || (amdA1?.relationship ?? "");
+  // Legacy casing variant
+  data.CLIENTfirstalternateamdrelationship =
+    cleanRelationshipPhrase(amdA1?.relationshipPhraseToSpouse1) || (amdA1?.relationship ?? "");
   data.client1secondalternateamdrelationship =
     cleanRelationshipPhrase(amdA2?.relationshipPhraseToSpouse1) || (amdA2?.relationship ?? "");
   data.client1firstalternateamdphonenumber = amdA1?.phone ?? "";
@@ -272,6 +330,16 @@ export function tokenDataFromIntake(intake: IntakeV1) {
   data.Client1SecondAlternateAMDEmail = amdA2?.email ?? "";
   data.Client1FirstAlternateAMDAddress = formatAddress(amdA1);
   data.Client1SecondAlternateAMDAddress = formatAddress(amdA2);
+
+  // Legacy individual template tokens (no client number + inconsistent casing)
+  data.CLIENTFIRSTALTERNATEAMDFULLNAME = amdA1?.name ?? "";
+  data.CLIENTSECONDALTERNATEAMDFULLNAME = amdA2?.name ?? "";
+  data.CLIENTFIRSTALTERNATEAMDAddress = formatAddress(amdA1);
+  data.CLIENTSECONDALTERNATEAMDAddress = formatAddress(amdA2);
+  data.CLIENTFIRSTALTERNATEAMDRelationship =
+    cleanRelationshipPhrase(amdA1?.relationshipPhraseToSpouse1) || (amdA1?.relationship ?? "");
+  data.CLIENTSECONDALTERNATEAMDRelationship =
+    cleanRelationshipPhrase(amdA2?.relationshipPhraseToSpouse1) || (amdA2?.relationship ?? "");
 
   // Mirror for client2 where tokens exist in templates
   const poa2P = byId(intake.people, intake.roles.financialAgents.primary);
