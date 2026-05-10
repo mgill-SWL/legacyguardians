@@ -253,6 +253,17 @@ enum FirmMemberRole {
   ADMIN
 }
 
+// v2: firm job roles (used for calendar sharing / booking permissions).
+// Keep FirmMemberRole for legacy admin gating; use FirmMemberKind for functional roles.
+enum FirmMemberKind {
+  INTAKER
+  ATTORNEY
+  PARALEGAL
+  BOOKKEEPER
+  ADMIN
+  STAFF
+}
+
 model Firm {
   id   String @id @default(cuid())
   name String
@@ -297,6 +308,8 @@ model Firm {
   payments Payment[]
 
   scheduledJobs ScheduledJob[]
+
+  appointmentTypes AppointmentType[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -443,6 +456,9 @@ model FirmMember {
 
   role   FirmMemberRole @default(MEMBER)
 
+  // Functional role in the firm (used for booking/calendar access).
+  kind   FirmMemberKind @default(STAFF)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -472,6 +488,9 @@ model User {
   ringCentralConnection RingCentralConnection?
 
   googleConnections GoogleConnection[]
+
+  ownedAppointmentTypes AppointmentType[] @relation("AppointmentTypeOwner")
+  createdBookingLinks   BookingLink[] @relation("BookingLinkCreator")
   uploadedKpiImportBatches KpiImportBatch[] @relation("KpiImportBatchUploadedByUser")
   createdFinancialEvents MatterFinancialEvent[] @relation("MatterFinancialEventCreatedByUser")
   financialAttributions MatterFinancialAttribution[]
@@ -809,6 +828,19 @@ model AppointmentType {
   slug  String @unique
   name  String
 
+  // Multi-firm + ownership (v2)
+  firmId String?
+  firm   Firm?  @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  ownerUserId String?
+  ownerUser   User?  @relation("AppointmentTypeOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+
+  // Public link id (unguessable) for sharing.
+  publicId String @unique @default(cuid())
+
+  // If true, public booking via /book/... is enabled.
+  isPublic Boolean @default(true)
+
   durationMin      Int
   startIntervalMin Int @default(15)
   bufferBeforeMin  Int @default(0)
@@ -820,8 +852,36 @@ model AppointmentType {
   assignees AppointmentAssignee[]
   appointments Appointment[]
 
+  bookingLinks BookingLink[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model BookingLink {
+  id String @id @default(cuid())
+
+  token String @unique
+
+  typeId String
+  type   AppointmentType @relation(fields: [typeId], references: [id], onDelete: Cascade)
+
+  createdByUserId String?
+  createdByUser   User? @relation("BookingLinkCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  // Use limits
+  maxUses  Int @default(1)
+  usedUses Int @default(0)
+
+  // Optional expiry
+  expiresAt DateTime?
+  enabled Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([typeId, enabled])
+  @@index([token])
 }
 
 model AppointmentAssignee {

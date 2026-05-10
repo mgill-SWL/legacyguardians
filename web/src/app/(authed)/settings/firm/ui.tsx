@@ -4,7 +4,16 @@ import { FormEvent, useMemo, useState } from "react";
 
 type Firm = { id: string; name: string; slug: string } | null;
 type Location = { id: string; name: string; slug: string; active: boolean };
-type UserRow = { id: string; email: string | null; name: string | null; locationId: string | null };
+type UserRow = { id: string; email: string | null; name: string | null; locationId: string | null; kind: string };
+
+const KIND_OPTIONS = [
+  { value: "INTAKER", label: "Intaker" },
+  { value: "ATTORNEY", label: "Attorney" },
+  { value: "PARALEGAL", label: "Paralegal" },
+  { value: "BOOKKEEPER", label: "Bookkeeper" },
+  { value: "ADMIN", label: "Admin" },
+  { value: "STAFF", label: "Staff" },
+];
 
 export function FirmSettingsClient({ firm, locations, users }: { firm: Firm; locations: Location[]; users: UserRow[] }) {
   const [newLocationName, setNewLocationName] = useState("");
@@ -44,6 +53,25 @@ export function FirmSettingsClient({ firm, locations, users }: { firm: Firm; loc
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ userId, locationId: locationId || null }),
+      });
+      const json = (await response.json()) as { ok?: boolean; error?: string };
+      if (!response.ok) throw new Error(json.error || "Update failed");
+      window.location.reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Update failed");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function assignUserKind(userId: string, kind: string) {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/settings/firm/user-kind", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ userId, kind }),
       });
       const json = (await response.json()) as { ok?: boolean; error?: string };
       if (!response.ok) throw new Error(json.error || "Update failed");
@@ -153,8 +181,50 @@ export function FirmSettingsClient({ firm, locations, users }: { firm: Firm; loc
             </table>
           </div>
         </div>
+
+        <div className="sw-card sw-card-pad">
+          <div style={{ fontWeight: 900 }}>User roles</div>
+          <div className="sw-muted" style={{ marginTop: 6, fontSize: 12 }}>
+            Used for booking/calendar access rules (e.g., intakers can book attorney calendars).
+          </div>
+
+          <div style={{ marginTop: 12, overflowX: "auto" }}>
+            <table className="sw-table" style={{ minWidth: 520 }}>
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Role</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u) => (
+                  <tr key={u.id}>
+                    <td style={{ maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {u.name || u.email || u.id}
+                    </td>
+                    <td>
+                      <select
+                        disabled={submitting}
+                        value={u.kind || "STAFF"}
+                        onChange={(e) => assignUserKind(u.id, e.target.value)}
+                      >
+                        {KIND_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="sw-muted" style={{ marginTop: 10, fontSize: 12 }}>
+            Editing is currently restricted to global admins.
+          </div>
+        </div>
       </div>
     </div>
   );
 }
-

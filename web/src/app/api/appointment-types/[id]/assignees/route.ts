@@ -20,9 +20,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (!session?.user?.email) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
 
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-  if (!user || user.role !== "ADMIN") return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+  if (!user) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
 
   const { id: typeId } = await ctx.params;
+  const type = await prisma.appointmentType.findUnique({ where: { id: typeId }, select: { ownerUserId: true } });
+  if (!type) return NextResponse.json({ ok: false, error: "appointment type not found" }, { status: 404 });
+  const canEdit = user.role === "ADMIN" || (type.ownerUserId && type.ownerUserId === user.id);
+  if (!canEdit) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
   const body = (await req.json().catch(() => null)) as Body | null;
   if (!body?.googleEmail?.trim()) {
     return NextResponse.json({ ok: false, error: "googleEmail required" }, { status: 400 });
@@ -43,4 +47,3 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
   return NextResponse.json({ ok: true, id: created.id });
 }
-

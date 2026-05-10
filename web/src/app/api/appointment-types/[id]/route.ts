@@ -23,9 +23,13 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   if (!session?.user?.email) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
 
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-  if (!user || user.role !== "ADMIN") return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+  if (!user) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
 
   const { id } = await ctx.params;
+  const existing = await prisma.appointmentType.findUnique({ where: { id }, select: { ownerUserId: true } });
+  if (!existing) return NextResponse.json({ ok: false, error: "not found" }, { status: 404 });
+  const canEdit = user.role === "ADMIN" || (existing.ownerUserId && existing.ownerUserId === user.id);
+  if (!canEdit) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
   const body = (await req.json().catch(() => null)) as Body | null;
   if (!body) return NextResponse.json({ ok: false, error: "body required" }, { status: 400 });
 
@@ -53,11 +57,15 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
   if (!session?.user?.email) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
 
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-  if (!user || user.role !== "ADMIN") return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+  if (!user) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
 
   const { id } = await ctx.params;
+  const existing = await prisma.appointmentType.findUnique({ where: { id }, select: { ownerUserId: true } });
+  if (!existing) return NextResponse.json({ ok: false, error: "not found" }, { status: 404 });
+  const canDelete = user.role === "ADMIN" || (existing.ownerUserId && existing.ownerUserId === user.id);
+  if (!canDelete) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+
   const r = await prisma.appointmentType.deleteMany({ where: { id } });
   if (r.count !== 1) return NextResponse.json({ ok: false, error: "not found" }, { status: 404 });
   return NextResponse.json({ ok: true });
 }
-

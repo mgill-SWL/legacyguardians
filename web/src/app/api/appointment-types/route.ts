@@ -31,7 +31,9 @@ export async function POST(req: Request) {
   if (!session?.user?.email) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
 
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-  if (!user || user.role !== "ADMIN") return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+  if (!user) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+
+  if (!user.activeFirmId) return NextResponse.json({ ok: false, error: "no active firm" }, { status: 400 });
 
   const body = (await req.json().catch(() => null)) as Body | null;
   if (!body?.slug?.trim() || !body?.name?.trim()) {
@@ -45,6 +47,8 @@ export async function POST(req: Request) {
     data: {
       slug: body.slug.trim(),
       name: body.name.trim(),
+      firmId: user.activeFirmId,
+      ownerUserId: user.id,
       durationMin: Number(body.durationMin),
       startIntervalMin: Number(body.startIntervalMin ?? 15),
       bufferBeforeMin: Number(body.bufferBeforeMin ?? 0),
@@ -58,4 +62,3 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ ok: true, id: created.id });
 }
-

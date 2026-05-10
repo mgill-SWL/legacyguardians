@@ -15,7 +15,7 @@ export default async function FirmSettingsPage() {
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
   if (!user?.activeFirmId) redirect("/unauthorized");
 
-  const [firm, locations, users, memberships] = await Promise.all([
+  const [firm, locations, users, firmMembers, locationMembers] = await Promise.all([
     prisma.firm.findUnique({ where: { id: user.activeFirmId }, select: { id: true, name: true, slug: true } }),
     prisma.firmLocation.findMany({
       where: { firmId: user.activeFirmId },
@@ -26,13 +26,22 @@ export default async function FirmSettingsPage() {
       orderBy: [{ email: "asc" }],
       select: { id: true, email: true, name: true, defaultLocationId: true },
     }),
+    prisma.firmMember.findMany({
+      where: { firmId: user.activeFirmId },
+      select: { userId: true, kind: true },
+    }),
     prisma.firmLocationMember.findMany({
       where: { firmLocation: { firmId: user.activeFirmId } },
       select: { userId: true, firmLocationId: true },
     }),
   ]);
 
-  const membershipByUserId = memberships.reduce<Record<string, string>>((acc, m) => {
+  const kindByUserId = firmMembers.reduce<Record<string, string>>((acc, m) => {
+    acc[m.userId] = m.kind;
+    return acc;
+  }, {});
+
+  const membershipByUserId = locationMembers.reduce<Record<string, string>>((acc, m) => {
     acc[m.userId] = m.firmLocationId;
     return acc;
   }, {});
@@ -46,8 +55,8 @@ export default async function FirmSettingsPage() {
         email: u.email,
         name: u.name,
         locationId: membershipByUserId[u.id] || u.defaultLocationId || null,
+        kind: kindByUserId[u.id] || "STAFF",
       }))}
     />
   );
 }
-
