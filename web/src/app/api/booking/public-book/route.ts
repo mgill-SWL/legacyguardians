@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { prisma } from "@/lib/prisma";
 import { bookAppointment } from "@/lib/booking/booking";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 type Body = {
+  type: string;
   startsAtIso: string;
   clientName?: string;
   clientEmail?: string;
@@ -36,6 +37,7 @@ export async function POST(req: Request) {
   if (!originAllowed(req)) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
 
   const body = (await req.json().catch(() => null)) as Body | null;
+  if (!body?.type?.trim()) return NextResponse.json({ ok: false, error: "type required" }, { status: 400 });
   if (!body?.startsAtIso) return NextResponse.json({ ok: false, error: "startsAtIso required" }, { status: 400 });
 
   const clientName = String(body.clientName || "").trim();
@@ -46,34 +48,34 @@ export async function POST(req: Request) {
 
   try {
     const booked = await bookAppointment({
-      typeSlug: "discovery-call",
+      typeSlug: body.type.trim(),
       startsAtIso: body.startsAtIso,
       clientName,
       clientEmail: body.clientEmail || null,
       clientPhone: body.clientPhone || null,
     });
 
-    // Schedule follow-ups/reminders.
+    // Schedule follow-ups/reminders (v1: only discovery-call has templates today).
     const firmId = await firmIdForPublicBooking();
-    const type = await prisma.appointmentType.findUnique({ where: { slug: "discovery-call" } });
-    if (!type) throw new Error("appointment type missing");
     const appt = await prisma.appointment.findUnique({ where: { id: booked.appointmentId } });
     if (!appt) throw new Error("appointment missing");
 
-    const now = Date.now();
-    const jobs = [
-      { runAt: new Date(now + 60_000), type: "SEND_SMS" as const, payload: { kind: "BOOKED", apptId: booked.appointmentId } },
-      { runAt: new Date(now + 60_000), type: "SEND_EMAIL" as const, payload: { kind: "BOOKED", apptId: booked.appointmentId } },
-      { runAt: new Date(appt.startsAt.getTime() - 24 * 60 * 60_000), type: "SEND_EMAIL" as const, payload: { kind: "REMINDER_24H", apptId: booked.appointmentId } },
-      { runAt: new Date(appt.startsAt.getTime() - 2 * 60 * 60_000), type: "SEND_EMAIL" as const, payload: { kind: "REMINDER_2H", apptId: booked.appointmentId } },
-      { runAt: new Date(appt.startsAt.getTime() - 60 * 60_000), type: "SEND_EMAIL" as const, payload: { kind: "REMINDER_1H", apptId: booked.appointmentId } },
-      { runAt: new Date(appt.startsAt.getTime() - 24 * 60 * 60_000), type: "SEND_SMS" as const, payload: { kind: "REMINDER_24H", apptId: booked.appointmentId } },
-      { runAt: new Date(appt.startsAt.getTime() - 2 * 60_000), type: "SEND_SMS" as const, payload: { kind: "REMINDER_2M", apptId: booked.appointmentId } },
-    ];
+    if (body.type.trim() === "discovery-call") {
+      const now = Date.now();
+      const jobs = [
+        { runAt: new Date(now + 60_000), type: "SEND_SMS" as const, payload: { kind: "BOOKED", apptId: booked.appointmentId } },
+        { runAt: new Date(now + 60_000), type: "SEND_EMAIL" as const, payload: { kind: "BOOKED", apptId: booked.appointmentId } },
+        { runAt: new Date(appt.startsAt.getTime() - 24 * 60 * 60_000), type: "SEND_EMAIL" as const, payload: { kind: "REMINDER_24H", apptId: booked.appointmentId } },
+        { runAt: new Date(appt.startsAt.getTime() - 2 * 60 * 60_000), type: "SEND_EMAIL" as const, payload: { kind: "REMINDER_2H", apptId: booked.appointmentId } },
+        { runAt: new Date(appt.startsAt.getTime() - 60 * 60_000), type: "SEND_EMAIL" as const, payload: { kind: "REMINDER_1H", apptId: booked.appointmentId } },
+        { runAt: new Date(appt.startsAt.getTime() - 24 * 60 * 60_000), type: "SEND_SMS" as const, payload: { kind: "REMINDER_24H", apptId: booked.appointmentId } },
+        { runAt: new Date(appt.startsAt.getTime() - 2 * 60_000), type: "SEND_SMS" as const, payload: { kind: "REMINDER_2M", apptId: booked.appointmentId } },
+      ];
 
-    await prisma.scheduledJob.createMany({
-      data: jobs.map((j) => ({ firmId, runAt: j.runAt, type: j.type, payload: j.payload as any })),
-    });
+      await prisma.scheduledJob.createMany({
+        data: jobs.map((j) => ({ firmId, runAt: j.runAt, type: j.type, payload: j.payload as any })),
+      });
+    }
 
     return NextResponse.json({ ok: true, ...booked });
   } catch (e: any) {

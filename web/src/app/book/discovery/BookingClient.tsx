@@ -11,7 +11,7 @@ function toDateInputValue(d: Date) {
   return `${y}-${m}-${day}`;
 }
 
-export function BookingClient({ embedded }: { embedded?: boolean }) {
+export function BookingClient({ embedded, typeSlug }: { embedded?: boolean; typeSlug?: string }) {
   const today = useMemo(() => new Date(), []);
   const [date, setDate] = useState<string>(toDateInputValue(today));
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -32,7 +32,11 @@ export function BookingClient({ embedded }: { embedded?: boolean }) {
       setStatus("");
       setSelectedStart("");
       try {
-        const res = await fetch(`/api/booking/discovery/slots?date=${encodeURIComponent(date)}`, { cache: "no-store" });
+        const slug = typeSlug || "discovery-call";
+        const res = await fetch(
+          `/api/booking/slots?type=${encodeURIComponent(slug)}&date=${encodeURIComponent(date)}`,
+          { cache: "no-store" }
+        );
         const json = (await res.json().catch(() => null)) as any;
         if (!res.ok || !json?.ok) throw new Error(json?.error || `HTTP ${res.status}`);
         if (!cancelled) setSlots(Array.isArray(json.slots) ? json.slots : []);
@@ -58,10 +62,12 @@ export function BookingClient({ embedded }: { embedded?: boolean }) {
 
     try {
       setLoading(true);
-      const res = await fetch(`/api/booking/discovery/public-book`, {
+      const slug = typeSlug || "discovery-call";
+      const res = await fetch(`/api/booking/public-book`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
+          type: slug,
           startsAtIso: selectedStart,
           clientName: clientName.trim(),
           clientEmail: clientEmail.trim() || undefined,
@@ -162,4 +168,3 @@ export function BookingClient({ embedded }: { embedded?: boolean }) {
     </main>
   );
 }
-
