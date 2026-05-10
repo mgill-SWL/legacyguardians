@@ -87,6 +87,14 @@ export async function GET(req: Request) {
   const date = url.searchParams.get("date");
   if (!date) return NextResponse.json({ ok: false, error: "date required (YYYY-MM-DD)" }, { status: 400 });
 
+  // Skip weekends in local TZ.
+  const [yy, mm, dd] = date.split("-").map((x) => Number(x));
+  const anchor = new Date(Date.UTC(yy, mm - 1, dd, 12, 0, 0));
+  const weekday = new Intl.DateTimeFormat("en-US", { timeZone: TZ, weekday: "short" }).format(anchor);
+  if (weekday === "Sat" || weekday === "Sun") {
+    return NextResponse.json({ ok: true, date, slots: [] });
+  }
+
   const type = await ensureDiscoveryType();
 
   // Compute slot candidates across assignees.
@@ -123,10 +131,15 @@ export async function GET(req: Request) {
 
   const slots: { start: string; available: number; assignees: string[] }[] = [];
 
+  const minStartUtc = new Date(Date.now() + type.minNoticeHours * 60 * 60_000);
+
   // Candidate slots every 15 minutes. We assume weekdays only (Mon–Fri).
   for (let min = 0; min < 24 * 60; min += type.startIntervalMin) {
     const startUtc = utcFromLocal(date, min, TZ);
     const endUtc = new Date(startUtc.getTime() + type.durationMin * 60_000);
+
+    // Min notice
+    if (startUtc.getTime() < minStartUtc.getTime()) continue;
 
     const availableAssignees: string[] = [];
     for (const a of type.assignees) {
