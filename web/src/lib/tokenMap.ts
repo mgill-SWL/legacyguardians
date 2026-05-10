@@ -64,15 +64,43 @@ function deriveJointRelationshipPhrase({
 }
 
 export function tokenDataFromIntake(intake: IntakeV1) {
+  return tokenDataFromIntakeWithOptions(intake);
+}
+
+type TokenOptions = {
+  /** For templates that use singular CLIENT* tokens (individual trust), choose which grantor is the POV client. */
+  primaryClient?: 1 | 2;
+  /** When true, derive trustee primary/alternate from rankedRoles spouse defaults (reciprocal trust rendering). */
+  reciprocalTrustView?: boolean;
+};
+
+function findSpouses(intake: IntakeV1) {
+  const [g1, g2] = intake.grantors || ["", ""];
+  const norm = (s: string) => (s || "").toLowerCase().trim();
+  const p1 = intake.people.find((p) => norm(p.name) === norm(g1));
+  const p2 = intake.people.find((p) => norm(p.name) === norm(g2));
+  return { spouse1: p1, spouse2: p2 };
+}
+
+function phraseForPov(p: Person | undefined, pov: 1 | 2) {
+  if (!p) return "";
+  return (pov === 2 ? p.relationshipPhraseToSpouse2 : p.relationshipPhraseToSpouse1) || p.relationship || "";
+}
+
+export function tokenDataFromIntakeWithOptions(intake: IntakeV1, options?: TokenOptions) {
   const client1 = intake.grantors[0] ?? "";
   const client2 = intake.grantors[1] ?? "";
+  const povClient: 1 | 2 = options?.primaryClient ?? 1;
+  const povName = povClient === 2 ? client2 : client1;
+  const povFirst = povName.split(" ")[0] ?? "";
+  const povSurname = povName.trim().split(/\s+/).slice(-1)[0] ?? "";
 
   const rawOverride = (intake.trustNameOverride || "").trim();
   const normalizedOverride = rawOverride
     ? rawOverride.replace(/^the\s+/i, "").trim()
     : "";
 
-  const trustNameBase = normalizedOverride || defaultTrustNameFromClient1(client1);
+  const trustNameBase = normalizedOverride || defaultTrustNameFromClient1(povName || client1);
   const trustName = trustNameBase.toUpperCase();
 
   const client1First = client1.split(" ")[0] ?? "";
@@ -120,13 +148,13 @@ export function tokenDataFromIntake(intake: IntakeV1) {
     Zip: intake.clientAddress.zip,
 
     // Individual-trust templates sometimes use singular CLIENT* tokens.
-    CLIENTFULLNAME: client1,
-    CLIENTFIRSTNAME: client1First,
-    CLIENTSURNAME: client1Surname,
-    Clientfirstname: client1First,
-    Clientsurname: client1Surname,
+    CLIENTFULLNAME: povName,
+    CLIENTFIRSTNAME: povFirst,
+    CLIENTSURNAME: povSurname,
+    Clientfirstname: povFirst,
+    Clientsurname: povSurname,
     CLIENTINITIALS: "",
-    CLIENTemail: intake.clientEmails?.client1 ?? "",
+    CLIENTemail: povClient === 2 ? (intake.clientEmails?.client2 ?? "") : (intake.clientEmails?.client1 ?? ""),
 
     // Law firm (legacy individual template tokens)
     "LawFirmCounty/City": "Alexandria",
@@ -176,10 +204,8 @@ export function tokenDataFromIntake(intake: IntakeV1) {
 
   // Individual template (legacy) expects explicit primary guardian tokens.
   data.PRIMARYGUARDIANFULLNAME = gPrimary?.name ?? "";
-  data.PRIMARYGUARDIANRELATIONSHIP =
-    cleanRelationshipPhrase(gPrimary?.relationshipPhraseToSpouse1) || (gPrimary?.relationship ?? "");
-  data.FIRSTALTERNATEGUARDIANRELATIONSHIP =
-    cleanRelationshipPhrase(gA1?.relationshipPhraseToSpouse1) || (gA1?.relationship ?? "");
+  data.PRIMARYGUARDIANRELATIONSHIP = cleanRelationshipPhrase(phraseForPov(gPrimary, povClient));
+  data.FIRSTALTERNATEGUARDIANRELATIONSHIP = cleanRelationshipPhrase(phraseForPov(gA1, povClient));
 
   // Will template tokens (client1-based)
   data.CLIENT1FIRSTALTERNATEGUARDIANFULLNAME = gA1?.name ?? "";
@@ -189,9 +215,9 @@ export function tokenDataFromIntake(intake: IntakeV1) {
   data.CLIENTFIRSTALTERNATEGUARDIANFULLNAME = gA1?.name ?? "";
   data.CLIENTSECONDALTERNATEGUARDIANFULLNAME = gA2?.name ?? "";
   data.CLIENTFIRSTALTERNATEGUARDIANRelationship =
-    cleanRelationshipPhrase(gA1?.relationshipPhraseToSpouse1) || (gA1?.relationship ?? "");
+    cleanRelationshipPhrase(phraseForPov(gA1, povClient));
   data.CLIENTSECONDALTERNATEGUARDIANRelationship =
-    cleanRelationshipPhrase(gA2?.relationshipPhraseToSpouse1) || (gA2?.relationship ?? "");
+    cleanRelationshipPhrase(phraseForPov(gA2, povClient));
 
   // Some templates reference the same guardians under client2 token names.
   data.CLIENT2FIRSTALTERNATEGUARDIANFULLNAME = gA1?.name ?? "";
@@ -299,11 +325,11 @@ export function tokenDataFromIntake(intake: IntakeV1) {
   data.CLIENTFIRSTALTERNATEPOAAddress = formatAddress(poaA1);
   data.CLIENTSECONDALTERNATEPOAAddress = formatAddress(poaA2);
   data.CLIENTFIRSTALTERNATEPOARelationship =
-    cleanRelationshipPhrase(poaA1?.relationshipPhraseToSpouse1) || (poaA1?.relationship ?? "");
+    cleanRelationshipPhrase(phraseForPov(poaA1, povClient));
   data.CLIENTSECONDALTERNATEPOARelationship =
-    cleanRelationshipPhrase(poaA2?.relationshipPhraseToSpouse1) || (poaA2?.relationship ?? "");
+    cleanRelationshipPhrase(phraseForPov(poaA2, povClient));
   data.CLIENTsecondalternatepoarelationship =
-    cleanRelationshipPhrase(poaA2?.relationshipPhraseToSpouse1) || (poaA2?.relationship ?? "");
+    cleanRelationshipPhrase(phraseForPov(poaA2, povClient));
 
   // AMD agents (best-effort)
   const amdP = byId(intake.people, intake.roles.healthAgents.primary);
@@ -337,9 +363,33 @@ export function tokenDataFromIntake(intake: IntakeV1) {
   data.CLIENTFIRSTALTERNATEAMDAddress = formatAddress(amdA1);
   data.CLIENTSECONDALTERNATEAMDAddress = formatAddress(amdA2);
   data.CLIENTFIRSTALTERNATEAMDRelationship =
-    cleanRelationshipPhrase(amdA1?.relationshipPhraseToSpouse1) || (amdA1?.relationship ?? "");
+    cleanRelationshipPhrase(phraseForPov(amdA1, povClient));
   data.CLIENTSECONDALTERNATEAMDRelationship =
-    cleanRelationshipPhrase(amdA2?.relationshipPhraseToSpouse1) || (amdA2?.relationship ?? "");
+    cleanRelationshipPhrase(phraseForPov(amdA2, povClient));
+
+  // Reciprocal trust rendering: override trustee primary/alternate based on spouse POV.
+  // This is intentionally local to the individual/reciprocal trust docs so we don't disturb
+  // the existing joint-trust and packet-split docs.
+  if (options?.reciprocalTrustView) {
+    const { spouse1, spouse2 } = findSpouses(intake);
+    const povSpouse = povClient === 2 ? spouse2 : spouse1;
+    const otherSpouse = povClient === 2 ? spouse1 : spouse2;
+
+    if (povSpouse?.id) {
+      // Primary trustee is the trustor.
+      const alt1Name = otherSpouse?.name ?? "";
+      const alt2Id = intake.rankedRoles?.trustees?.[1]?.personIds?.[0];
+      const alt2 = byId(intake.people, alt2Id);
+      const alt2Name = alt2?.name ?? "";
+
+      data.FIRSTALTERNATETRUSTEEFULLNAME = alt1Name;
+      data.SECONDALTERNATETRUSTEEFULLNAME = alt2Name;
+      data.CLIENT1FIRSTALTERNATETRUSTEEFULLNAME = alt1Name;
+      data.CLIENT1SECONDALTERNATETRUSTEEFULLNAME = alt2Name;
+      data.CLIENT2FIRSTALTERNATETRUSTEEFULLNAME = alt1Name;
+      data.CLIENT2SECONDALTERNATETRUSTEEFULLNAME = alt2Name;
+    }
+  }
 
   // Mirror for client2 where tokens exist in templates
   const poa2P = byId(intake.people, intake.roles.financialAgents.primary);

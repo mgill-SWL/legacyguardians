@@ -1,5 +1,6 @@
 export type Offering =
   | "JOINT_TRUST"
+  | "INDIVIDUAL_TRUST"
   | "RECIPROCAL_TRUSTS"
   | "WILL_ONLY"
   | "WILL_AND_INCAPACITY"
@@ -7,6 +8,7 @@ export type Offering =
 
 export const offeringLabels: Record<Offering, string> = {
   JOINT_TRUST: "Joint trust (packet)",
+  INDIVIDUAL_TRUST: "Individual trust (packet)",
   RECIPROCAL_TRUSTS: "Reciprocal individual trusts (packet)",
   WILL_ONLY: "Wills only",
   WILL_AND_INCAPACITY: "Wills + incapacity docs",

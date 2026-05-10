@@ -30,13 +30,21 @@ export async function POST(
   const offering = (intake?.offering ?? intake?.matterType ?? "JOINT_TRUST") as
     import("@/lib/intakeTypes").Offering;
 
-  const { tokenDataFromIntake } = await import("@/lib/tokenMap");
+  const { tokenDataFromIntakeWithOptions } = await import("@/lib/tokenMap");
 
-  const data: Record<string, unknown> = {
-    ...(tokenDataFromIntake(intake) as Record<string, unknown>),
+  const common: Record<string, unknown> = {
     FirmName: "Speedwell Law, PLLC",
     CurrentYear: String(new Date().getFullYear()),
+    Offering: offering,
+    RECIPROCALTRUSTS: offering === "RECIPROCAL_TRUSTS" ? "YES" : "",
+    INDIVIDUALTRUST: offering === "INDIVIDUAL_TRUST" ? "YES" : "",
   };
+
+  const baseData = (opts?: Parameters<typeof tokenDataFromIntakeWithOptions>[1]) =>
+    ({
+      ...(tokenDataFromIntakeWithOptions(intake, opts) as Record<string, unknown>),
+      ...common,
+    }) as Record<string, unknown>;
 
   const { makePlaceholderDocx } = await import("@/lib/docx/placeholderDocx");
   const JSZip = (await import("jszip")).default;
@@ -47,7 +55,7 @@ export async function POST(
   try {
     // 01 Trust (offering-dependent)
     if (offering === "JOINT_TRUST") {
-      const r = renderOrThrow("templates/canonical/joint.docx", data);
+      const r = renderOrThrow("templates/canonical/joint.docx", baseData());
       zip.file(`01_Joint_Trust_${matterId}.docx`, r.buffer);
       rendered.push({
         name: "01_Joint_Trust",
@@ -55,22 +63,54 @@ export async function POST(
         template: r.templateAbsPath,
         bytes: fs.statSync(r.templateAbsPath).size,
       });
-    } else if (offering === "RECIPROCAL_TRUSTS") {
-      const r = renderOrThrow("templates/canonical/reciprocal.docx", data);
-      zip.file(`01_Reciprocal_Trusts_${matterId}.docx`, r.buffer);
+    } else if (offering === "INDIVIDUAL_TRUST") {
+      const r = renderOrThrow(
+        "templates/canonical/individual.docx",
+        baseData({ primaryClient: 1 })
+      );
+      zip.file(`01_Individual_Trust_${matterId}.docx`, r.buffer);
       rendered.push({
-        name: "01_Reciprocal_Trusts",
+        name: "01_Individual_Trust",
         missingTokens: r.missingTokens,
         template: r.templateAbsPath,
         bytes: fs.statSync(r.templateAbsPath).size,
       });
+    } else if (offering === "RECIPROCAL_TRUSTS") {
+      // Generate two individual trusts (one per spouse) and use a reciprocal view
+      // so trustee tokens are derived from spouse POV.
+      {
+        const r = renderOrThrow(
+          "templates/canonical/individual.docx",
+          baseData({ primaryClient: 1, reciprocalTrustView: true })
+        );
+        zip.file(`01A_Trust_Spouse1_${matterId}.docx`, r.buffer);
+        rendered.push({
+          name: "01A_Trust_Spouse1",
+          missingTokens: r.missingTokens,
+          template: r.templateAbsPath,
+          bytes: fs.statSync(r.templateAbsPath).size,
+        });
+      }
+      {
+        const r = renderOrThrow(
+          "templates/canonical/individual.docx",
+          baseData({ primaryClient: 2, reciprocalTrustView: true })
+        );
+        zip.file(`01B_Trust_Spouse2_${matterId}.docx`, r.buffer);
+        rendered.push({
+          name: "01B_Trust_Spouse2",
+          missingTokens: r.missingTokens,
+          template: r.templateAbsPath,
+          bytes: fs.statSync(r.templateAbsPath).size,
+        });
+      }
     } else {
       // No trust doc for WILL_ONLY / WILL_AND_INCAPACITY / INCAPACITY_ONLY (for now)
     }
 
     // 02/03 Wills
     {
-      const r = renderOrThrow("templates/canonical/packet_split/will_client1.docx", data);
+      const r = renderOrThrow("templates/canonical/packet_split/will_client1.docx", baseData());
       zip.file(`02_Last_Will_Client1_${matterId}.docx`, r.buffer);
       rendered.push({
         name: "02_Last_Will_Client1",
@@ -80,7 +120,7 @@ export async function POST(
       });
     }
     {
-      const r = renderOrThrow("templates/canonical/packet_split/will_client2.docx", data);
+      const r = renderOrThrow("templates/canonical/packet_split/will_client2.docx", baseData());
       zip.file(`03_Last_Will_Client2_${matterId}.docx`, r.buffer);
       rendered.push({
         name: "03_Last_Will_Client2",
@@ -94,7 +134,7 @@ export async function POST(
     {
       const r = renderOrThrow(
         "templates/canonical/packet_split/advance_medical_directive_client1.docx",
-        data
+        baseData()
       );
       zip.file(`04_Advance_Medical_Directive_Client1_${matterId}.docx`, r.buffer);
       rendered.push({
@@ -107,7 +147,7 @@ export async function POST(
     {
       const r = renderOrThrow(
         "templates/canonical/packet_split/advance_medical_directive_client2.docx",
-        data
+        baseData()
       );
       zip.file(`05_Advance_Medical_Directive_Client2_${matterId}.docx`, r.buffer);
       rendered.push({
@@ -122,7 +162,7 @@ export async function POST(
     {
       const r = renderOrThrow(
         "templates/canonical/packet_split/final_disposition_client1.docx",
-        data
+        baseData()
       );
       zip.file(`06_Final_Disposition_Client1_${matterId}.docx`, r.buffer);
       rendered.push({
@@ -135,7 +175,7 @@ export async function POST(
     {
       const r = renderOrThrow(
         "templates/canonical/packet_split/final_disposition_client2.docx",
-        data
+        baseData()
       );
       zip.file(`07_Final_Disposition_Client2_${matterId}.docx`, r.buffer);
       rendered.push({
@@ -150,7 +190,7 @@ export async function POST(
     if (intake.hasMinorChildren) {
       const r = renderOrThrow(
         "templates/canonical/packet_split/minor_children_poa_and_healthcare.docx",
-        data
+        baseData()
       );
       zip.file(`08_Minor_Children_Power_of_Attorney_${matterId}.docx`, r.buffer);
       rendered.push({
@@ -165,7 +205,7 @@ export async function POST(
     {
       const r = renderOrThrow(
         "templates/canonical/packet_split/certification_of_trust.docx",
-        data
+        baseData()
       );
       zip.file(`09_Certification_of_Trust_${matterId}.docx`, r.buffer);
       rendered.push({
@@ -180,7 +220,7 @@ export async function POST(
     {
       const r = renderOrThrow(
         "templates/canonical/packet_split/assignment_of_personal_property.docx",
-        data
+        baseData()
       );
       zip.file(`10_Assignment_of_Tangible_Personal_Property_${matterId}.docx`, r.buffer);
       rendered.push({
@@ -195,7 +235,7 @@ export async function POST(
     {
       const r = renderOrThrow(
         "templates/canonical/packet_split/declaration_of_trust.docx",
-        data
+        baseData()
       );
       zip.file(`11_Declaration_of_Trust_${matterId}.docx`, r.buffer);
       rendered.push({
@@ -210,7 +250,7 @@ export async function POST(
     {
       const r = renderOrThrow(
         "templates/canonical/packet_split/durable_poa_client1.docx",
-        data
+        baseData()
       );
       zip.file(`12_General_Durable_Power_of_Attorney_Client1_${matterId}.docx`, r.buffer);
       rendered.push({
@@ -223,7 +263,7 @@ export async function POST(
     {
       const r = renderOrThrow(
         "templates/canonical/packet_split/durable_poa_client2.docx",
-        data
+        baseData()
       );
       zip.file(`13_General_Durable_Power_of_Attorney_Client2_${matterId}.docx`, r.buffer);
       rendered.push({

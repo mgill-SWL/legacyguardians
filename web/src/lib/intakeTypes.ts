@@ -32,12 +32,28 @@ export type RoleAssignment = {
   alternate2?: string;
 };
 
+export type ActingMode = "EITHER" | "JOINT";
+export type RankGroup = { actingMode: ActingMode; personIds: string[] };
+export type RankedRoles = {
+  trustees: RankGroup[];
+  executors: RankGroup[];
+  financialAgents: RankGroup[];
+  healthAgents: RankGroup[];
+  guardians: RankGroup[];
+};
+
 export type Child = {
   name: string;
   dob?: string; // ISO date (YYYY-MM-DD)
 };
 
-export type Offering = "JOINT_TRUST" | "RECIPROCAL_TRUSTS" | "WILL_ONLY" | "WILL_AND_INCAPACITY" | "INCAPACITY_ONLY";
+export type Offering =
+  | "JOINT_TRUST"
+  | "INDIVIDUAL_TRUST"
+  | "RECIPROCAL_TRUSTS"
+  | "WILL_ONLY"
+  | "WILL_AND_INCAPACITY"
+  | "INCAPACITY_ONLY";
 
 export type IntakeV1 = {
   /** Product/offering selected for this matter. */
@@ -77,6 +93,9 @@ export type IntakeV1 = {
     healthAgents: RoleAssignment;
     guardians: RoleAssignment;
   };
+
+  /** New v1 schema: ranked fiduciary groups per role (autosave). */
+  rankedRoles?: RankedRoles;
 
   children: Child[];
   successorTrustees: string[];

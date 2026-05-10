@@ -8,6 +8,7 @@ type Child = { name: string; dob: string };
 
 type Offering =
   | "JOINT_TRUST"
+  | "INDIVIDUAL_TRUST"
   | "RECIPROCAL_TRUSTS"
   | "WILL_ONLY"
   | "WILL_AND_INCAPACITY"
@@ -430,6 +431,7 @@ export function NewMatterForm() {
               <span style={{ color: "var(--sw-muted)" }}>Offering</span>
               <select value={offering} onChange={(e) => setOffering(e.target.value as Offering)} style={inputStyle}>
                 <option value="JOINT_TRUST">Joint trust (packet)</option>
+                <option value="INDIVIDUAL_TRUST">Individual trust (packet)</option>
                 <option value="RECIPROCAL_TRUSTS">Reciprocal individual trusts (packet)</option>
                 <option value="WILL_ONLY">Wills only</option>
                 <option value="WILL_AND_INCAPACITY">Wills + incapacity docs</option>
