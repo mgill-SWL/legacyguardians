@@ -163,6 +163,92 @@ function sanitizeWordXml(xml: string, data: Record<string, unknown>) {
     "succeeded by [[FIRSTALTERNATETRUSTEEFULLNAME]] as the successor Trustee"
   );
 
+  // Reciprocal trust (now rendered using the individual trust template twice):
+  // Inject the Paragraph 6.F reciprocal distribution logic:
+  //  - Conditional effectiveness (spouse survives)
+  //  - Two subparagraphs (TPP + residue to spouse's trust trustee)
+  //  - Then the existing distribution-at-death section becomes the "spouse predeceases" branch.
+  if (data?.Offering === "RECIPROCAL_TRUSTS") {
+    const heading = "Distribution of the Trust Estate at My Death";
+    const headingIdx = out.indexOf(heading);
+    if (headingIdx !== -1 && out.includes("DECLARATION OF TRUST")) {
+      // Locate the heading paragraph (contains the heading text) and capture its structure so
+      // inserted paragraphs match numbering/indentation.
+      const headingParaStart = out.lastIndexOf("<w:p", headingIdx);
+      const headingParaEnd = out.indexOf("</w:p>", headingIdx);
+
+      if (headingParaStart !== -1 && headingParaEnd !== -1) {
+        const headingParaXml = out.slice(headingParaStart, headingParaEnd + "</w:p>".length);
+
+        // Find the first numbered list paragraph that follows the heading (to clone numbering style).
+        const afterHeading = out.slice(headingParaEnd + "</w:p>".length);
+        const firstListStart = afterHeading.indexOf("<w:p");
+        const firstListAbsStart = firstListStart === -1 ? -1 : headingParaEnd + "</w:p>".length + firstListStart;
+        let listParaXml = "";
+        if (firstListAbsStart !== -1) {
+          const listEnd = out.indexOf("</w:p>", firstListAbsStart);
+          if (listEnd !== -1) listParaXml = out.slice(firstListAbsStart, listEnd + "</w:p>".length);
+        }
+
+        const openTag = (headingParaXml.match(/^<w:p[^>]*>/) || ["<w:p>"])[0];
+        const pPr = (headingParaXml.match(/<w:pPr>[\s\S]*?<\/w:pPr>/) || ["<w:pPr/>"])[0];
+
+        const listOpenTag = (listParaXml.match(/^<w:p[^>]*>/) || [openTag])[0];
+        const listPPr = (listParaXml.match(/<w:pPr>[\s\S]*?<\/w:pPr>/) || [pPr])[0];
+
+        const esc = (s: string) =>
+          s
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+
+        const mkHeadingPara = (headingText: string, bodyText: string) => {
+          // Keep the same structure as the existing heading paragraph, but swap the heading and body.
+          let x = headingParaXml;
+          x = x.replace(
+            /<w:t>Distribution of the Trust Estate at My Death<\/w:t>/,
+            `<w:t>${esc(headingText)}</w:t>`
+          );
+          x = x.replace(
+            /<w:t xml:space="preserve">[^<]*<\/w:t>/,
+            `<w:t xml:space="preserve">${esc(bodyText)}</w:t>`
+          );
+          return x;
+        };
+
+        const mkListPara = (text: string) =>
+          `${listOpenTag}${listPPr}<w:r><w:t>${esc(text)}</w:t></w:r></w:p>`;
+
+        const spouseSurvivesHeading = mkHeadingPara(
+          "Distribution at My Death if My Spouse Survives",
+          " On my death and if [[SPOUSEFIRSTNAME]] survives me, the Trustee shall hold, administer and distribute the trust fund, as then constituted, plus any additions thereto as a result of my death (all of which is hereafter referred to as the \u201cTrust Estate\u201d) as follows:"
+        );
+
+        const spouseSurvivesTPP = mkListPara(
+          "The Trustee shall distribute my tangible personal property to [[SPOUSEFirstname]]."
+        );
+        const spouseSurvivesResidue = mkListPara(
+          "The Trustee shall distribute the residue of the Trust Estate to the then-acting Trustee of that certain trust agreement known as THE [[SPOUSEFULLNAME]] LIVING TRUST, executed by my spouse concurrently herewith."
+        );
+
+        const spousePredeceasesHeading = mkHeadingPara(
+          "Distribution at My Death if My Spouse Predeceases Me",
+          " On my death if [[SPOUSEFIRSTNAME]] shall predecease me, the Trustee shall hold, administer and distribute the Trust Estate as follows:"
+        );
+
+        // Replace the original heading paragraph with:
+        //   spouse-survives heading + 2 list paras + spouse-predeceases heading
+        out =
+          out.slice(0, headingParaStart) +
+          spouseSurvivesHeading +
+          spouseSurvivesTPP +
+          spouseSurvivesResidue +
+          spousePredeceasesHeading +
+          out.slice(headingParaEnd + "</w:p>".length);
+      }
+    }
+  }
+
   // Strip any remaining Jinja-style control tags that could show up as "random code".
   // Examples: {% for ... %}, {% endif %}, etc.
   out = out.replace(/\{%[^%]*%\}/g, "");

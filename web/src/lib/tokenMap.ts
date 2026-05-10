@@ -95,6 +95,10 @@ export function tokenDataFromIntakeWithOptions(intake: IntakeV1, options?: Token
   const povFirst = povName.split(" ")[0] ?? "";
   const povSurname = povName.trim().split(/\s+/).slice(-1)[0] ?? "";
 
+  const spouseName = povClient === 2 ? client1 : client2;
+  const spouseFirst = spouseName.split(" ")[0] ?? "";
+  const spouseSurname = spouseName.trim().split(/\s+/).slice(-1)[0] ?? "";
+
   const rawOverride = (intake.trustNameOverride || "").trim();
   const normalizedOverride = rawOverride
     ? rawOverride.replace(/^the\s+/i, "").trim()
@@ -156,6 +160,16 @@ export function tokenDataFromIntakeWithOptions(intake: IntakeV1, options?: Token
     CLIENTINITIALS: "",
     CLIENTemail: povClient === 2 ? (intake.clientEmails?.client2 ?? "") : (intake.clientEmails?.client1 ?? ""),
 
+    // Reciprocal-trust helper tokens (spouse POV)
+    SPOUSEFULLNAME: spouseName,
+    SPOUSEFIRSTNAME: spouseFirst,
+    SPOUSESURNAME: spouseSurname,
+    SpouseFullName: spouseName,
+    SpouseFirstName: spouseFirst,
+    SpouseSurname: spouseSurname,
+    SPOUSEFirstname: spouseFirst,
+    SpouseFirstname: spouseFirst,
+  
     // Law firm (legacy individual template tokens)
     "LawFirmCounty/City": "Alexandria",
     LawFirmCountyOrCity: "Alexandria",
