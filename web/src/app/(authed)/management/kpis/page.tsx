@@ -16,6 +16,9 @@ export default function KpisHome() {
         <Link className="sw-btn" href="/management/kpis/intake">
           Intake (summary)
         </Link>
+        <Link className="sw-btn" href="/management/kpis/intake-sheet">
+          Intake (from Google Sheet)
+        </Link>
         <Link className="sw-btn" href="/management/kpis/l10/reporting">
           L10 (reporting)
         </Link>
