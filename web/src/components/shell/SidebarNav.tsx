@@ -241,7 +241,7 @@ export function SidebarNav({ email }: { email: string | null | undefined }) {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
           <div style={{ padding: "6px 6px 2px", overflow: "hidden" }}>
             <div style={{ whiteSpace: "nowrap" }}>
-              {collapsed ? <LegacyGuardiansLogo kind="mark_simplified" height={26} /> : <LegacyGuardiansLogo kind="lockup" height={28} />}
+              {collapsed ? <LegacyGuardiansLogo kind="mark_simplified" height={30} /> : <LegacyGuardiansLogo kind="lockup" height={34} />}
             </div>
             {collapsed ? null : (
               <div style={{ marginTop: 6, fontSize: 12, color: "var(--sw-muted, #aab4d4)", display: "grid", gap: 8 }}>
@@ -264,19 +264,19 @@ export function SidebarNav({ email }: { email: string | null | undefined }) {
                     </select>
 
                     {firmCtx.locations?.length ? (
-                      <select
-                        className="sw-input"
-                        value={firmCtx.activeLocationId || ""}
-                        onChange={(e) => setActiveLocationId(e.target.value || null)}
-                        title="Active location"
-                        style={{ fontSize: 12, padding: "8px 10px" }}
-                      >
-                        {firmCtx.locations.map((l) => (
-                          <option key={l.id} value={l.id}>
-                            {l.name}
-                          </option>
-                        ))}
-                      </select>
+                    <select
+                      className="sw-input"
+                      value={firmCtx.activeLocationId || ""}
+                      onChange={(e) => setActiveLocationId(e.target.value || null)}
+                      title="Active location"
+                      style={{ fontSize: 12, padding: "8px 10px" }}
+                    >
+                      {firmCtx.locations.map((l) => (
+                        <option key={l.id} value={l.id}>
+                          {l.slug} — {l.name}
+                        </option>
+                      ))}
+                    </select>
                     ) : null}
                   </div>
                 ) : (

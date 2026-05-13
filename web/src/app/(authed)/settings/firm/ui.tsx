@@ -20,6 +20,11 @@ export function FirmSettingsClient({ firm, locations, users }: { firm: Firm; loc
   const [newLocationSlug, setNewLocationSlug] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [locEdits, setLocEdits] = useState<Record<string, { name: string; slug: string; active: boolean }>>(() => {
+    const init: Record<string, { name: string; slug: string; active: boolean }> = {};
+    for (const l of locations) init[l.id] = { name: l.name, slug: l.slug, active: l.active };
+    return init;
+  });
 
   const locationOptions = useMemo(() => {
     return [{ id: "", label: "— Unassigned —" }, ...locations.map((l) => ({ id: l.id, label: `${l.slug} — ${l.name}` }))];
@@ -83,6 +88,39 @@ export function FirmSettingsClient({ firm, locations, users }: { firm: Firm; loc
     }
   }
 
+  async function saveLocation(locationId: string) {
+    const next = locEdits[locationId];
+    if (!next) return;
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/settings/firm/locations/${locationId}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: next.name,
+          slug: next.slug,
+          active: next.active,
+        }),
+      });
+      const json = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!response.ok || json.ok === false) throw new Error(json.error || "Update failed");
+      window.location.reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Update failed");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function quickRenameToWillowOaks(locationId: string) {
+    setLocEdits((prev) => ({
+      ...prev,
+      [locationId]: { ...(prev[locationId] || { name: "", slug: "", active: true }), name: "Willow Oaks", slug: "WO", active: true },
+    }));
+  }
+
   return (
     <div className="sw-page">
       <div className="sw-pageHeader">
@@ -129,13 +167,53 @@ export function FirmSettingsClient({ firm, locations, users }: { firm: Firm; loc
 
           <div style={{ marginTop: 12 }}>
             {locations.length ? (
-              <ul style={{ margin: 0, paddingLeft: 18, lineHeight: 1.9 }}>
-                {locations.map((l) => (
-                  <li key={l.id}>
-                    <b>{l.slug}</b> — {l.name} {l.active ? "" : "(inactive)"}
-                  </li>
-                ))}
-              </ul>
+              <div style={{ display: "grid", gap: 10 }}>
+                {locations.map((l) => {
+                  const e = locEdits[l.id] || { name: l.name, slug: l.slug, active: l.active };
+                  const isMerrifield = l.name.toLowerCase().includes("merrifield") || l.slug.toUpperCase() === "MF";
+                  return (
+                    <div key={l.id} style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8, padding: 10, border: "1px solid var(--sw-border)", borderRadius: 12 }}>
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                        <label style={{ display: "grid", gap: 6 }}>
+                          <span className="sw-muted" style={{ fontSize: 12 }}>
+                            Slug
+                          </span>
+                          <input
+                            value={e.slug}
+                            onChange={(ev) => setLocEdits((p) => ({ ...p, [l.id]: { ...e, slug: ev.target.value } }))}
+                            style={{ width: 110, fontFamily: "var(--sw-mono)" }}
+                          />
+                        </label>
+
+                        <label style={{ display: "grid", gap: 6, flex: 1, minWidth: 220 }}>
+                          <span className="sw-muted" style={{ fontSize: 12 }}>
+                            Name
+                          </span>
+                          <input value={e.name} onChange={(ev) => setLocEdits((p) => ({ ...p, [l.id]: { ...e, name: ev.target.value } }))} />
+                        </label>
+
+                        <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 18 }}>
+                          <input type="checkbox" checked={!!e.active} onChange={(ev) => setLocEdits((p) => ({ ...p, [l.id]: { ...e, active: ev.target.checked } }))} />
+                          <span className="sw-muted" style={{ fontSize: 12 }}>
+                            Active
+                          </span>
+                        </label>
+
+                        <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 18 }}>
+                          {isMerrifield ? (
+                            <button className="sw-btn sw-btnSm" type="button" disabled={submitting} onClick={() => quickRenameToWillowOaks(l.id)}>
+                              Rename to Willow Oaks (WO)
+                            </button>
+                          ) : null}
+                          <button className="sw-btn sw-btnPrimary sw-btnSm" type="button" disabled={submitting} onClick={() => saveLocation(l.id)}>
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
               <div className="sw-muted">No locations yet.</div>
             )}
