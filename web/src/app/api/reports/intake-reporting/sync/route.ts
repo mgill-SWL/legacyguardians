@@ -63,74 +63,112 @@ export async function POST() {
   }
 
   const year = new Date().getFullYear();
-  const { rows } = await getIntakeKpisFromSheet({
-    googleEmail,
-    spreadsheetId,
-    year,
-    sheetNameTemplate: process.env.LG_INTAKE_KPI_SHEETNAME_TEMPLATE || "{YYYY} Intake KPIs",
-  });
+  const sheetNameTemplate = process.env.LG_INTAKE_KPI_SHEETNAME_TEMPLATE || "{YYYY} Intake KPIs";
 
-  const table = await prisma.reportTable.findUnique({
-    where: { slug: SLUG },
-    include: { columns: true, rows: true },
-  });
-
-  const ensured = table
-    ? table
-    : await prisma.reportTable.create({
-        data: {
-          slug: SLUG,
-          name: "Intake Reporting",
-          columns: { create: [] },
-          rows: { create: [] },
+  let rows: any[] = [];
+  try {
+    const out = await getIntakeKpisFromSheet({
+      googleEmail,
+      spreadsheetId,
+      year,
+      sheetNameTemplate,
+    });
+    rows = out.rows;
+  } catch (e: any) {
+    const msg = e?.message || "Failed to read intake KPI sheet";
+    // Most sheet-related errors are user-config issues; return a readable 400.
+    return NextResponse.json(
+      {
+        ok: false,
+        error: msg,
+        context: {
+          googleEmail,
+          year,
+          sheetName: sheetNameTemplate.replace("{YYYY}", String(year)),
+          requiredHeaders: [
+            "Week Ending",
+            "Total Intake Calls",
+            "Design Meetings HELD",
+            "Design Meetings CANCELLED",
+            "% Qualified",
+            "Total Conversion",
+          ],
         },
-        include: { columns: true, rows: true },
-      });
-
-  await ensureColumns(ensured.id);
-
-  const existingRows = await prisma.reportRow.findMany({ where: { tableId: ensured.id } });
-  const byRowKey = new Map(existingRows.map((r) => [r.rowKey, r] as const));
-
-  let created = 0;
-  let updated = 0;
-
-  for (const r of rows) {
-    const dataPatch = {
-      total_intake_calls: r.totalIntakeCalls,
-      design_meetings_held: r.designMeetingsHeld,
-      design_meetings_cancelled: r.designMeetingsCancelled,
-      pct_qualified: r.pctQualified,
-      total_conversion: r.totalConversion,
-      _source: "google_sheet",
-      _source_weekEnding: r.weekEnding,
-      _source_year: year,
-    } as any;
-
-    const existing = byRowKey.get(r.weekEnding);
-    if (existing) {
-      await prisma.reportRow.update({
-        where: { id: existing.id },
-        data: {
-          label: existing.label || r.weekEnding,
-          data: { ...(existing.data as any), ...dataPatch },
-        },
-      });
-      updated++;
-    } else {
-      await prisma.reportRow.create({
-        data: {
-          tableId: ensured.id,
-          rowKey: r.weekEnding,
-          label: r.weekEnding,
-          sortOrder: existingRows.length + created,
-          data: dataPatch,
-        },
-      });
-      created++;
-    }
+      },
+      { status: 400 }
+    );
   }
 
-  return NextResponse.json({ ok: true, year, created, updated, totalSheetRows: rows.length });
-}
+  try {
+    const table = await prisma.reportTable.findUnique({
+      where: { slug: SLUG },
+      include: { columns: true, rows: true },
+    });
 
+    const ensured = table
+      ? table
+      : await prisma.reportTable.create({
+          data: {
+            slug: SLUG,
+            name: "Intake Reporting",
+            columns: { create: [] },
+            rows: { create: [] },
+          },
+          include: { columns: true, rows: true },
+        });
+
+    await ensureColumns(ensured.id);
+
+    const existingRows = await prisma.reportRow.findMany({ where: { tableId: ensured.id } });
+    const byRowKey = new Map(existingRows.map((r) => [r.rowKey, r] as const));
+
+    let created = 0;
+    let updated = 0;
+
+    for (const r of rows) {
+      const dataPatch = {
+        total_intake_calls: r.totalIntakeCalls,
+        design_meetings_held: r.designMeetingsHeld,
+        design_meetings_cancelled: r.designMeetingsCancelled,
+        pct_qualified: r.pctQualified,
+        total_conversion: r.totalConversion,
+        _source: "google_sheet",
+        _source_weekEnding: r.weekEnding,
+        _source_year: year,
+      } as any;
+
+      const existing = byRowKey.get(r.weekEnding);
+      if (existing) {
+        await prisma.reportRow.update({
+          where: { id: existing.id },
+          data: {
+            label: existing.label || r.weekEnding,
+            data: { ...(existing.data as any), ...dataPatch },
+          },
+        });
+        updated++;
+      } else {
+        await prisma.reportRow.create({
+          data: {
+            tableId: ensured.id,
+            rowKey: r.weekEnding,
+            label: r.weekEnding,
+            sortOrder: existingRows.length + created,
+            data: dataPatch,
+          },
+        });
+        created++;
+      }
+    }
+
+    return NextResponse.json({ ok: true, year, created, updated, totalSheetRows: rows.length });
+  } catch (e: any) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: e?.message || "Sync failed",
+      },
+      { status: 500 }
+    );
+  }
+}
