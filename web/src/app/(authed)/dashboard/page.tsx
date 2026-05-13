@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/authOptions";
 import { prisma } from "@/lib/prisma";
 import { DashboardClient } from "./ui";
+import { getDefaultGoogleEmailForUser, getIntakeKpisFromSheet } from "@/lib/kpis/intakeSheet";
 
 export const dynamic = "force-dynamic";
 
@@ -136,40 +137,99 @@ export default async function DashboardPage() {
     { id: "lawpay_30d", label: "LawPay 30-day volume", value: usd(lawpay30dCents) },
   ];
 
-  // --- Intake KPIs (DB summary) ---
-  const intakeTable: any = anyPrisma.reportTable
-    ? await anyPrisma.reportTable.findUnique({ where: { slug: "intake-reporting" }, include: { rows: { orderBy: { sortOrder: "asc" } } } })
-    : null;
+  // --- Intake KPIs (prefer Google Sheet; fallback to DB summary) ---
+  const spreadsheetId = process.env.LG_INTAKE_KPI_SPREADSHEET_ID;
 
-  const intakeTotals = (intakeTable?.rows || []).reduce(
-    (acc: any, r: any) => {
-      const d = r.data || {};
-      const n = (v: any) => {
-        const x = Number(v);
-        return Number.isFinite(x) ? x : 0;
-      };
-      acc.scheduled += n(d.scheduled_intake);
-      acc.qualified += n(d.qualified);
-      acc.designHeld += n(d.design_meetings_held);
-      acc.docTours += n(d.doc_tour_held);
-      acc.signings += n(d.signing_held);
-      return acc;
-    },
-    { scheduled: 0, qualified: 0, designHeld: 0, docTours: 0, signings: 0 }
-  );
+  let intakeKpis: Kpi[] = [];
 
-  const intakeKpis: Kpi[] = [
-    { id: "scheduled", label: "Scheduled intake", value: intakeTotals.scheduled.toLocaleString() },
-    {
-      id: "qualified",
-      label: "Qualified",
-      value: intakeTotals.qualified.toLocaleString(),
-      sub: intakeTotals.scheduled ? `${Math.round((intakeTotals.qualified / intakeTotals.scheduled) * 1000) / 10}% of scheduled` : undefined,
-    },
-    { id: "design", label: "Design meetings held", value: intakeTotals.designHeld.toLocaleString() },
-    { id: "doc_tours", label: "Doc tours held", value: intakeTotals.docTours.toLocaleString() },
-    { id: "signings", label: "Signings held", value: intakeTotals.signings.toLocaleString() },
-  ];
+  const fmt = (v: number) => (Number.isFinite(v) ? v.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "0");
+  const fmtPct = (v: number) => {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return "0%";
+    const asPct = n <= 1 ? n * 100 : n;
+    return `${Math.round(asPct * 10) / 10}%`;
+  };
+
+  if (spreadsheetId) {
+    const googleEmail = await getDefaultGoogleEmailForUser(session.user.email);
+    if (googleEmail) {
+      try {
+        const year = new Date().getFullYear();
+        const { rows } = await getIntakeKpisFromSheet({
+          googleEmail,
+          spreadsheetId,
+          year,
+          sheetNameTemplate: process.env.LG_INTAKE_KPI_SHEETNAME_TEMPLATE || "{YYYY} Intake KPIs",
+        });
+
+        const totals = rows.reduce(
+          (acc, r) => {
+            acc.totalIntakeCalls += r.totalIntakeCalls;
+            acc.designMeetingsHeld += r.designMeetingsHeld;
+            acc.designMeetingsCancelled += r.designMeetingsCancelled;
+            return acc;
+          },
+          { totalIntakeCalls: 0, designMeetingsHeld: 0, designMeetingsCancelled: 0 }
+        );
+
+        const latest = rows.length ? rows[rows.length - 1] : null;
+
+        intakeKpis = [
+          { id: "calls_ytd", label: "Intake calls (YTD)", value: fmt(totals.totalIntakeCalls) },
+          { id: "design_held_ytd", label: "Design meetings held (YTD)", value: fmt(totals.designMeetingsHeld) },
+          { id: "design_cancel_ytd", label: "Design meetings cancelled (YTD)", value: fmt(totals.designMeetingsCancelled) },
+          {
+            id: "latest_week",
+            label: "Latest week",
+            value: latest ? latest.weekEnding : "—",
+            sub: latest
+              ? `Calls: ${fmt(latest.totalIntakeCalls)} · Held: ${fmt(latest.designMeetingsHeld)} · Cancelled: ${fmt(
+                  latest.designMeetingsCancelled
+                )} · Qualified: ${fmtPct(latest.pctQualified)} · Conversion: ${fmt(latest.totalConversion)}`
+              : "No weekly rows found",
+          },
+        ];
+      } catch {
+        // fall through to DB summary
+      }
+    }
+  }
+
+  if (!intakeKpis.length) {
+    const intakeTable: any = anyPrisma.reportTable
+      ? await anyPrisma.reportTable.findUnique({ where: { slug: "intake-reporting" }, include: { rows: { orderBy: { sortOrder: "asc" } } } })
+      : null;
+
+    const intakeTotals = (intakeTable?.rows || []).reduce(
+      (acc: any, r: any) => {
+        const d = r.data || {};
+        const n = (v: any) => {
+          const x = Number(v);
+          return Number.isFinite(x) ? x : 0;
+        };
+        acc.scheduled += n(d.scheduled_intake);
+        acc.qualified += n(d.qualified);
+        acc.designHeld += n(d.design_meetings_held);
+        acc.docTours += n(d.doc_tour_held);
+        acc.signings += n(d.signing_held);
+        return acc;
+      },
+      { scheduled: 0, qualified: 0, designHeld: 0, docTours: 0, signings: 0 }
+    );
+
+    intakeKpis = [
+      { id: "scheduled", label: "Scheduled intake", value: intakeTotals.scheduled.toLocaleString() },
+      {
+        id: "qualified",
+        label: "Qualified",
+        value: intakeTotals.qualified.toLocaleString(),
+        sub: intakeTotals.scheduled ? `${Math.round((intakeTotals.qualified / intakeTotals.scheduled) * 1000) / 10}% of scheduled` : undefined,
+      },
+      { id: "design", label: "Design meetings held", value: intakeTotals.designHeld.toLocaleString() },
+      { id: "doc_tours", label: "Doc tours held", value: intakeTotals.docTours.toLocaleString() },
+      { id: "signings", label: "Signings held", value: intakeTotals.signings.toLocaleString() },
+    ];
+  }
 
   // --- Work in process (pipelines) ---
   const epStats = await getStageStats("Estate Planning Representation Pipeline", firmId);
