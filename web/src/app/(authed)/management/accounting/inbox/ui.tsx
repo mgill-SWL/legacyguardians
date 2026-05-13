@@ -5,6 +5,7 @@ import { FormEvent, useState } from "react";
 type Result = { ok?: boolean; error?: string; batchId?: string; parsedRows?: number; insertedRows?: number };
 
 export function BookkeepingInboxClient() {
+  const [importKind, setImportKind] = useState<"CHASE_CARD" | "CHASE_OPERATING">("CHASE_CARD");
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
@@ -24,7 +25,8 @@ export function BookkeepingInboxClient() {
       const formData = new FormData();
       formData.set("file", file);
 
-      const res = await fetch("/api/accounting/import/chase-card", { method: "POST", body: formData });
+      const endpoint = importKind === "CHASE_OPERATING" ? "/api/accounting/import/chase-operating" : "/api/accounting/import/chase-card";
+      const res = await fetch(endpoint, { method: "POST", body: formData });
       const json = (await res.json().catch(() => ({}))) as Result;
       if (!res.ok || json.ok === false) throw new Error(json.error || `HTTP ${res.status}`);
       setResult(json);
@@ -51,9 +53,20 @@ export function BookkeepingInboxClient() {
 
       <form onSubmit={onSubmit} className="sw-card sw-card-pad" style={{ marginTop: 14, maxWidth: 860, display: "grid", gap: 12 }}>
         <div style={{ fontWeight: 900 }}>Upload</div>
+
         <label style={{ display: "grid", gap: 8 }}>
           <span className="sw-muted" style={{ fontSize: 12 }}>
-            Chase credit card CSV
+            Import type
+          </span>
+          <select className="sw-input" value={importKind} onChange={(e) => setImportKind(e.target.value as any)}>
+            <option value="CHASE_CARD">Chase credit card activity CSV</option>
+            <option value="CHASE_OPERATING">Chase operating account transactions CSV</option>
+          </select>
+        </label>
+
+        <label style={{ display: "grid", gap: 8 }}>
+          <span className="sw-muted" style={{ fontSize: 12 }}>
+            CSV file
           </span>
           <input type="file" accept=".csv,text/csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
         </label>
@@ -72,9 +85,8 @@ export function BookkeepingInboxClient() {
       </form>
 
       <div className="sw-muted" style={{ marginTop: 12, fontSize: 12, maxWidth: 860 }}>
-        Next: operating bank CSV support (need one sample export), and the actual review/triage queue UI.
+        Next: build the actual review/triage queue UI (unreviewed transactions, classification, linking to matter/client/invoice).
       </div>
     </div>
   );
 }
-
