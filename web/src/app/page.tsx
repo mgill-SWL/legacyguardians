@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LegacyGuardiansLogo } from "@/components/brand/LegacyGuardiansLogo";
 
 function Card({
   title,
@@ -50,7 +51,9 @@ export default function DashboardLanding() {
     <main style={{ maxWidth: 980, margin: "0 auto", padding: "44px 18px 64px" }}>
       <header style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "baseline" }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 34, letterSpacing: -0.5 }}>Legacy Guardians</h1>
+          <div style={{ marginTop: 2 }}>
+            <LegacyGuardiansLogo kind="lockup" height={44} />
+          </div>
           <p style={{ marginTop: 10, marginBottom: 0, color: "var(--sw-muted)", maxWidth: 760 }}>
             Internal drafting dashboard (MVP). Next up: joint trust intake → DOCX generation.
           </p>

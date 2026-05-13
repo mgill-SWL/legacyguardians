@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { signIn } from "next-auth/react";
+import { LegacyGuardiansLogo } from "@/components/brand/LegacyGuardiansLogo";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -28,8 +29,10 @@ export default function LoginPage() {
 
   return (
     <main style={{ padding: 24, fontFamily: "system-ui" }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700 }}>Legacy Guardians</h1>
-      <p style={{ marginTop: 8 }}>Staff sign-in (speedwelllaw.com)</p>
+      <div style={{ display: "grid", gap: 10, justifyItems: "start" }}>
+        <LegacyGuardiansLogo kind="lockup" height={42} />
+        <p style={{ margin: 0 }}>Staff sign-in (speedwelllaw.com)</p>
+      </div>
 
       {sent ? (
         <p style={{ marginTop: 16 }}>

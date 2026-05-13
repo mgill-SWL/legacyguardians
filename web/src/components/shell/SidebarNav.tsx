@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { SignOutButton } from "@/components/SignOutButton";
 import { useUnsavedChanges } from "@/components/unsaved/UnsavedChangesProvider";
+import { LegacyGuardiansLogo } from "@/components/brand/LegacyGuardiansLogo";
 
 type Item = { href: string; label: string; icon: string };
 
@@ -239,8 +240,8 @@ export function SidebarNav({ email }: { email: string | null | undefined }) {
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
           <div style={{ padding: "6px 6px 2px", overflow: "hidden" }}>
-            <div style={{ fontSize: 16, fontWeight: 900, letterSpacing: -0.2, whiteSpace: "nowrap" }}>
-              {collapsed ? "LG" : "Legacy Guardians"}
+            <div style={{ whiteSpace: "nowrap" }}>
+              {collapsed ? <LegacyGuardiansLogo kind="mark_simplified" height={26} /> : <LegacyGuardiansLogo kind="lockup" height={28} />}
             </div>
             {collapsed ? null : (
               <div style={{ marginTop: 6, fontSize: 12, color: "var(--sw-muted, #aab4d4)", display: "grid", gap: 8 }}>

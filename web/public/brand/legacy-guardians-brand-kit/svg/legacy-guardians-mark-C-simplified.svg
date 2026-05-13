@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 150" width="240" height="300" role="img" aria-label="Legacy Guardians mark (simplified for small sizes)">
+  <title>Legacy Guardians (simplified)</title>
+  <desc>Simplified version of the brandmark for use at 16-24px where the per stirpes lines would not render legibly.</desc>
+  <path d="M 10 140 L 10 50 L 60 10 L 110 50 L 110 140" fill="none" stroke="#2E4A7F" stroke-width="6" stroke-linejoin="miter" stroke-linecap="square"/>
+  <circle cx="60" cy="50" r="7" fill="#2E4A7F"/>
+  <circle cx="40" cy="113" r="6" fill="#A87444"/>
+  <circle cx="60" cy="113" r="6" fill="#A87444"/>
+  <circle cx="80" cy="113" r="6" fill="#A87444"/>
+  <line x1="0" y1="140" x2="120" y2="140" stroke="#2E4A7F" stroke-width="5" stroke-linecap="square"/>
+</svg>

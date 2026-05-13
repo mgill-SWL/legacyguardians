@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 150" width="240" height="300" role="img" aria-label="Legacy Guardians primary brandmark">
+  <title>Legacy Guardians</title>
+  <desc>Guardian arch with per stirpes lineage diagram inside — ancestor in blue, three descendants in bronze.</desc>
+  <!-- Outer arch -->
+  <path d="M 10 140 L 10 50 L 60 10 L 110 50 L 110 140" fill="none" stroke="#2E4A7F" stroke-width="4" stroke-linejoin="miter" stroke-linecap="square"/>
+  <!-- Ancestor -->
+  <circle cx="60" cy="50" r="5" fill="#2E4A7F"/>
+  <!-- Per stirpes lines -->
+  <line x1="60" y1="56" x2="40" y2="108" stroke="#2E4A7F" stroke-width="1.5"/>
+  <line x1="60" y1="56" x2="60" y2="108" stroke="#2E4A7F" stroke-width="1.5"/>
+  <line x1="60" y1="56" x2="80" y2="108" stroke="#2E4A7F" stroke-width="1.5"/>
+  <!-- Descendants -->
+  <circle cx="40" cy="113" r="4.5" fill="#A87444"/>
+  <circle cx="60" cy="113" r="4.5" fill="#A87444"/>
+  <circle cx="80" cy="113" r="4.5" fill="#A87444"/>
+  <!-- Base -->
+  <line x1="0" y1="140" x2="120" y2="140" stroke="#2E4A7F" stroke-width="3" stroke-linecap="square"/>
+</svg>

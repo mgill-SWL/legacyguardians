@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 150" width="240" height="300" role="img" aria-label="Legacy Guardians app icon">
+  <title>Legacy Guardians app icon</title>
+  <desc>Shield containing interlocking L and G monogram — designed for use at favicon and app icon sizes.</desc>
+  <path d="M 10 5 L 110 5 L 110 75 Q 110 120 60 145 Q 10 120 10 75 Z" fill="#2E4A7F"/>
+  <path d="M 35 35 L 35 100 L 67 100" fill="none" stroke="#C9A961" stroke-width="7" stroke-linecap="square" stroke-linejoin="miter"/>
+  <path d="M 90 53 Q 90 38 75 38 Q 60 38 60 56 L 60 78 Q 60 96 75 96 Q 90 96 90 84 L 90 74 L 78 74" fill="none" stroke="#F4F1EA" stroke-width="6" stroke-linecap="butt" stroke-linejoin="miter"/>
+</svg>

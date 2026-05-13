@@ -5,6 +5,10 @@ import { prisma } from "@/lib/prisma";
 
 import crypto from "node:crypto";
 
+function baseUrl() {
+  return process.env.NEXTAUTH_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+}
+
 function hashCode({ email, code }: { email: string; code: string }) {
   const secret = process.env.AUTH_SECRET;
   if (!secret) throw new Error("AUTH_SECRET is required");
@@ -48,9 +52,15 @@ export async function POST(req: Request) {
     to: email,
     subject: "Your Legacy Guardians access code",
     text: `Your Legacy Guardians access code is: ${code}\n\nThis code expires in 10 minutes.`,
-    html: `<p>Your Legacy Guardians access code is:</p><p style="font-size:20px; font-weight:800; letter-spacing:2px;">${code}</p><p style="color:#666">This code expires in 10 minutes.</p>`,
+    html: `<div style="font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial; line-height:1.4">
+      <div style="margin-bottom:14px">
+        <img alt="Legacy Guardians" src="${baseUrl()}/brand/legacy-guardians-brand-kit/png-lockup/lockup-light-600.png" style="height:44px; width:auto; display:block" />
+      </div>
+      <p>Your Legacy Guardians access code is:</p>
+      <p style="font-size:20px; font-weight:800; letter-spacing:2px; margin: 10px 0">${code}</p>
+      <p style="color:#666">This code expires in 10 minutes.</p>
+    </div>`,
   });
 
   return NextResponse.json({ ok: true });
 }
-

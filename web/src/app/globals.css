@@ -66,3 +66,16 @@ option {
 .sw-file::file-selector-button:hover {
   background: rgba(110, 231, 255, 0.14);
 }
+
+/* Theme helpers for brand assets */
+.lg-theme-dark-only {
+  display: none;
+}
+
+:root[data-theme="dark"] .lg-theme-light-only {
+  display: none !important;
+}
+
+:root[data-theme="dark"] .lg-theme-dark-only {
+  display: block !important;
+}
