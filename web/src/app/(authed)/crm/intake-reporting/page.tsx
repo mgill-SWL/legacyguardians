@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/authOptions";
 import { prisma } from "@/lib/prisma";
 import { ReportGrid } from "@/components/reports/ReportGrid";
+import { SyncFromSheetButton } from "./SyncFromSheetButton";
 
 export const dynamic = "force-dynamic";
 
@@ -103,12 +104,20 @@ export default async function IntakeReportingPage() {
       <div className="sw-pageHeader">
         <h1 className="sw-h1">Intake Reporting</h1>
         <div className="sw-muted" style={{ fontSize: 12 }}>
-          Manual entry
+          {process.env.LG_INTAKE_KPI_SPREADSHEET_ID ? "Google Sheet sync" : "Manual entry"}
         </div>
       </div>
       <p className="sw-muted" style={{ marginTop: 8 }}>
-        This replaces the Google Sheet. Admins can add columns; column delete is super-admin only.
+        {process.env.LG_INTAKE_KPI_SPREADSHEET_ID
+          ? "This table can be synced from the Intake KPI Google Sheet. You can still add extra manual columns as needed."
+          : "Manual entry table. (We can enable Google Sheet sync by setting LG_INTAKE_KPI_SPREADSHEET_ID.)"}
       </p>
+
+      {process.env.LG_INTAKE_KPI_SPREADSHEET_ID && canAdmin ? (
+        <div style={{ marginTop: 10 }}>
+          <SyncFromSheetButton />
+        </div>
+      ) : null}
 
       <ReportGrid table={(refreshed || ensured) as any} canAdmin={!!canAdmin} />
     </div>
