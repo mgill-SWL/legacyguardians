@@ -38,7 +38,7 @@ export function CoaImportClient() {
   return (
     <form onSubmit={onSubmit} className="sw-card sw-card-pad" style={{ display: "grid", gap: 12, maxWidth: 860 }}>
       <div style={{ fontWeight: 900 }}>Import chart of accounts (CSV)</div>
-      <input type="file" accept=".csv,text/csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+      <input className="sw-file" type="file" accept=".csv,text/csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
       <button className="sw-btn sw-btnPrimary" type="submit" disabled={busy} style={{ width: "fit-content" }}>
         {busy ? "Importing…" : "Import COA"}
       </button>
@@ -51,4 +51,3 @@ export function CoaImportClient() {
     </form>
   );
 }
-

@@ -32,3 +32,37 @@ option {
   color: var(--sw-text);
   background-color: var(--sw-surface);
 }
+
+/* File inputs: make it obvious the field is clickable */
+.sw-file {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px dashed var(--sw-border);
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+}
+
+.sw-file:hover {
+  border-color: rgba(110, 231, 255, 0.6);
+  background: rgba(110, 231, 255, 0.05);
+}
+
+.sw-file:focus {
+  outline: none;
+}
+
+.sw-file::file-selector-button {
+  margin-right: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--sw-border);
+  background: rgba(110, 231, 255, 0.08);
+  color: var(--sw-text);
+  cursor: pointer;
+}
+
+.sw-file::file-selector-button:hover {
+  background: rgba(110, 231, 255, 0.14);
+}

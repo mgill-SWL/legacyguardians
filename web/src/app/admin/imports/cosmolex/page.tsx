@@ -64,12 +64,12 @@ export default function CosmolexImportPage() {
       <form onSubmit={onSubmit} style={{ marginTop: 24, display: "grid", gap: 18 }}>
         <label style={{ display: "grid", gap: 8 }}>
           <span style={{ fontWeight: 600 }}>Collections by Timekeeper (CSV)</span>
-          <input type="file" accept=".csv,text/csv" onChange={(e) => setCollectionsFile(e.target.files?.[0] ?? null)} />
+          <input className="sw-file" type="file" accept=".csv,text/csv" onChange={(e) => setCollectionsFile(e.target.files?.[0] ?? null)} />
         </label>
 
         <label style={{ display: "grid", gap: 8 }}>
           <span style={{ fontWeight: 600 }}>Billings by Timekeeper (CSV)</span>
-          <input type="file" accept=".csv,text/csv" onChange={(e) => setBillingsFile(e.target.files?.[0] ?? null)} />
+          <input className="sw-file" type="file" accept=".csv,text/csv" onChange={(e) => setBillingsFile(e.target.files?.[0] ?? null)} />
         </label>
 
         <button

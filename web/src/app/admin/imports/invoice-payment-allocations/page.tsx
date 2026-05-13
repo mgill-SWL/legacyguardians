@@ -65,17 +65,17 @@ export default function InvoicePaymentAllocationsImportPage() {
       <form onSubmit={onSubmit} style={{ marginTop: 24, display: "grid", gap: 18 }}>
         <label style={{ display: "grid", gap: 8 }}>
           <span style={{ fontWeight: 600 }}>Sheet 1 — Detail CSV</span>
-          <input type="file" accept=".csv,text/csv" onChange={(e) => setDetailFile(e.target.files?.[0] ?? null)} />
+          <input className="sw-file" type="file" accept=".csv,text/csv" onChange={(e) => setDetailFile(e.target.files?.[0] ?? null)} />
         </label>
 
         <label style={{ display: "grid", gap: 8 }}>
           <span style={{ fontWeight: 600 }}>Sheet 3 — Summary of Invoice Applied Transactions CSV</span>
-          <input type="file" accept=".csv,text/csv" onChange={(e) => setTransactionsFile(e.target.files?.[0] ?? null)} />
+          <input className="sw-file" type="file" accept=".csv,text/csv" onChange={(e) => setTransactionsFile(e.target.files?.[0] ?? null)} />
         </label>
 
         <label style={{ display: "grid", gap: 8 }}>
           <span style={{ fontWeight: 600 }}>Sheet 4 — Summary By Account CSV</span>
-          <input type="file" accept=".csv,text/csv" onChange={(e) => setAccountsFile(e.target.files?.[0] ?? null)} />
+          <input className="sw-file" type="file" accept=".csv,text/csv" onChange={(e) => setAccountsFile(e.target.files?.[0] ?? null)} />
         </label>
 
         <button

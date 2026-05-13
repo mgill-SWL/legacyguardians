@@ -74,7 +74,7 @@ export function BookkeepingInboxClient() {
           <span className="sw-muted" style={{ fontSize: 12 }}>
             CSV file
           </span>
-          <input type="file" accept=".csv,text/csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+          <input className="sw-file" type="file" accept=".csv,text/csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
         </label>
 
         <button className="sw-btn sw-btnPrimary" type="submit" disabled={submitting} style={{ width: "fit-content" }}>

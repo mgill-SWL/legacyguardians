@@ -40,7 +40,12 @@ export function ImportPayeeRulesFromGlClient() {
       <div className="sw-muted" style={{ fontSize: 12, lineHeight: 1.6 }}>
         This reads your GL and creates <b>CONTAINS</b> rules for common payees, mapped to the most frequent expense account.
       </div>
-      <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+      <input
+        className="sw-file"
+        type="file"
+        accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+      />
       <button className="sw-btn sw-btnPrimary" type="submit" disabled={busy} style={{ width: "fit-content" }}>
         {busy ? "Generating…" : "Generate rules"}
       </button>
@@ -53,4 +58,3 @@ export function ImportPayeeRulesFromGlClient() {
     </form>
   );
 }
-

@@ -55,7 +55,7 @@ export default function OperatingRetainerImportPage() {
       <form onSubmit={onSubmit} style={{ marginTop: 24, display: "grid", gap: 18 }}>
         <label style={{ display: "grid", gap: 8 }}>
           <span style={{ fontWeight: 600 }}>Operating Retainer by Matter CSV</span>
-          <input type="file" accept=".csv,text/csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+          <input className="sw-file" type="file" accept=".csv,text/csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
         </label>
         <button type="submit" disabled={submitting} style={{ width: "fit-content", padding: "10px 14px", borderRadius: 10 }}>
           {submitting ? "Importing…" : "Import operating retainer"}
