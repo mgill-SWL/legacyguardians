@@ -34,8 +34,9 @@ export default async function ChartOfAccountsPage() {
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
   if (!user?.activeFirmId) redirect("/unauthorized");
 
-  const canAdmin = user.role === "ADMIN";
-  if (!canAdmin) redirect("/unauthorized");
+  const member = await prisma.firmMember.findUnique({ where: { firmId_userId: { firmId: user.activeFirmId, userId: user.id } } });
+  const canManage = user.role === "ADMIN" || member?.role === "ADMIN" || member?.kind === "BOOKKEEPER" || member?.kind === "ADMIN";
+  if (!canManage) redirect("/unauthorized");
 
   const table = await prisma.reportTable.findUnique({
     where: { slug: SLUG },
@@ -78,8 +79,7 @@ export default async function ChartOfAccountsPage() {
         <CoaImportClient />
       </div>
 
-      <ReportGrid table={(refreshed || ensured) as any} canAdmin={!!canAdmin} />
+      <ReportGrid table={(refreshed || ensured) as any} canAdmin={!!canManage} />
     </div>
   );
 }
-

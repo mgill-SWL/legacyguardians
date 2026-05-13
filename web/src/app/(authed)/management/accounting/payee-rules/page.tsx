@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/authOptions";
 import { prisma } from "@/lib/prisma";
 import { ReportGrid } from "@/components/reports/ReportGrid";
+import { ImportPayeeRulesFromGlClient } from "./ui";
 
 export const dynamic = "force-dynamic";
 
@@ -36,8 +37,9 @@ export default async function PayeeRulesPage() {
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
   if (!user?.activeFirmId) redirect("/unauthorized");
 
-  const canAdmin = user.role === "ADMIN";
-  if (!canAdmin) redirect("/unauthorized");
+  const member = await prisma.firmMember.findUnique({ where: { firmId_userId: { firmId: user.activeFirmId, userId: user.id } } });
+  const canManage = user.role === "ADMIN" || member?.role === "ADMIN" || member?.kind === "BOOKKEEPER" || member?.kind === "ADMIN";
+  if (!canManage) redirect("/unauthorized");
 
   const table = await prisma.reportTable.findUnique({
     where: { slug: SLUG },
@@ -77,6 +79,10 @@ export default async function PayeeRulesPage() {
         Put the most specific rules first.
       </p>
 
+      <div style={{ marginTop: 12 }}>
+        <ImportPayeeRulesFromGlClient />
+      </div>
+
       <div className="sw-card sw-card-pad" style={{ marginTop: 12, maxWidth: 920 }}>
         <div style={{ fontWeight: 900 }}>Examples</div>
         <div className="sw-muted" style={{ marginTop: 8, fontSize: 12, lineHeight: 1.6 }}>
@@ -85,8 +91,7 @@ export default async function PayeeRulesPage() {
         </div>
       </div>
 
-      <ReportGrid table={(refreshed || ensured) as any} canAdmin={!!canAdmin} />
+      <ReportGrid table={(refreshed || ensured) as any} canAdmin={!!canManage} />
     </div>
   );
 }
-

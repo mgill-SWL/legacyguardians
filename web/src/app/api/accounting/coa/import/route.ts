@@ -128,8 +128,9 @@ export async function POST(request: Request) {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user?.activeFirmId) return NextResponse.json({ ok: false, error: "no active firm" }, { status: 400 });
 
-  // v1: only global ADMIN can edit firm settings/report tables.
-  if (user.role !== "ADMIN") return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+  const member = await prisma.firmMember.findUnique({ where: { firmId_userId: { firmId: user.activeFirmId, userId: user.id } } });
+  const canManage = user.role === "ADMIN" || member?.role === "ADMIN" || member?.kind === "BOOKKEEPER" || member?.kind === "ADMIN";
+  if (!canManage) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
 
   const formData = await request.formData();
   const file = formData.get("file");
@@ -185,4 +186,3 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ ok: true, slug: SLUG, created, updated });
 }
-
