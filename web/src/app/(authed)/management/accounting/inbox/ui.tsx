@@ -5,7 +5,7 @@ import { FormEvent, useState } from "react";
 type Result = { ok?: boolean; error?: string; batchId?: string; parsedRows?: number; insertedRows?: number };
 
 export function BookkeepingInboxClient() {
-  const [importKind, setImportKind] = useState<"CHASE_CARD" | "CHASE_OPERATING">("CHASE_CARD");
+  const [importKind, setImportKind] = useState<"CHASE_CARD" | "CHASE_OPERATING" | "CHASE_IOLTA">("CHASE_CARD");
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
@@ -25,7 +25,12 @@ export function BookkeepingInboxClient() {
       const formData = new FormData();
       formData.set("file", file);
 
-      const endpoint = importKind === "CHASE_OPERATING" ? "/api/accounting/import/chase-operating" : "/api/accounting/import/chase-card";
+      const endpoint =
+        importKind === "CHASE_OPERATING"
+          ? "/api/accounting/import/chase-operating"
+          : importKind === "CHASE_IOLTA"
+            ? "/api/accounting/import/chase-iolta"
+            : "/api/accounting/import/chase-card";
       const res = await fetch(endpoint, { method: "POST", body: formData });
       const json = (await res.json().catch(() => ({}))) as Result;
       if (!res.ok || json.ok === false) throw new Error(json.error || `HTTP ${res.status}`);
@@ -61,6 +66,7 @@ export function BookkeepingInboxClient() {
           <select className="sw-input" value={importKind} onChange={(e) => setImportKind(e.target.value as any)}>
             <option value="CHASE_CARD">Chase credit card activity CSV</option>
             <option value="CHASE_OPERATING">Chase operating account transactions CSV</option>
+            <option value="CHASE_IOLTA">Chase IOLTA account transactions CSV</option>
           </select>
         </label>
 
