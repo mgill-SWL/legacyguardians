@@ -14,6 +14,7 @@ export default async function FirmSettingsPage() {
 
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
   if (!user?.activeFirmId) redirect("/unauthorized");
+  const canAdmin = user.role === "ADMIN";
 
   const [firm, locations, users, firmMembers, locationMembers] = await Promise.all([
     prisma.firm.findUnique({ where: { id: user.activeFirmId }, select: { id: true, name: true, slug: true } }),
@@ -57,6 +58,7 @@ export default async function FirmSettingsPage() {
         locationId: membershipByUserId[u.id] || u.defaultLocationId || null,
         kind: kindByUserId[u.id] || "STAFF",
       }))}
+      canAdmin={canAdmin}
     />
   );
 }

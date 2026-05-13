@@ -14,6 +14,9 @@ export async function POST(request: Request) {
   const actor = await prisma.user.findUnique({ where: { email } });
   if (!actor?.activeFirmId) return NextResponse.json({ error: "No active firm" }, { status: 400 });
 
+  // v1: only global ADMIN can change location assignments.
+  if (actor.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const json = (await request.json().catch(() => null)) as Payload | null;
   const userId = json?.userId;
   const locationId = json?.locationId ?? null;
@@ -49,4 +52,3 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ ok: true });
 }
-

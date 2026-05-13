@@ -15,7 +15,17 @@ const KIND_OPTIONS = [
   { value: "STAFF", label: "Staff" },
 ];
 
-export function FirmSettingsClient({ firm, locations, users }: { firm: Firm; locations: Location[]; users: UserRow[] }) {
+export function FirmSettingsClient({
+  firm,
+  locations,
+  users,
+  canAdmin,
+}: {
+  firm: Firm;
+  locations: Location[];
+  users: UserRow[];
+  canAdmin: boolean;
+}) {
   const [newLocationName, setNewLocationName] = useState("");
   const [newLocationSlug, setNewLocationSlug] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -32,6 +42,7 @@ export function FirmSettingsClient({ firm, locations, users }: { firm: Firm; loc
 
   async function createLocation(e: FormEvent) {
     e.preventDefault();
+    if (!canAdmin) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -51,6 +62,7 @@ export function FirmSettingsClient({ firm, locations, users }: { firm: Firm; loc
   }
 
   async function assignUserLocation(userId: string, locationId: string) {
+    if (!canAdmin) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -70,6 +82,7 @@ export function FirmSettingsClient({ firm, locations, users }: { firm: Firm; loc
   }
 
   async function assignUserKind(userId: string, kind: string) {
+    if (!canAdmin) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -89,6 +102,7 @@ export function FirmSettingsClient({ firm, locations, users }: { firm: Firm; loc
   }
 
   async function saveLocation(locationId: string) {
+    if (!canAdmin) return;
     const next = locEdits[locationId];
     if (!next) return;
 
@@ -147,23 +161,25 @@ export function FirmSettingsClient({ firm, locations, users }: { firm: Firm; loc
             v1 assumption: each user belongs to exactly one location.
           </div>
 
-          <form onSubmit={createLocation} style={{ marginTop: 12, display: "grid", gap: 10 }}>
-            <label style={{ display: "grid", gap: 6 }}>
-              <span className="sw-muted" style={{ fontSize: 12 }}>
-                Location name
-              </span>
-              <input value={newLocationName} onChange={(e) => setNewLocationName(e.target.value)} placeholder="e.g., Alexandria" />
-            </label>
-            <label style={{ display: "grid", gap: 6 }}>
-              <span className="sw-muted" style={{ fontSize: 12 }}>
-                Location slug
-              </span>
-              <input value={newLocationSlug} onChange={(e) => setNewLocationSlug(e.target.value)} placeholder="e.g., ALX" />
-            </label>
-            <button className="sw-btn" disabled={submitting || !newLocationName.trim() || !newLocationSlug.trim()}>
-              {submitting ? "Saving…" : "Add location"}
-            </button>
-          </form>
+          {canAdmin ? (
+            <form onSubmit={createLocation} style={{ marginTop: 12, display: "grid", gap: 10 }}>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span className="sw-muted" style={{ fontSize: 12 }}>Location name</span>
+                <input value={newLocationName} onChange={(e) => setNewLocationName(e.target.value)} placeholder="e.g., Willow Oaks" />
+              </label>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span className="sw-muted" style={{ fontSize: 12 }}>Location slug</span>
+                <input value={newLocationSlug} onChange={(e) => setNewLocationSlug(e.target.value)} placeholder="e.g., WO" />
+              </label>
+              <button className="sw-btn" disabled={submitting || !newLocationName.trim() || !newLocationSlug.trim()}>
+                {submitting ? "Saving…" : "Add location"}
+              </button>
+            </form>
+          ) : (
+            <div className="sw-muted" style={{ marginTop: 12, fontSize: 12 }}>
+              Admin-only.
+            </div>
+          )}
 
           <div style={{ marginTop: 12 }}>
             {locations.length ? (
@@ -180,6 +196,7 @@ export function FirmSettingsClient({ firm, locations, users }: { firm: Firm; loc
                           </span>
                           <input
                             value={e.slug}
+                            disabled={!canAdmin}
                             onChange={(ev) => setLocEdits((p) => ({ ...p, [l.id]: { ...e, slug: ev.target.value } }))}
                             style={{ width: 110, fontFamily: "var(--sw-mono)" }}
                           />
@@ -189,11 +206,11 @@ export function FirmSettingsClient({ firm, locations, users }: { firm: Firm; loc
                           <span className="sw-muted" style={{ fontSize: 12 }}>
                             Name
                           </span>
-                          <input value={e.name} onChange={(ev) => setLocEdits((p) => ({ ...p, [l.id]: { ...e, name: ev.target.value } }))} />
+                          <input disabled={!canAdmin} value={e.name} onChange={(ev) => setLocEdits((p) => ({ ...p, [l.id]: { ...e, name: ev.target.value } }))} />
                         </label>
 
                         <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 18 }}>
-                          <input type="checkbox" checked={!!e.active} onChange={(ev) => setLocEdits((p) => ({ ...p, [l.id]: { ...e, active: ev.target.checked } }))} />
+                          <input disabled={!canAdmin} type="checkbox" checked={!!e.active} onChange={(ev) => setLocEdits((p) => ({ ...p, [l.id]: { ...e, active: ev.target.checked } }))} />
                           <span className="sw-muted" style={{ fontSize: 12 }}>
                             Active
                           </span>
@@ -205,9 +222,35 @@ export function FirmSettingsClient({ firm, locations, users }: { firm: Firm; loc
                               Rename to Willow Oaks (WO)
                             </button>
                           ) : null}
-                          <button className="sw-btn sw-btnPrimary sw-btnSm" type="button" disabled={submitting} onClick={() => saveLocation(l.id)}>
-                            Save
-                          </button>
+                          {canAdmin ? (
+                            <>
+                              <button className="sw-btn sw-btnPrimary sw-btnSm" type="button" disabled={submitting} onClick={() => saveLocation(l.id)}>
+                                Save
+                              </button>
+                              <button
+                                className="sw-btn sw-btnGhost sw-btnSm"
+                                type="button"
+                                disabled={submitting}
+                                onClick={async () => {
+                                  if (!confirm("Delete this location? If it has activity, it will be deactivated instead.")) return;
+                                  setSubmitting(true);
+                                  setError(null);
+                                  try {
+                                    const res = await fetch(`/api/settings/firm/locations/${l.id}`, { method: "DELETE" });
+                                    const json = (await res.json().catch(() => ({}))) as any;
+                                    if (!res.ok || json.ok === false) throw new Error(json.error || `HTTP ${res.status}`);
+                                    window.location.reload();
+                                  } catch (err) {
+                                    setError(err instanceof Error ? err.message : "Delete failed");
+                                  } finally {
+                                    setSubmitting(false);
+                                  }
+                                }}
+                              >
+                                Delete
+                              </button>
+                            </>
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -242,7 +285,7 @@ export function FirmSettingsClient({ firm, locations, users }: { firm: Firm; loc
                     </td>
                     <td>
                       <select
-                        disabled={submitting}
+                        disabled={submitting || !canAdmin}
                         value={u.locationId || ""}
                         onChange={(e) => assignUserLocation(u.id, e.target.value)}
                       >
@@ -282,7 +325,7 @@ export function FirmSettingsClient({ firm, locations, users }: { firm: Firm; loc
                     </td>
                     <td>
                       <select
-                        disabled={submitting}
+                        disabled={submitting || !canAdmin}
                         value={u.kind || "STAFF"}
                         onChange={(e) => assignUserKind(u.id, e.target.value)}
                       >

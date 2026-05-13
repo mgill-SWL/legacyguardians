@@ -14,6 +14,9 @@ export async function POST(request: Request) {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user?.activeFirmId) return NextResponse.json({ error: "No active firm" }, { status: 400 });
 
+  // v1: only global ADMIN can create locations.
+  if (user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const json = (await request.json().catch(() => null)) as Payload | null;
   const name = (json?.name || "").trim();
   const slug = (json?.slug || "").trim();
@@ -34,4 +37,3 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ ok: true, id: created.id });
 }
-
