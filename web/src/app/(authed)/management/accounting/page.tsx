@@ -78,6 +78,12 @@ export default async function AccountingHubPage() {
               <Link href="/management/accounting/inbox">Bookkeeping inbox</Link> (review/classify raw bank/card activity)
             </li>
             <li>
+              <Link href="/management/accounting/coa">Chart of accounts</Link> (COA import)
+            </li>
+            <li>
+              <Link href="/management/accounting/payee-rules">Payee rules</Link> (auto-suggest COA by vendor)
+            </li>
+            <li>
               <Link href="/management/accounting/ar">Accounts receivable</Link> (open invoices, aging)
             </li>
             <li>

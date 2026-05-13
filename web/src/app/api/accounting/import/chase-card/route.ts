@@ -116,6 +116,66 @@ function sha256(s: string) {
   return crypto.createHash("sha256").update(s).digest("hex");
 }
 
+function normPayee(s: string) {
+  return String(s || "")
+    .toUpperCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function loadCoaMap() {
+  try {
+    const coa = await prisma.reportTable.findUnique({ where: { slug: "chart-of-accounts" }, include: { rows: true } });
+    const m = new Map<string, string>();
+    for (const r of coa?.rows || []) {
+      const num = String(r.label || r.rowKey || "").trim();
+      const name = String((r.data as any)?.account || "").trim();
+      if (num) m.set(num, name);
+    }
+    return m;
+  } catch {
+    return new Map<string, string>();
+  }
+}
+
+type PayeeRule = { matchType: "CONTAINS" | "EXACT"; pattern: string; appliesTo: "CARD" | "OPERATING" | "IOLTA" | "ANY"; coaNumber: string; classification: string };
+
+async function loadPayeeRules(): Promise<PayeeRule[]> {
+  try {
+    const t = await prisma.reportTable.findUnique({ where: { slug: "payee-rules" }, include: { rows: { orderBy: { sortOrder: "asc" } } } });
+    return (t?.rows || [])
+      .map((r) => {
+        const d: any = r.data || {};
+        const matchType = String(d.match_type || "CONTAINS").toUpperCase();
+        const appliesTo = String(d.applies_to || "ANY").toUpperCase();
+        const pattern = String(d.pattern || r.label || "");
+        const coaNumber = String(d.coa_number || "").trim();
+        const classification = String(d.classification || "EXPENSE").toUpperCase();
+        if (!pattern.trim() || !coaNumber) return null;
+        return {
+          matchType: matchType === "EXACT" ? "EXACT" : "CONTAINS",
+          pattern: normPayee(pattern),
+          appliesTo: (appliesTo === "CARD" || appliesTo === "OPERATING" || appliesTo === "IOLTA" ? appliesTo : "ANY") as any,
+          coaNumber,
+          classification,
+        } as PayeeRule;
+      })
+      .filter(Boolean) as PayeeRule[];
+  } catch {
+    return [];
+  }
+}
+
+function applyPayeeRules({ payee, appliesTo, rules }: { payee: string; appliesTo: PayeeRule["appliesTo"]; rules: PayeeRule[] }) {
+  const p = normPayee(payee);
+  for (const r of rules) {
+    if (!(r.appliesTo === "ANY" || r.appliesTo === appliesTo)) continue;
+    if (r.matchType === "EXACT" && p === r.pattern) return r;
+    if (r.matchType === "CONTAINS" && p.includes(r.pattern)) return r;
+  }
+  return null;
+}
+
 function canBookkeep({ userRole, memberKind, memberRole }: { userRole: string; memberKind?: string; memberRole?: string }) {
   if (userRole === "ADMIN") return true;
   if (memberRole === "ADMIN") return true;
@@ -186,6 +246,8 @@ export async function POST(request: Request) {
     },
   });
 
+  const [coaMap, payeeRules] = await Promise.all([loadCoaMap(), loadPayeeRules()]);
+
   const txData = parsed.map((r) => {
     const tDate = parseMdy(r["Transaction Date"]);
     const pDate = parseMdy(r["Post Date"]);
@@ -195,6 +257,9 @@ export async function POST(request: Request) {
     const cardLast4 = r.Card || null;
     const chaseType = r.Type || null;
     const chaseCategory = r.Category || null;
+
+    const suggested = amt.direction === "OUTFLOW" ? applyPayeeRules({ payee: description, appliesTo: "CARD", rules: payeeRules }) : null;
+    const suggestedCoaName = suggested?.coaNumber ? coaMap.get(suggested.coaNumber) || null : null;
 
     const dedupe = sha256(
       [
@@ -229,6 +294,9 @@ export async function POST(request: Request) {
         chaseCategory,
         chaseType,
         chaseAmountRaw: r.Amount,
+        suggestedCoaNumber: suggested?.coaNumber || null,
+        suggestedCoaName,
+        suggestedClassification: suggested?.classification || null,
       },
       dedupeHash: dedupe,
     };
@@ -264,4 +332,3 @@ export async function POST(request: Request) {
     insertedRows: created.count,
   });
 }
-

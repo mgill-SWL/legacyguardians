@@ -89,6 +89,66 @@ function sha256(s: string) {
   return crypto.createHash("sha256").update(s).digest("hex");
 }
 
+function normPayee(s: string) {
+  return String(s || "")
+    .toUpperCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function loadCoaMap() {
+  try {
+    const coa = await prisma.reportTable.findUnique({ where: { slug: "chart-of-accounts" }, include: { rows: true } });
+    const m = new Map<string, string>();
+    for (const r of coa?.rows || []) {
+      const num = String(r.label || r.rowKey || "").trim();
+      const name = String((r.data as any)?.account || "").trim();
+      if (num) m.set(num, name);
+    }
+    return m;
+  } catch {
+    return new Map<string, string>();
+  }
+}
+
+type PayeeRule = { matchType: "CONTAINS" | "EXACT"; pattern: string; appliesTo: "CARD" | "OPERATING" | "IOLTA" | "ANY"; coaNumber: string; classification: string };
+
+async function loadPayeeRules(): Promise<PayeeRule[]> {
+  try {
+    const t = await prisma.reportTable.findUnique({ where: { slug: "payee-rules" }, include: { rows: { orderBy: { sortOrder: "asc" } } } });
+    return (t?.rows || [])
+      .map((r) => {
+        const d: any = r.data || {};
+        const matchType = String(d.match_type || "CONTAINS").toUpperCase();
+        const appliesTo = String(d.applies_to || "ANY").toUpperCase();
+        const pattern = String(d.pattern || r.label || "");
+        const coaNumber = String(d.coa_number || "").trim();
+        const classification = String(d.classification || "EXPENSE").toUpperCase();
+        if (!pattern.trim() || !coaNumber) return null;
+        return {
+          matchType: matchType === "EXACT" ? "EXACT" : "CONTAINS",
+          pattern: normPayee(pattern),
+          appliesTo: (appliesTo === "CARD" || appliesTo === "OPERATING" || appliesTo === "IOLTA" ? appliesTo : "ANY") as any,
+          coaNumber,
+          classification,
+        } as PayeeRule;
+      })
+      .filter(Boolean) as PayeeRule[];
+  } catch {
+    return [];
+  }
+}
+
+function applyPayeeRules({ payee, appliesTo, rules }: { payee: string; appliesTo: PayeeRule["appliesTo"]; rules: PayeeRule[] }) {
+  const p = normPayee(payee);
+  for (const r of rules) {
+    if (!(r.appliesTo === "ANY" || r.appliesTo === appliesTo)) continue;
+    if (r.matchType === "EXACT" && p === r.pattern) return r;
+    if (r.matchType === "CONTAINS" && p.includes(r.pattern)) return r;
+  }
+  return null;
+}
+
 function toCents(raw: string) {
   const n = Number(String(raw).replaceAll(",", "").trim());
   return Number.isFinite(n) ? Math.round(n * 100) : 0;
@@ -147,6 +207,8 @@ export async function POST(request: Request) {
     },
   });
 
+  const [coaMap, payeeRules] = await Promise.all([loadCoaMap(), loadPayeeRules()]);
+
   type Parsed = {
     accountName: string;
     processedDate: string;
@@ -186,6 +248,9 @@ export async function POST(request: Request) {
     const description = r.description || "(no description)";
     const externalReference = r.checkNumber ? `check:${r.checkNumber}` : null;
 
+    const suggested = direction === "OUTFLOW" ? applyPayeeRules({ payee: description, appliesTo: "OPERATING", rules: payeeRules }) : null;
+    const suggestedCoaName = suggested?.coaNumber ? coaMap.get(suggested.coaNumber) || null : null;
+
     const dedupe = sha256(
       [
         user.activeFirmId,
@@ -216,6 +281,9 @@ export async function POST(request: Request) {
         accountName: r.accountName,
         creditOrDebit: r.creditOrDebit,
         checkNumber: r.checkNumber || null,
+        suggestedCoaNumber: suggested?.coaNumber || null,
+        suggestedCoaName,
+        suggestedClassification: suggested?.classification || null,
       },
       dedupeHash: dedupe,
     };
@@ -245,4 +313,3 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ ok: true, batchId: batch.id, parsedRows: parsed.length, insertedRows: created.count });
 }
-
