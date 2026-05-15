@@ -199,25 +199,52 @@ function sanitizeWordXml(xml: string, data: Record<string, unknown>) {
       // Locate the heading paragraph (contains the heading text) and capture its structure so
       // inserted paragraphs match numbering/indentation.
       const headingParaStart = out.lastIndexOf("<w:p", headingIdx);
-      const headingParaEnd = out.indexOf("</w:p>", headingIdx);
+      const findParaEnd = (xml: string, paraStartIdx: number) => {
+        // Find the matching </w:p> for the <w:p ...> at paraStartIdx, accounting for
+        // nested paragraphs that can appear in Word (e.g., textboxes).
+        const tagRe = /<\/?w:p\b[^>]*>/g;
+        tagRe.lastIndex = paraStartIdx;
+        let depth = 0;
+        let m: RegExpExecArray | null;
+        while ((m = tagRe.exec(xml))) {
+          const tag = m[0];
+          const isClose = tag.startsWith("</w:p");
+          const isSelfClosing = /\/>$/.test(tag);
+          if (!isClose && !isSelfClosing) depth += 1;
+          if (isClose) depth -= 1;
+          if (depth === 0 && isClose) return tagRe.lastIndex; // index after </w:p>
+        }
+        return -1;
+      };
+
+      const headingParaEnd = headingParaStart === -1 ? -1 : findParaEnd(out, headingParaStart);
 
       if (headingParaStart !== -1 && headingParaEnd !== -1) {
-        const headingParaXml = out.slice(headingParaStart, headingParaEnd + "</w:p>".length);
+        const headingParaXml = out.slice(headingParaStart, headingParaEnd);
 
         // Find the first numbered list paragraph that follows the heading (to clone numbering style).
-        const afterHeading = out.slice(headingParaEnd + "</w:p>".length);
-        const firstListStart = afterHeading.indexOf("<w:p");
-        const firstListAbsStart = firstListStart === -1 ? -1 : headingParaEnd + "</w:p>".length + firstListStart;
+        // NOTE: the templates sometimes have blank spacing paragraphs immediately after headings.
+        // We must *skip* those; otherwise we may capture a self-closing <w:p .../> tag and
+        // accidentally generate invalid XML like:
+        //   <w:p .../> <w:pPr> ...
+        const afterHeading = out.slice(headingParaEnd);
+        const paraRe = /<w:p\b[\s\S]*?<\/w:p>|<w:p\b[^>]*\/>/g;
         let listParaXml = "";
-        if (firstListAbsStart !== -1) {
-          const listEnd = out.indexOf("</w:p>", firstListAbsStart);
-          if (listEnd !== -1) listParaXml = out.slice(firstListAbsStart, listEnd + "</w:p>".length);
+        let m: RegExpExecArray | null;
+        while ((m = paraRe.exec(afterHeading))) {
+          const para = m[0];
+          if (para.includes("<w:numPr>")) {
+            listParaXml = para;
+            break;
+          }
         }
 
         const openTag = (headingParaXml.match(/^<w:p[^>]*>/) || ["<w:p>"])[0];
         const pPr = (headingParaXml.match(/<w:pPr>[\s\S]*?<\/w:pPr>/) || ["<w:pPr/>"])[0];
 
-        const listOpenTag = (listParaXml.match(/^<w:p[^>]*>/) || [openTag])[0];
+        let listOpenTag = (listParaXml.match(/^<w:p[^>]*>/) || [openTag])[0];
+        // Defensive: if the opening tag is self-closing (<w:p .../>), convert it to a real open tag.
+        if (listOpenTag.endsWith("/>")) listOpenTag = listOpenTag.replace(/\/>$/, ">");
         const listPPr = (listParaXml.match(/<w:pPr>[\s\S]*?<\/w:pPr>/) || [pPr])[0];
 
         const esc = (s: string) =>
@@ -268,7 +295,7 @@ function sanitizeWordXml(xml: string, data: Record<string, unknown>) {
           spouseSurvivesTPP +
           spouseSurvivesResidue +
           spousePredeceasesHeading +
-          out.slice(headingParaEnd + "</w:p>".length);
+          out.slice(headingParaEnd);
       }
     }
   }
