@@ -33,6 +33,18 @@ export function ReportGrid({
   table: Table;
   canAdmin: boolean;
 }) {
+  const IMPORTANT_COL_KEYS = useMemo(
+    () =>
+      new Set([
+        "total_intake_calls",
+        "design_meetings_held",
+        "design_meetings_cancelled",
+        "pct_qualified",
+        "total_conversion",
+      ]),
+    []
+  );
+
   const [q, setQ] = useState("");
   const [addingCol, setAddingCol] = useState(false);
   const [newCol, setNewCol] = useState({ key: "", label: "", type: "NUMBER" as Column["type"] });
@@ -54,8 +66,7 @@ export function ReportGrid({
       const n = typeof v === "number" ? v : Number(v);
       if (!Number.isFinite(n)) return String(v);
       const pct = n <= 1 ? n * 100 : n;
-      const s = (Math.round(pct * 10) / 10).toString();
-      return `${s.replace(/\.0$/, "")}%`;
+      return `${Math.round(pct)}%`;
     }
     return typeof v === "string" ? v : String(v);
   }
@@ -202,7 +213,7 @@ export function ReportGrid({
               {columns.map((c) => (
                 <th key={c.id} className="sw-th">
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
-                    <span>{c.label}</span>
+                    <span style={IMPORTANT_COL_KEYS.has(c.key) ? { fontWeight: 900 } : undefined}>{c.label}</span>
                     {canAdmin ? (
                       <button className="sw-btn sw-btnGhost sw-btnSm" onClick={() => deleteColumn(c.id)}>
                         ✕
@@ -225,7 +236,7 @@ export function ReportGrid({
                       className="sw-input"
                       defaultValue={formatCellValue(c, r.data?.[c.key])}
                       onBlur={(e) => patchCell(r.id, c.key, e.target.value)}
-                      style={{ width: 120 }}
+                      style={{ width: 120, ...(IMPORTANT_COL_KEYS.has(c.key) ? { fontWeight: 900 } : null) }}
                     />
                   </td>
                 ))}
