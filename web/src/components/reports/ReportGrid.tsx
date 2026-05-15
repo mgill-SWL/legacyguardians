@@ -48,6 +48,18 @@ export function ReportGrid({
     return rr.filter((r) => r.label.toLowerCase().includes(qq));
   }, [table.rows, q]);
 
+  function formatCellValue(col: Column, v: any): string {
+    if (v == null) return "";
+    if (col.type === "PERCENT") {
+      const n = typeof v === "number" ? v : Number(v);
+      if (!Number.isFinite(n)) return String(v);
+      const pct = n <= 1 ? n * 100 : n;
+      const s = (Math.round(pct * 10) / 10).toString();
+      return `${s.replace(/\.0$/, "")}%`;
+    }
+    return typeof v === "string" ? v : String(v);
+  }
+
   async function patchCell(rowId: string, key: string, value: string) {
     setBusy(true);
     setError(null);
@@ -211,7 +223,7 @@ export function ReportGrid({
                   <td key={c.id} className="sw-td">
                     <input
                       className="sw-input"
-                      defaultValue={r.data?.[c.key] ?? ""}
+                      defaultValue={formatCellValue(c, r.data?.[c.key])}
                       onBlur={(e) => patchCell(r.id, c.key, e.target.value)}
                       style={{ width: 120 }}
                     />

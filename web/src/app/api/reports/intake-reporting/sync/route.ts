@@ -9,31 +9,91 @@ export const dynamic = "force-dynamic";
 
 const SLUG = "intake-reporting";
 
-const REQUIRED_COLUMNS: { key: string; label: string; type: "NUMBER" | "PERCENT" | "TEXT" }[] = [
+const SYNC_COLUMNS: { key: string; label: string; type: "NUMBER" | "PERCENT" | "TEXT" }[] = [
+  { key: "scheduled_intake", label: "Scheduled Intake", type: "NUMBER" },
+  { key: "live_transfer", label: "Live Transfer (Lex)", type: "NUMBER" },
+  { key: "ringcentral_calls", label: "RingCentral Incoming Calls", type: "NUMBER" },
+  { key: "intake_no_shows", label: "Intake Call No Shows", type: "NUMBER" },
   { key: "total_intake_calls", label: "Total Intake Calls", type: "NUMBER" },
+  { key: "qualified", label: "Qualified", type: "NUMBER" },
+  { key: "strategy_meeting_500_booked", label: "$500 Strategy Meeting Booked", type: "NUMBER" },
+  { key: "welcome_calls_booked", label: "Welcome Calls Booked", type: "NUMBER" },
+  { key: "welcome_calls_held", label: "Welcome Calls Held", type: "NUMBER" },
+  { key: "paid_consult_500_held", label: "$500 Paid Consult Held", type: "NUMBER" },
+  { key: "design_meetings_booked", label: "Design Meetings Booked", type: "NUMBER" },
   { key: "design_meetings_held", label: "Design Meetings Held", type: "NUMBER" },
   { key: "design_meetings_cancelled", label: "Design Meetings Cancelled", type: "NUMBER" },
+  { key: "close_ea_matters", label: "Closed EA Matters", type: "NUMBER" },
+  { key: "doc_tour_held", label: "Doc Tour Held", type: "NUMBER" },
+  { key: "signing_held", label: "Signing Held", type: "NUMBER" },
+  { key: "reviews_5_star", label: "5-star Reviews", type: "NUMBER" },
   { key: "pct_qualified", label: "% Qualified", type: "PERCENT" },
-  { key: "total_conversion", label: "Total Conversion", type: "NUMBER" },
+  { key: "total_conversion", label: "Total Conversion", type: "PERCENT" },
 ];
+
+function normalizeHeaderLabel(v: unknown): string {
+  return String(v ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/%/g, " percent ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function toNumberLike(v: unknown): number {
+  if (v == null || v === "") return 0;
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  const s = String(v).trim();
+  if (!s) return 0;
+  // allow "1,234" or "47%" etc.
+  const cleaned = s
+    .replace(/\$/g, "")
+    .replace(/,/g, "")
+    .replace(/%/g, "")
+    .trim();
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function pickSheetNumber(
+  sheetRow: { header: string; value: unknown; col: number }[] | null | undefined,
+  matcher: (normalizedHeader: string) => boolean
+): number {
+  const sr = sheetRow || [];
+  const hit = sr.find((c) => matcher(normalizeHeaderLabel(c.header)));
+  return hit ? toNumberLike(hit.value) : 0;
+}
 
 async function ensureColumns(tableId: string) {
   const existing = await prisma.reportColumn.findMany({ where: { tableId } });
-  const byKey = new Set(existing.map((c) => c.key));
+  const byKey = new Map(existing.map((c) => [c.key, c] as const));
   const max = existing.reduce((m, c) => Math.max(m, c.sortOrder), -1);
   let next = max + 1;
 
-  for (const c of REQUIRED_COLUMNS) {
-    if (byKey.has(c.key)) continue;
-    await prisma.reportColumn.create({
-      data: {
-        tableId,
-        key: c.key,
-        label: c.label,
-        type: c.type,
-        sortOrder: next++,
-      },
-    });
+  for (const c of SYNC_COLUMNS) {
+    const found = byKey.get(c.key);
+    if (!found) {
+      await prisma.reportColumn.create({
+        data: {
+          tableId,
+          key: c.key,
+          label: c.label,
+          type: c.type,
+          sortOrder: next++,
+        },
+      });
+      continue;
+    }
+
+    // Keep labels/types in sync with expected settings (e.g., percent formatting).
+    if (found.label !== c.label || found.type !== c.type) {
+      await prisma.reportColumn.update({
+        where: { id: found.id },
+        data: { label: c.label, type: c.type as any },
+      });
+    }
   }
 }
 
@@ -126,10 +186,32 @@ export async function POST() {
     let updated = 0;
 
     for (const r of rows) {
+      const sr = (r as any).sourceRow as { header: string; value: unknown; col: number }[] | undefined;
+
       const dataPatch = {
+        // Pull everything we care about from the sheet row snapshot so header text can evolve.
+        scheduled_intake: pickSheetNumber(sr, (h) => h === "scheduled intake" || h.startsWith("scheduled intake ")),
+        live_transfer: pickSheetNumber(sr, (h) => h === "live transfer" || h.startsWith("live transfer ")),
+        ringcentral_calls: pickSheetNumber(sr, (h) => h === "ringcentral incoming calls" || h.startsWith("ringcentral incoming calls ")),
+        intake_no_shows: pickSheetNumber(sr, (h) => h === "intake call no shows" || h.startsWith("intake call no shows ")),
+
         total_intake_calls: r.totalIntakeCalls,
+
+        qualified: pickSheetNumber(sr, (h) => h === "qualified" || h.startsWith("qualified ")),
+        strategy_meeting_500_booked: pickSheetNumber(sr, (h) => h.startsWith("500 strategy meeting booked") || h.startsWith("$500 strategy meeting booked")),
+        welcome_calls_booked: pickSheetNumber(sr, (h) => h === "welcome calls booked" || h.startsWith("welcome calls booked ")),
+        welcome_calls_held: pickSheetNumber(sr, (h) => h === "welcome calls held" || h.startsWith("welcome calls held ")),
+        paid_consult_500_held: pickSheetNumber(sr, (h) => h.startsWith("500 paid consult held") || h.startsWith("$500 paid consult held")),
+
+        design_meetings_booked: pickSheetNumber(sr, (h) => h === "design meetings booked" || h.startsWith("design meetings booked ")),
         design_meetings_held: r.designMeetingsHeld,
         design_meetings_cancelled: r.designMeetingsCancelled,
+
+        close_ea_matters: pickSheetNumber(sr, (h) => h.startsWith("closed ea matters") || h.startsWith("close ea matters")),
+        doc_tour_held: pickSheetNumber(sr, (h) => h === "doc tour held" || h.startsWith("doc tour held ")),
+        signing_held: pickSheetNumber(sr, (h) => h === "signing held" || h.startsWith("signing held ")),
+        reviews_5_star: pickSheetNumber(sr, (h) => h.includes("star") && (h.includes("review") || h.includes("reviews"))),
+
         pct_qualified: r.pctQualified,
         total_conversion: r.totalConversion,
         _source: "google_sheet",

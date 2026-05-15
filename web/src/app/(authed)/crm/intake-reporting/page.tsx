@@ -24,29 +24,43 @@ const DEFAULT_COLUMNS: { key: string; label: string; type?: any }[] = [
   { key: "design_meetings_booked", label: "Design Meetings Booked", type: "NUMBER" },
   { key: "design_meetings_held", label: "Design Meetings Held", type: "NUMBER" },
   { key: "design_meetings_cancelled", label: "Design Meetings Cancelled", type: "NUMBER" },
-  { key: "close_ea_matters", label: "Close EA Matters", type: "NUMBER" },
+  { key: "close_ea_matters", label: "Closed EA Matters", type: "NUMBER" },
   { key: "doc_tour_held", label: "Doc Tour Held", type: "NUMBER" },
   { key: "signing_held", label: "Signing Held", type: "NUMBER" },
   { key: "reviews_5_star", label: "5-star Reviews", type: "NUMBER" },
+  { key: "pct_qualified", label: "% Qualified", type: "PERCENT" },
+  { key: "total_conversion", label: "Total Conversion", type: "PERCENT" },
 ];
 
 async function ensureColumns(tableId: string) {
   const existing = await prisma.reportColumn.findMany({ where: { tableId } });
-  const byKey = new Set(existing.map((c) => c.key));
+  const byKey = new Map(existing.map((c) => [c.key, c] as const));
   const max = existing.reduce((m, c) => Math.max(m, c.sortOrder), -1);
   let next = max + 1;
 
   for (const c of DEFAULT_COLUMNS) {
-    if (byKey.has(c.key)) continue;
-    await prisma.reportColumn.create({
-      data: {
-        tableId,
-        key: c.key,
-        label: c.label,
-        type: c.type || "TEXT",
-        sortOrder: next++,
-      },
-    });
+    const found = byKey.get(c.key);
+    if (!found) {
+      await prisma.reportColumn.create({
+        data: {
+          tableId,
+          key: c.key,
+          label: c.label,
+          type: c.type || "TEXT",
+          sortOrder: next++,
+        },
+      });
+      continue;
+    }
+
+    // Keep labels/types in sync with our defaults (for renamed/retagged columns).
+    const desiredType = (c.type || "TEXT") as any;
+    if (found.label !== c.label || found.type !== desiredType) {
+      await prisma.reportColumn.update({
+        where: { id: found.id },
+        data: { label: c.label, type: desiredType },
+      });
+    }
   }
 }
 
