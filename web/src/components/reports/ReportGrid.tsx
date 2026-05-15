@@ -37,6 +37,7 @@ export function ReportGrid({
     () =>
       new Set([
         "total_intake_calls",
+        "design_meetings_booked",
         "design_meetings_held",
         "design_meetings_cancelled",
         "pct_qualified",
