@@ -288,26 +288,37 @@ function sanitizeWordXml(xml: string, data: Record<string, unknown>) {
   return out;
 }
 
-function stripEmptyUnderlinedOrBorderParagraphs(xml: string) {
-  // Remove paragraphs that are *visibly blank* but still carry underline/border styling.
-  // This is a common cause of “mystery extra blank underline” lines in DOCX output.
+function scrubEmptyUnderlinedOrBorderParagraphs(xml: string) {
+  // Some templates use empty paragraphs with underline/borders as visual “lines”.
+  // After token substitution, docxtemplater can leave behind paragraphs that are
+  // *visibly blank* but still draw an underline/border (the “mystery extra blank underline”).
   //
-  // Safety: only remove when (a) the paragraph has underline OR paragraph border, and
-  // (b) it contains no non-whitespace <w:t> text.
+  // We must NOT delete the entire <w:p> because in WordprocessingML a table cell (<w:tc>)
+  // must contain at least one paragraph; deleting the only <w:p> can corrupt the DOCX.
+  //
+  // Instead, when the paragraph is empty, we strip the underline/border styling and keep
+  // an empty paragraph in place.
   return xml.replace(/<w:p\b[\s\S]*?<\/w:p>/g, (para) => {
     const hasUnderline = /<w:u\b[^>]*w:val="single"/.test(para);
     const hasBorder = /<w:pBdr>/.test(para);
     if (!hasUnderline && !hasBorder) return para;
 
-    const texts = [...para.matchAll(/<w:t(?: [^>]*)?>([\s\S]*?)<\/w:t>/g)].map(
-      (m) => m[1]
-    );
+    const texts = [...para.matchAll(/<w:t(?: [^>]*)?>([\s\S]*?)<\/w:t>/g)].map((m) => m[1]);
 
-    // If there are no text nodes, treat as empty.
-    if (texts.length === 0) return "";
+    // Consider the paragraph “blank” when it has no <w:t>, or all <w:t> are whitespace.
+    const allBlank =
+      texts.length === 0 ||
+      texts.every((t) => t.replace(/&nbsp;|\u00A0/g, " ").trim().length === 0);
 
-    const allBlank = texts.every((t) => t.replace(/&nbsp;|\u00A0/g, " ").trim().length === 0);
-    return allBlank ? "" : para;
+    if (!allBlank) return para;
+
+    let out = para;
+    // Drop paragraph borders.
+    out = out.replace(/<w:pBdr>[\s\S]*?<\/w:pBdr>/g, "");
+    // Drop underline marks inside run properties.
+    out = out.replace(/<w:u\b[^>]*\/?>/g, "");
+
+    return out;
   });
 }
 
@@ -366,7 +377,7 @@ export function renderDocxTemplate({
     const f = outZip.file(name);
     if (!f) continue;
     const xml = f.asText();
-    const cleaned = stripEmptyUnderlinedOrBorderParagraphs(xml);
+    const cleaned = scrubEmptyUnderlinedOrBorderParagraphs(xml);
     if (cleaned !== xml) outZip.file(name, cleaned);
   }
 
