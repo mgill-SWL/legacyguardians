@@ -317,6 +317,7 @@ function scrubEmptyUnderlinedOrBorderParagraphs(xml: string) {
     out = out.replace(/<w:pBdr>[\s\S]*?<\/w:pBdr>/g, "");
     // Drop underline marks inside run properties.
     out = out.replace(/<w:u\b[^>]*\/?>/g, "");
+    out = out.replace(/<\/w:u>/g, "");
 
     return out;
   });
@@ -369,9 +370,11 @@ export function renderDocxTemplate({
   // can leave behind when tokens resolve to empty strings.
   const outZip = doc.getZip();
   const outXmlParts = Object.keys(outZip.files).filter((name) => {
-    if (!name.startsWith("word/")) return false;
-    if (!name.endsWith(".xml")) return false;
-    return true;
+    // Only touch XML parts that contain body paragraphs.
+    if (name === "word/document.xml") return true;
+    if (/^word\/header\d+\.xml$/.test(name)) return true;
+    if (/^word\/footer\d+\.xml$/.test(name)) return true;
+    return false;
   });
   for (const name of outXmlParts) {
     const f = outZip.file(name);
