@@ -9,6 +9,18 @@ import { getDefaultGoogleEmailForUser, getIntakeKpisFromSheet } from "@/lib/kpis
 export const dynamic = "force-dynamic";
 
 type Kpi = { id: string; label: string; value: string; sub?: string };
+
+type IntakeStatsBlock = {
+  title: string;
+  // For week blocks, this is the Week Ending ISO date.
+  // For rollups, this is a range like "YYYY-MM-DD → YYYY-MM-DD".
+  periodLabel: string;
+  calls: number;
+  designHeld: number;
+  designCancelled: number;
+  pctQualified: number;
+  totalConversion: number;
+};
 type StageStat = { stageName: string; matterCount: number; totalValueCents: number };
 
 function usd(cents: number) {
@@ -141,6 +153,7 @@ export default async function DashboardPage() {
   const spreadsheetId = process.env.LG_INTAKE_KPI_SPREADSHEET_ID;
 
   let intakeKpis: Kpi[] = [];
+  let intakeStatsAtGlance: IntakeStatsBlock[] = [];
 
   const fmt = (v: number) => (Number.isFinite(v) ? v.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "0");
   const fmtPct = (v: number) => {
@@ -150,12 +163,19 @@ export default async function DashboardPage() {
     return `${Math.round(asPct)}%`;
   };
 
-  function isoWeekEndingFriday(d: Date) {
-    // Week ending is Friday. If today is Friday, this returns today.
+  function lastCompletedFridayIso(d: Date) {
+    // Most recent Friday strictly before today (local). If today is Friday, this returns last week's Friday.
+    const day = d.getDay(); // 0=Sun .. 5=Fri
+    const delta = (day - 5 + 7) % 7;
+    const daysBack = delta === 0 ? 7 : delta;
+    return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate() - daysBack)).toISOString().slice(0, 10);
+  }
+
+  function weekEndingFridayIso(d: Date) {
+    // Upcoming Friday for the current week. If today is Friday, this returns today.
     const day = d.getDay(); // 0=Sun .. 5=Fri
     const delta = (5 - day + 7) % 7;
-    const dd = d.getDate() + delta;
-    return new Date(Date.UTC(d.getFullYear(), d.getMonth(), dd)).toISOString().slice(0, 10);
+    return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate() + delta)).toISOString().slice(0, 10);
   }
 
   function addDaysIso(iso: string, days: number) {
@@ -167,18 +187,78 @@ export default async function DashboardPage() {
     return new Date(Date.UTC(y, mo, da + days)).toISOString().slice(0, 10);
   }
 
-  function sumRows(
-    rr: Array<{ totalIntakeCalls: number; designMeetingsHeld: number; designMeetingsCancelled: number }>
-  ) {
-    return rr.reduce(
-      (acc, r) => {
-        acc.calls += r.totalIntakeCalls;
-        acc.held += r.designMeetingsHeld;
-        acc.cancelled += r.designMeetingsCancelled;
-        return acc;
+  function n(v: any) {
+    const x = Number(v);
+    return Number.isFinite(x) ? x : 0;
+  }
+
+  function buildStatsAtGlanceFromRows(rows: Array<{ weekEnding: string; totalIntakeCalls: number; designMeetingsHeld: number; designMeetingsCancelled: number; pctQualified: number; totalConversion: number }>) {
+    const byWeek = new Map(rows.map((r) => [r.weekEnding, r] as const));
+
+    const thisWeekEnding = weekEndingFridayIso(now);
+    const lastWeekEnding = lastCompletedFridayIso(now);
+    const last4WeekEndings = [
+      addDaysIso(lastWeekEnding, -21),
+      addDaysIso(lastWeekEnding, -14),
+      addDaysIso(lastWeekEnding, -7),
+      lastWeekEnding,
+    ];
+
+    const pick = (weekEnding: string) =>
+      byWeek.get(weekEnding) || {
+        weekEnding,
+        totalIntakeCalls: 0,
+        designMeetingsHeld: 0,
+        designMeetingsCancelled: 0,
+        pctQualified: 0,
+        totalConversion: 0,
+      };
+
+    const thisWeek = pick(thisWeekEnding);
+    const lastWeek = pick(lastWeekEnding);
+
+    const last4 = last4WeekEndings.map(pick);
+    const last4Calls = last4.reduce((acc, r) => acc + n(r.totalIntakeCalls), 0);
+    const last4Held = last4.reduce((acc, r) => acc + n(r.designMeetingsHeld), 0);
+    const last4Cancelled = last4.reduce((acc, r) => acc + n(r.designMeetingsCancelled), 0);
+
+    // Weighted averages (weight by calls) so rollups feel consistent.
+    const last4AvgQualified = last4Calls
+      ? last4.reduce((acc, r) => acc + n(r.pctQualified) * n(r.totalIntakeCalls), 0) / last4Calls
+      : 0;
+    const last4AvgConversion = last4Calls
+      ? last4.reduce((acc, r) => acc + n(r.totalConversion) * n(r.totalIntakeCalls), 0) / last4Calls
+      : 0;
+
+    intakeStatsAtGlance = [
+      {
+        title: "Last 4 weeks",
+        periodLabel: `${last4WeekEndings[0]} → ${last4WeekEndings[last4WeekEndings.length - 1]}`,
+        calls: last4Calls,
+        designHeld: last4Held,
+        designCancelled: last4Cancelled,
+        pctQualified: last4AvgQualified,
+        totalConversion: last4AvgConversion,
       },
-      { calls: 0, held: 0, cancelled: 0 }
-    );
+      {
+        title: "Last week",
+        periodLabel: lastWeekEnding,
+        calls: n(lastWeek.totalIntakeCalls),
+        designHeld: n(lastWeek.designMeetingsHeld),
+        designCancelled: n(lastWeek.designMeetingsCancelled),
+        pctQualified: n(lastWeek.pctQualified),
+        totalConversion: n(lastWeek.totalConversion),
+      },
+      {
+        title: "This week",
+        periodLabel: thisWeekEnding,
+        calls: n(thisWeek.totalIntakeCalls),
+        designHeld: n(thisWeek.designMeetingsHeld),
+        designCancelled: n(thisWeek.designMeetingsCancelled),
+        pctQualified: n(thisWeek.pctQualified),
+        totalConversion: n(thisWeek.totalConversion),
+      },
+    ];
   }
 
   if (spreadsheetId) {
@@ -193,68 +273,37 @@ export default async function DashboardPage() {
           sheetNameTemplate: process.env.LG_INTAKE_KPI_SHEETNAME_TEMPLATE || "{YYYY} Intake KPIs",
         });
 
-        const weekEndingThis = isoWeekEndingFriday(now);
-        const weekEndingLast = addDaysIso(weekEndingThis, -7);
-
-        const thisWeek = rows.find((r) => r.weekEnding === weekEndingThis) || null;
-        const lastWeek = rows.find((r) => r.weekEnding === weekEndingLast) || null;
-
-        const last4 = rows.slice(-4);
-        const last4Sum = sumRows(last4);
-        const last4AvgQualified = last4.length ? last4.reduce((acc, r) => acc + Number(r.pctQualified || 0), 0) / last4.length : 0;
-        const last4AvgConversion = last4.length ? last4.reduce((acc, r) => acc + Number(r.totalConversion || 0), 0) / last4.length : 0;
-        const last4Range = last4.length ? `${last4[0].weekEnding} → ${last4[last4.length - 1].weekEnding}` : "—";
-
-        intakeKpis = [
-          {
-            id: "last4",
-            label: "Last 4 weeks (total)",
-            value: last4Range,
-            sub: last4.length
-              ? `Calls: ${fmt(last4Sum.calls)} · Held: ${fmt(last4Sum.held)} · Cancelled: ${fmt(
-                  last4Sum.cancelled
-                )} · Avg Qualified: ${fmtPct(last4AvgQualified)} · Avg Conversion: ${fmtPct(last4AvgConversion)}`
-              : "No weekly rows found",
-          },
-          {
-            id: "last_week",
-            label: "Last week",
-            value: lastWeek ? lastWeek.weekEnding : weekEndingLast,
-            sub: lastWeek
-              ? `Calls: ${fmt(lastWeek.totalIntakeCalls)} · Held: ${fmt(lastWeek.designMeetingsHeld)} · Cancelled: ${fmt(
-                  lastWeek.designMeetingsCancelled
-                )} · Qualified: ${fmtPct(lastWeek.pctQualified)} · Conversion: ${fmtPct(lastWeek.totalConversion)}`
-              : "No row found for last week",
-          },
-          {
-            id: "this_week",
-            label: "This week",
-            value: thisWeek ? thisWeek.weekEnding : weekEndingThis,
-            sub: thisWeek
-              ? `Calls: ${fmt(thisWeek.totalIntakeCalls)} · Held: ${fmt(thisWeek.designMeetingsHeld)} · Cancelled: ${fmt(
-                  thisWeek.designMeetingsCancelled
-                )} · Qualified: ${fmtPct(thisWeek.pctQualified)} · Conversion: ${fmtPct(thisWeek.totalConversion)}`
-              : "No row found for this week",
-          },
-        ];
+        buildStatsAtGlanceFromRows(rows);
       } catch {
         // fall through to DB summary
       }
     }
   }
 
-  if (!intakeKpis.length) {
+  if (!intakeStatsAtGlance.length) {
     const intakeTable: any = anyPrisma.reportTable
       ? await anyPrisma.reportTable.findUnique({ where: { slug: "intake-reporting" }, include: { rows: { orderBy: { sortOrder: "asc" } } } })
       : null;
 
+    // If we have week-keyed rows, build the same at-a-glance blocks.
+    if (intakeTable?.rows?.length) {
+      const rr = (intakeTable.rows || []).map((r: any) => {
+        const d = r.data || {};
+        return {
+          weekEnding: r.rowKey,
+          totalIntakeCalls: n(d.total_intake_calls),
+          designMeetingsHeld: n(d.design_meetings_held),
+          designMeetingsCancelled: n(d.design_meetings_cancelled),
+          pctQualified: n(d.pct_qualified),
+          totalConversion: n(d.total_conversion),
+        };
+      });
+      buildStatsAtGlanceFromRows(rr);
+    }
+
     const intakeTotals = (intakeTable?.rows || []).reduce(
       (acc: any, r: any) => {
         const d = r.data || {};
-        const n = (v: any) => {
-          const x = Number(v);
-          return Number.isFinite(x) ? x : 0;
-        };
         acc.scheduled += n(d.scheduled_intake);
         acc.qualified += n(d.qualified);
         acc.designHeld += n(d.design_meetings_held);
@@ -314,13 +363,14 @@ export default async function DashboardPage() {
     : [];
 
   return (
-    <DashboardClient
-      financialKpis={financialKpis}
-      intakeKpis={intakeKpis}
-      wipKpis={wipKpis}
-      meetings={meetings.map((m: any) => ({
-        id: m.id,
-        typeName: m.type?.name || "(Meeting)",
+      <DashboardClient
+        financialKpis={financialKpis}
+        intakeKpis={intakeKpis}
+        intakeStatsAtGlance={intakeStatsAtGlance}
+        wipKpis={wipKpis}
+        meetings={meetings.map((m: any) => ({
+          id: m.id,
+          typeName: m.type?.name || "(Meeting)",
         clientName: m.clientName || "(No name)",
         startsAt: new Date(m.startsAt).toISOString(),
         endsAt: new Date(m.endsAt).toISOString(),

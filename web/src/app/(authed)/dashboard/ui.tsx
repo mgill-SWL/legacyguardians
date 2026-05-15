@@ -5,6 +5,16 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 type Kpi = { id: string; label: string; value: string; sub?: string };
+
+type IntakeStatsBlock = {
+  title: string;
+  periodLabel: string;
+  calls: number;
+  designHeld: number;
+  designCancelled: number;
+  pctQualified: number;
+  totalConversion: number;
+};
 type Meeting = {
   id: string;
   typeName: string;
@@ -23,6 +33,7 @@ const DEFAULT_WIDGETS = ["financial", "intake", "wip", "meetings", "billing"] as
 export function DashboardClient({
   financialKpis,
   intakeKpis,
+  intakeStatsAtGlance,
   wipKpis,
   meetings,
   billing,
@@ -30,6 +41,7 @@ export function DashboardClient({
 }: {
   financialKpis: Kpi[];
   intakeKpis: Kpi[];
+  intakeStatsAtGlance?: IntakeStatsBlock[];
   wipKpis: Kpi[];
   meetings: Meeting[];
   billing: { series: BillingPoint[]; billedMtdCents: number; collectedMtdCents: number };
@@ -110,7 +122,12 @@ const widgetDefs: Record<
     intake: {
       title: "Intake",
       className: "lg:col-span-3",
-      render: () => <KpiGrid title="Intake" subtitle="Calls • design meetings booked • conversions" kpis={intakeKpis} />,
+      render: () =>
+        intakeStatsAtGlance?.length ? (
+          <IntakeStatsAtAGlance blocks={intakeStatsAtGlance} />
+        ) : (
+          <KpiGrid title="Intake" subtitle="Calls • design meetings booked • conversions" kpis={intakeKpis} />
+        ),
     },
     wip: {
       title: "Work-in-Process",
@@ -226,6 +243,81 @@ const widgetDefs: Record<
       </div>
 
       <QuickActions />
+    </div>
+  );
+}
+
+function IntakeStatsAtAGlance({ blocks }: { blocks: IntakeStatsBlock[] }) {
+  const fmtInt = (n: number) => Math.round(Number.isFinite(n) ? n : 0).toLocaleString();
+  const fmtPct = (v: number) => {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return "0%";
+    const asPct = n <= 1 ? n * 100 : n;
+    return `${Math.round(asPct)}%`;
+  };
+
+  return (
+    <div className="sw-card sw-card-pad">
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+        <div>
+          <div style={{ fontWeight: 900 }}>Intake</div>
+          <div className="sw-muted" style={{ marginTop: 6, fontSize: 12 }}>
+            Stats at a glance
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3" style={{ gap: 12, marginTop: 12 }}>
+        {blocks.map((b) => (
+          <div
+            key={b.title}
+            style={{
+              border: "1px solid var(--sw-border)",
+              borderRadius: 12,
+              padding: 12,
+              background: "rgba(255,255,255,0.02)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
+              <div style={{ fontWeight: 950 }}>{b.title}</div>
+              <div className="sw-muted" style={{ fontSize: 12, whiteSpace: "nowrap" }}>
+                {b.periodLabel}
+              </div>
+            </div>
+
+            <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                <div className="sw-muted" style={{ fontSize: 12, fontWeight: 900 }}>
+                  Total Intake Calls
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 950 }}>{fmtInt(b.calls)}</div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, fontSize: 13 }}>
+                <div className="sw-muted" style={{ fontWeight: 900 }}>
+                  Design Meetings HELD
+                </div>
+                <div style={{ fontWeight: 950 }}>{fmtInt(b.designHeld)}</div>
+
+                <div className="sw-muted" style={{ fontWeight: 900 }}>
+                  Design Meetings CANCELLED
+                </div>
+                <div style={{ fontWeight: 950 }}>{fmtInt(b.designCancelled)}</div>
+
+                <div className="sw-muted" style={{ fontWeight: 900 }}>
+                  % Qualified
+                </div>
+                <div style={{ fontWeight: 950 }}>{fmtPct(b.pctQualified)}</div>
+
+                <div className="sw-muted" style={{ fontWeight: 900 }}>
+                  Total Conversion
+                </div>
+                <div style={{ fontWeight: 950 }}>{fmtPct(b.totalConversion)}</div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
