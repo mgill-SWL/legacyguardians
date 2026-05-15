@@ -147,8 +147,39 @@ export default async function DashboardPage() {
     const n = Number(v);
     if (!Number.isFinite(n)) return "0%";
     const asPct = n <= 1 ? n * 100 : n;
-    return `${Math.round(asPct * 10) / 10}%`;
+    return `${Math.round(asPct)}%`;
   };
+
+  function isoWeekEndingFriday(d: Date) {
+    // Week ending is Friday. If today is Friday, this returns today.
+    const day = d.getDay(); // 0=Sun .. 5=Fri
+    const delta = (5 - day + 7) % 7;
+    const dd = d.getDate() + delta;
+    return new Date(Date.UTC(d.getFullYear(), d.getMonth(), dd)).toISOString().slice(0, 10);
+  }
+
+  function addDaysIso(iso: string, days: number) {
+    const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return iso;
+    const y = Number(m[1]);
+    const mo = Number(m[2]) - 1;
+    const da = Number(m[3]);
+    return new Date(Date.UTC(y, mo, da + days)).toISOString().slice(0, 10);
+  }
+
+  function sumRows(
+    rr: Array<{ totalIntakeCalls: number; designMeetingsHeld: number; designMeetingsCancelled: number }>
+  ) {
+    return rr.reduce(
+      (acc, r) => {
+        acc.calls += r.totalIntakeCalls;
+        acc.held += r.designMeetingsHeld;
+        acc.cancelled += r.designMeetingsCancelled;
+        return acc;
+      },
+      { calls: 0, held: 0, cancelled: 0 }
+    );
+  }
 
   if (spreadsheetId) {
     const googleEmail = await getDefaultGoogleEmailForUser(session.user.email);
@@ -162,31 +193,48 @@ export default async function DashboardPage() {
           sheetNameTemplate: process.env.LG_INTAKE_KPI_SHEETNAME_TEMPLATE || "{YYYY} Intake KPIs",
         });
 
-        const totals = rows.reduce(
-          (acc, r) => {
-            acc.totalIntakeCalls += r.totalIntakeCalls;
-            acc.designMeetingsHeld += r.designMeetingsHeld;
-            acc.designMeetingsCancelled += r.designMeetingsCancelled;
-            return acc;
-          },
-          { totalIntakeCalls: 0, designMeetingsHeld: 0, designMeetingsCancelled: 0 }
-        );
+        const weekEndingThis = isoWeekEndingFriday(now);
+        const weekEndingLast = addDaysIso(weekEndingThis, -7);
 
-        const latest = rows.length ? rows[rows.length - 1] : null;
+        const thisWeek = rows.find((r) => r.weekEnding === weekEndingThis) || null;
+        const lastWeek = rows.find((r) => r.weekEnding === weekEndingLast) || null;
+
+        const last4 = rows.slice(-4);
+        const last4Sum = sumRows(last4);
+        const last4AvgQualified = last4.length ? last4.reduce((acc, r) => acc + Number(r.pctQualified || 0), 0) / last4.length : 0;
+        const last4AvgConversion = last4.length ? last4.reduce((acc, r) => acc + Number(r.totalConversion || 0), 0) / last4.length : 0;
+        const last4Range = last4.length ? `${last4[0].weekEnding} → ${last4[last4.length - 1].weekEnding}` : "—";
 
         intakeKpis = [
-          { id: "calls_ytd", label: "Intake calls (YTD)", value: fmt(totals.totalIntakeCalls) },
-          { id: "design_held_ytd", label: "Design meetings held (YTD)", value: fmt(totals.designMeetingsHeld) },
-          { id: "design_cancel_ytd", label: "Design meetings cancelled (YTD)", value: fmt(totals.designMeetingsCancelled) },
           {
-            id: "latest_week",
-            label: "Latest week",
-            value: latest ? latest.weekEnding : "—",
-            sub: latest
-              ? `Calls: ${fmt(latest.totalIntakeCalls)} · Held: ${fmt(latest.designMeetingsHeld)} · Cancelled: ${fmt(
-                  latest.designMeetingsCancelled
-                )} · Qualified: ${fmtPct(latest.pctQualified)} · Conversion: ${fmt(latest.totalConversion)}`
+            id: "last4",
+            label: "Last 4 weeks (total)",
+            value: last4Range,
+            sub: last4.length
+              ? `Calls: ${fmt(last4Sum.calls)} · Held: ${fmt(last4Sum.held)} · Cancelled: ${fmt(
+                  last4Sum.cancelled
+                )} · Avg Qualified: ${fmtPct(last4AvgQualified)} · Avg Conversion: ${fmtPct(last4AvgConversion)}`
               : "No weekly rows found",
+          },
+          {
+            id: "last_week",
+            label: "Last week",
+            value: lastWeek ? lastWeek.weekEnding : weekEndingLast,
+            sub: lastWeek
+              ? `Calls: ${fmt(lastWeek.totalIntakeCalls)} · Held: ${fmt(lastWeek.designMeetingsHeld)} · Cancelled: ${fmt(
+                  lastWeek.designMeetingsCancelled
+                )} · Qualified: ${fmtPct(lastWeek.pctQualified)} · Conversion: ${fmtPct(lastWeek.totalConversion)}`
+              : "No row found for last week",
+          },
+          {
+            id: "this_week",
+            label: "This week",
+            value: thisWeek ? thisWeek.weekEnding : weekEndingThis,
+            sub: thisWeek
+              ? `Calls: ${fmt(thisWeek.totalIntakeCalls)} · Held: ${fmt(thisWeek.designMeetingsHeld)} · Cancelled: ${fmt(
+                  thisWeek.designMeetingsCancelled
+                )} · Qualified: ${fmtPct(thisWeek.pctQualified)} · Conversion: ${fmtPct(thisWeek.totalConversion)}`
+              : "No row found for this week",
           },
         ];
       } catch {
