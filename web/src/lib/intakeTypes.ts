@@ -32,6 +32,30 @@ export type RoleAssignment = {
   alternate2?: string;
 };
 
+/**
+ * Newer intake schema: each client can have their own independent role assignments.
+ *
+ * Back-compat: older intakes stored a single RoleAssignment (applied to both clients).
+ */
+export type RoleAssignmentByClient = {
+  client1: RoleAssignment;
+  client2: RoleAssignment;
+};
+
+export type RoleAssignmentMaybeByClient = RoleAssignment | RoleAssignmentByClient;
+
+/** Final disposition agents allow co-agents at each successor level.
+ *
+ * Shape is an array of ranks (0=primary representative), where each rank is an array
+ * of personIds (co-agents).
+ */
+export type CoAgentRanks = string[][]; // personIds by rank
+export type CoAgentRanksByClient = {
+  client1: CoAgentRanks;
+  client2: CoAgentRanks;
+};
+export type CoAgentRanksMaybeByClient = CoAgentRanks | CoAgentRanksByClient;
+
 export type ActingMode = "EITHER" | "JOINT";
 export type RankGroup = { actingMode: ActingMode; personIds: string[] };
 export type RankedRoles = {
@@ -39,6 +63,7 @@ export type RankedRoles = {
   executors: RankGroup[];
   financialAgents: RankGroup[];
   healthAgents: RankGroup[];
+  /** Legacy v1 (ranked) does not currently drive Final Disposition agent selection. */
   guardians: RankGroup[];
 };
 
@@ -87,10 +112,12 @@ export type IntakeV1 = {
   people: Person[];
 
   roles: {
-    trustees: RoleAssignment;
-    executors: RoleAssignment;
-    financialAgents: RoleAssignment;
-    healthAgents: RoleAssignment;
+    trustees: RoleAssignmentMaybeByClient;
+    executors: RoleAssignmentMaybeByClient;
+    financialAgents: RoleAssignmentMaybeByClient;
+    healthAgents: RoleAssignmentMaybeByClient;
+    /** Appointment of agent to control disposition of remains (ranked, co-agents allowed per rank). */
+    finalDispositionAgents?: CoAgentRanksMaybeByClient;
     guardians: RoleAssignment;
   };
 

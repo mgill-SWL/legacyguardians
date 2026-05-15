@@ -52,6 +52,30 @@ function sanitizeWordXml(xml: string, data: Record<string, unknown>) {
     ""
   );
 
+  // --- Notary block normalization ("Rewind the Notary") ---
+  // Some canonical templates still hardcode a specific notary name.
+  // Replace it with our standard token so attorney-user input can control it.
+  // (We keep the surrounding ", Notary Public" as literal text.)
+  out = out.replace(
+    /MICHAEL\s+DOUD\s+GILL\s+III,\s*Notary\s+Public/gi,
+    "[[NOTARYNAME]], Notary Public"
+  );
+
+  // Convert the notary signature underline (commonly 41 underscores in the golden templates)
+  // into a token so we can reliably remove/alter it without fighting Word underline formatting.
+  // We scope this to the notary blocks by requiring that NOTARYNAME appears shortly after.
+  out = out.replace(
+    /(<w:t[^>]*>)_________________________________________(<\/w:t>[\s\S]{0,2000}?\[\[NOTARYNAME)/g,
+    "$1[[NOTARYSIGNATURELINE]]$2"
+  );
+
+  // Some templates use an underscore fill for the notary commission expiration.
+  // Make it a real token so it can be filled (or left blank) intentionally.
+  out = out.replace(
+    /(My commission expires:\s*)_+/g,
+    "$1[[NotaryExpirationDate]]"
+  );
+
   // Legacy individual template uses these shorter bracket instructions.
   out = out.replace(/\[\s*signature\s*\]/gi, "");
   out = out.replace(/\[\s*please\s*print\s*name\s*\]/gi, "");
@@ -264,6 +288,29 @@ function sanitizeWordXml(xml: string, data: Record<string, unknown>) {
   return out;
 }
 
+function stripEmptyUnderlinedOrBorderParagraphs(xml: string) {
+  // Remove paragraphs that are *visibly blank* but still carry underline/border styling.
+  // This is a common cause of “mystery extra blank underline” lines in DOCX output.
+  //
+  // Safety: only remove when (a) the paragraph has underline OR paragraph border, and
+  // (b) it contains no non-whitespace <w:t> text.
+  return xml.replace(/<w:p\b[\s\S]*?<\/w:p>/g, (para) => {
+    const hasUnderline = /<w:u\b[^>]*w:val="single"/.test(para);
+    const hasBorder = /<w:pBdr>/.test(para);
+    if (!hasUnderline && !hasBorder) return para;
+
+    const texts = [...para.matchAll(/<w:t(?: [^>]*)?>([\s\S]*?)<\/w:t>/g)].map(
+      (m) => m[1]
+    );
+
+    // If there are no text nodes, treat as empty.
+    if (texts.length === 0) return "";
+
+    const allBlank = texts.every((t) => t.replace(/&nbsp;|\u00A0/g, " ").trim().length === 0);
+    return allBlank ? "" : para;
+  });
+}
+
 export function renderDocxTemplate({
   templateAbsPath,
   data,
@@ -307,9 +354,23 @@ export function renderDocxTemplate({
 
   doc.render(data);
 
-  const out = doc
-    .getZip()
-    .generate({ type: "nodebuffer", compression: "DEFLATE" }) as Buffer;
+  // Post-render cleanup: remove “empty-but-underlined/bordered” paragraphs that docxtemplater
+  // can leave behind when tokens resolve to empty strings.
+  const outZip = doc.getZip();
+  const outXmlParts = Object.keys(outZip.files).filter((name) => {
+    if (!name.startsWith("word/")) return false;
+    if (!name.endsWith(".xml")) return false;
+    return true;
+  });
+  for (const name of outXmlParts) {
+    const f = outZip.file(name);
+    if (!f) continue;
+    const xml = f.asText();
+    const cleaned = stripEmptyUnderlinedOrBorderParagraphs(xml);
+    if (cleaned !== xml) outZip.file(name, cleaned);
+  }
+
+  const out = outZip.generate({ type: "nodebuffer", compression: "DEFLATE" }) as Buffer;
 
   return { buffer: out, missingTokens: [...missingTokens].sort() };
 }

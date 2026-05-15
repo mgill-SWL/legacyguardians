@@ -1,4 +1,4 @@
-import type { IntakeV1, Person } from "./intakeTypes";
+import type { IntakeV1, Person, RoleAssignment } from "./intakeTypes";
 import { defaultTrustNameFromClient1 } from "./names";
 
 function byId(people: Person[], id?: string) {
@@ -85,6 +85,75 @@ function findSpouses(intake: IntakeV1) {
 function phraseForPov(p: Person | undefined, pov: 1 | 2) {
   if (!p) return "";
   return (pov === 2 ? p.relationshipPhraseToSpouse2 : p.relationshipPhraseToSpouse1) || p.relationship || "";
+}
+
+type RoleKey = "trustees" | "executors" | "financialAgents" | "healthAgents" | "guardians";
+
+function isRecord(x: unknown): x is Record<string, unknown> {
+  return Boolean(x) && typeof x === "object";
+}
+
+function toRoleAssignment(x: unknown): RoleAssignment {
+  if (!isRecord(x)) return {};
+  return {
+    primary: typeof x.primary === "string" ? x.primary : undefined,
+    alternate1: typeof x.alternate1 === "string" ? x.alternate1 : undefined,
+    alternate2: typeof x.alternate2 === "string" ? x.alternate2 : undefined,
+  };
+}
+
+function roleForClient(intake: IntakeV1, roleKey: RoleKey, client: 1 | 2): RoleAssignment {
+  const raw = (intake.roles as Record<RoleKey, unknown> | undefined)?.[roleKey];
+  if (!isRecord(raw)) return {};
+
+  // Legacy shape: a single RoleAssignment applied to both clients.
+  if ("primary" in raw || "alternate1" in raw || "alternate2" in raw) {
+    return toRoleAssignment(raw);
+  }
+
+  // Newer shape: { client1: RoleAssignment, client2: RoleAssignment }
+  const key = client === 2 ? "client2" : "client1";
+  return toRoleAssignment(raw[key]);
+}
+
+function finalDispositionRanksForClient(intake: IntakeV1, client: 1 | 2): string[][] {
+  const raw = (intake.roles as any)?.finalDispositionAgents;
+  const key = client === 2 ? "client2" : "client1";
+
+  const isStrArr = (v: any) => Array.isArray(v) && v.every((s: any) => typeof s === "string");
+  const isRankArr = (v: any) => Array.isArray(v) && v.every((r: any) => isStrArr(r));
+
+  // Preferred: { client1: string[][], client2: string[][] }
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    const v = (raw as any)[key];
+    if (isRankArr(v)) return v;
+
+    // Legacy RoleAssignment shapes: { primary, alternate1, alternate2 }
+    if ("primary" in raw || "alternate1" in raw || "alternate2" in raw) {
+      const list = [raw.primary, raw.alternate1, raw.alternate2].filter((x) => typeof x === "string") as string[];
+      return [list.slice(0, 1), ...list.slice(1).map((id) => [id])].filter((r) => r.length);
+    }
+
+    // Legacy by-client role assignment shapes
+    if ("client1" in raw || "client2" in raw) {
+      const r = (raw as any)[key];
+      if (r && typeof r === "object") {
+        const list = [r.primary, r.alternate1, r.alternate2].filter((x: any) => typeof x === "string") as string[];
+        return [list.slice(0, 1), ...list.slice(1).map((id) => [id])].filter((rr) => rr.length);
+      }
+    }
+  }
+
+  // Legacy flat list: string[] applied to both.
+  if (isStrArr(raw)) {
+    const list = raw as string[];
+    return [list.slice(0, 1), ...list.slice(1).map((id) => [id])].filter((r) => r.length);
+  }
+
+  // Fallback: if not provided, default to spouse as representative (matches the golden templates).
+  const { spouse1, spouse2 } = findSpouses(intake);
+  const spouse = client === 2 ? spouse1 : spouse2;
+  return spouse?.id ? [[spouse.id]] : [[]];
 }
 
 export function tokenDataFromIntakeWithOptions(intake: IntakeV1, options?: TokenOptions) {
@@ -185,6 +254,8 @@ export function tokenDataFromIntakeWithOptions(intake: IntakeV1, options?: Token
     // Notary expiration date is not collected in the MVP.
     NotaryExpirationDate: "",
     NOTARYNAME: "",
+    // Notary signature line (used when templates are normalized to tokens at render-time).
+    NOTARYSIGNATURELINE: "_________________________________________",
 
     // Email legacy variants
     Client1email: intake.clientEmails?.client1 ?? "",
@@ -212,9 +283,10 @@ export function tokenDataFromIntakeWithOptions(intake: IntakeV1, options?: Token
   data.CHILD1FIRSTNAME = child1First;
 
   // Guardians
-  const gPrimary = byId(intake.people, intake.roles.guardians.primary);
-  const gA1 = byId(intake.people, intake.roles.guardians.alternate1);
-  const gA2 = byId(intake.people, intake.roles.guardians.alternate2);
+  const gRole = roleForClient(intake, "guardians", povClient);
+  const gPrimary = byId(intake.people, gRole.primary);
+  const gA1 = byId(intake.people, gRole.alternate1);
+  const gA2 = byId(intake.people, gRole.alternate2);
 
   // Individual template (legacy) expects explicit primary guardian tokens.
   data.PRIMARYGUARDIANFULLNAME = gPrimary?.name ?? "";
@@ -279,8 +351,12 @@ export function tokenDataFromIntakeWithOptions(intake: IntakeV1, options?: Token
   data.Client2SecondAlternateGuardianAddress = formatAddress(gA2);
 
   // Trustees
-  const tA1 = byId(intake.people, intake.roles.trustees.alternate1);
-  const tA2 = byId(intake.people, intake.roles.trustees.alternate2);
+  const trusteeRolePov = roleForClient(intake, "trustees", povClient);
+  const trusteeRole1 = roleForClient(intake, "trustees", 1);
+  const trusteeRole2 = roleForClient(intake, "trustees", 2);
+
+  const tA1 = byId(intake.people, trusteeRolePov.alternate1);
+  const tA2 = byId(intake.people, trusteeRolePov.alternate2);
 
   // Some intake shapes store successor trustees as raw names (string[]) instead of personIds.
   // Use as a fallback so the Joint Trust "succeeded by ___ as the successor Trustee" clause doesn't go blank.
@@ -304,15 +380,24 @@ export function tokenDataFromIntakeWithOptions(intake: IntakeV1, options?: Token
     : "";
 
   // Some templates expect these as client-scoped trustee alternates.
-  data.CLIENT1FIRSTALTERNATETRUSTEEFULLNAME = trusteeAlt1Name;
-  data.CLIENT1SECONDALTERNATETRUSTEEFULLNAME = trusteeAlt2Name;
-  data.CLIENT2FIRSTALTERNATETRUSTEEFULLNAME = trusteeAlt1Name;
-  data.CLIENT2SECONDALTERNATETRUSTEEFULLNAME = trusteeAlt2Name;
+  const t1A1 = byId(intake.people, trusteeRole1.alternate1);
+  const t1A2 = byId(intake.people, trusteeRole1.alternate2);
+  const t2A1 = byId(intake.people, trusteeRole2.alternate1);
+  const t2A2 = byId(intake.people, trusteeRole2.alternate2);
+
+  data.CLIENT1FIRSTALTERNATETRUSTEEFULLNAME = t1A1?.name ?? "";
+  data.CLIENT1SECONDALTERNATETRUSTEEFULLNAME = t1A2?.name ?? "";
+  data.CLIENT2FIRSTALTERNATETRUSTEEFULLNAME = t2A1?.name ?? "";
+  data.CLIENT2SECONDALTERNATETRUSTEEFULLNAME = t2A2?.name ?? "";
 
   // POA agents (templates use a mix of casing)
-  const poaP = byId(intake.people, intake.roles.financialAgents.primary);
-  const poaA1 = byId(intake.people, intake.roles.financialAgents.alternate1);
-  const poaA2 = byId(intake.people, intake.roles.financialAgents.alternate2);
+  const poaRolePov = roleForClient(intake, "financialAgents", povClient);
+  const poaRole1 = roleForClient(intake, "financialAgents", 1);
+  const poaRole2 = roleForClient(intake, "financialAgents", 2);
+
+  const poaP = byId(intake.people, poaRole1.primary);
+  const poaA1 = byId(intake.people, poaRole1.alternate1);
+  const poaA2 = byId(intake.people, poaRole1.alternate2);
 
   data.CLIENT1POAFULLNAME = poaP?.name ?? "";
   data.CLIENT1POAPHONENUMBER = poaP?.phone ?? "";
@@ -333,22 +418,26 @@ export function tokenDataFromIntakeWithOptions(intake: IntakeV1, options?: Token
   data.Client1SecondAlternatePOAAddress = formatAddress(poaA2);
 
   // Legacy individual template tokens (no client number + inconsistent casing)
-  data.CLIENTFIRSTALTERNATEPOAFULLNAME = poaA1?.name ?? "";
-  data.CLIENTSECONDALTERNATEPOAFULLNAME = poaA2?.name ?? "";
-  data.CLIENTFirstalternatepoafullname = poaA1?.name ?? "";
-  data.CLIENTFIRSTALTERNATEPOAAddress = formatAddress(poaA1);
-  data.CLIENTSECONDALTERNATEPOAAddress = formatAddress(poaA2);
-  data.CLIENTFIRSTALTERNATEPOARelationship =
-    cleanRelationshipPhrase(phraseForPov(poaA1, povClient));
-  data.CLIENTSECONDALTERNATEPOARelationship =
-    cleanRelationshipPhrase(phraseForPov(poaA2, povClient));
-  data.CLIENTsecondalternatepoarelationship =
-    cleanRelationshipPhrase(phraseForPov(poaA2, povClient));
+  const poaPovA1 = byId(intake.people, poaRolePov.alternate1);
+  const poaPovA2 = byId(intake.people, poaRolePov.alternate2);
+
+  data.CLIENTFIRSTALTERNATEPOAFULLNAME = poaPovA1?.name ?? "";
+  data.CLIENTSECONDALTERNATEPOAFULLNAME = poaPovA2?.name ?? "";
+  data.CLIENTFirstalternatepoafullname = poaPovA1?.name ?? "";
+  data.CLIENTFIRSTALTERNATEPOAAddress = formatAddress(poaPovA1);
+  data.CLIENTSECONDALTERNATEPOAAddress = formatAddress(poaPovA2);
+  data.CLIENTFIRSTALTERNATEPOARelationship = cleanRelationshipPhrase(phraseForPov(poaPovA1, povClient));
+  data.CLIENTSECONDALTERNATEPOARelationship = cleanRelationshipPhrase(phraseForPov(poaPovA2, povClient));
+  data.CLIENTsecondalternatepoarelationship = cleanRelationshipPhrase(phraseForPov(poaPovA2, povClient));
 
   // AMD agents (best-effort)
-  const amdP = byId(intake.people, intake.roles.healthAgents.primary);
-  const amdA1 = byId(intake.people, intake.roles.healthAgents.alternate1);
-  const amdA2 = byId(intake.people, intake.roles.healthAgents.alternate2);
+  const amdRolePov = roleForClient(intake, "healthAgents", povClient);
+  const amdRole1 = roleForClient(intake, "healthAgents", 1);
+  const amdRole2 = roleForClient(intake, "healthAgents", 2);
+
+  const amdP = byId(intake.people, amdRole1.primary);
+  const amdA1 = byId(intake.people, amdRole1.alternate1);
+  const amdA2 = byId(intake.people, amdRole1.alternate2);
 
   data.CLIENT1AMDFULLNAME = amdP?.name ?? "";
   data.CLIENT1AMDPHONENUMBER = amdP?.phone ?? "";
@@ -372,14 +461,15 @@ export function tokenDataFromIntakeWithOptions(intake: IntakeV1, options?: Token
   data.Client1SecondAlternateAMDAddress = formatAddress(amdA2);
 
   // Legacy individual template tokens (no client number + inconsistent casing)
-  data.CLIENTFIRSTALTERNATEAMDFULLNAME = amdA1?.name ?? "";
-  data.CLIENTSECONDALTERNATEAMDFULLNAME = amdA2?.name ?? "";
-  data.CLIENTFIRSTALTERNATEAMDAddress = formatAddress(amdA1);
-  data.CLIENTSECONDALTERNATEAMDAddress = formatAddress(amdA2);
-  data.CLIENTFIRSTALTERNATEAMDRelationship =
-    cleanRelationshipPhrase(phraseForPov(amdA1, povClient));
-  data.CLIENTSECONDALTERNATEAMDRelationship =
-    cleanRelationshipPhrase(phraseForPov(amdA2, povClient));
+  const amdPovA1 = byId(intake.people, amdRolePov.alternate1);
+  const amdPovA2 = byId(intake.people, amdRolePov.alternate2);
+
+  data.CLIENTFIRSTALTERNATEAMDFULLNAME = amdPovA1?.name ?? "";
+  data.CLIENTSECONDALTERNATEAMDFULLNAME = amdPovA2?.name ?? "";
+  data.CLIENTFIRSTALTERNATEAMDAddress = formatAddress(amdPovA1);
+  data.CLIENTSECONDALTERNATEAMDAddress = formatAddress(amdPovA2);
+  data.CLIENTFIRSTALTERNATEAMDRelationship = cleanRelationshipPhrase(phraseForPov(amdPovA1, povClient));
+  data.CLIENTSECONDALTERNATEAMDRelationship = cleanRelationshipPhrase(phraseForPov(amdPovA2, povClient));
 
   // Reciprocal trust rendering: override trustee primary/alternate based on spouse POV.
   // This is intentionally local to the individual/reciprocal trust docs so we don't disturb
@@ -406,9 +496,9 @@ export function tokenDataFromIntakeWithOptions(intake: IntakeV1, options?: Token
   }
 
   // Mirror for client2 where tokens exist in templates
-  const poa2P = byId(intake.people, intake.roles.financialAgents.primary);
-  const poa2A1 = byId(intake.people, intake.roles.financialAgents.alternate1);
-  const poa2A2 = byId(intake.people, intake.roles.financialAgents.alternate2);
+  const poa2P = byId(intake.people, poaRole2.primary);
+  const poa2A1 = byId(intake.people, poaRole2.alternate1);
+  const poa2A2 = byId(intake.people, poaRole2.alternate2);
 
   data.CLIENT2POAFULLNAME = poa2P?.name ?? "";
   data.CLIENT2POAPHONENUMBER = poa2P?.phone ?? "";
@@ -428,9 +518,9 @@ export function tokenDataFromIntakeWithOptions(intake: IntakeV1, options?: Token
   data.Client2FirstAlternatePOAAddress = formatAddress(poa2A1);
   data.Client2SecondAlternatePOAAddress = formatAddress(poa2A2);
 
-  const amd2P = byId(intake.people, intake.roles.healthAgents.primary);
-  const amd2A1 = byId(intake.people, intake.roles.healthAgents.alternate1);
-  const amd2A2 = byId(intake.people, intake.roles.healthAgents.alternate2);
+  const amd2P = byId(intake.people, amdRole2.primary);
+  const amd2A1 = byId(intake.people, amdRole2.alternate1);
+  const amd2A2 = byId(intake.people, amdRole2.alternate2);
 
   data.CLIENT2AMDFULLNAME = amd2P?.name ?? "";
   data.CLIENT2AMDPHONENUMBER = amd2P?.phone ?? "";
@@ -449,6 +539,50 @@ export function tokenDataFromIntakeWithOptions(intake: IntakeV1, options?: Token
   data.Client2SecondAlternateAMDEmail = amd2A2?.email ?? "";
   data.Client2FirstAlternateAMDAddress = formatAddress(amd2A1);
   data.Client2SecondAlternateAMDAddress = formatAddress(amd2A2);
+
+  // Final disposition agents (appointment to control disposition of remains)
+  const fd1Ranks = finalDispositionRanksForClient(intake, 1);
+  const fd2Ranks = finalDispositionRanksForClient(intake, 2);
+
+  const fd1Primary = byId(intake.people, fd1Ranks?.[0]?.[0]);
+  const fd2Primary = byId(intake.people, fd2Ranks?.[0]?.[0]);
+
+  data.Client1FinalDispositionPrimaryFullName = fd1Primary?.name ?? "";
+  data.Client1FinalDispositionPrimaryEmail = fd1Primary?.email ?? "";
+  data.Client1FinalDispositionPrimaryPhone = fd1Primary?.phone ?? "";
+  data.Client1FinalDispositionPrimaryStreetAddress = fd1Primary?.addressStreet ?? "";
+  data.Client1FinalDispositionPrimaryCity = fd1Primary?.addressCity ?? "";
+  data.Client1FinalDispositionPrimaryState = fd1Primary?.addressState ?? "";
+  data.Client1FinalDispositionPrimaryZip = fd1Primary?.addressZip ?? "";
+
+  data.Client2FinalDispositionPrimaryFullName = fd2Primary?.name ?? "";
+  data.Client2FinalDispositionPrimaryEmail = fd2Primary?.email ?? "";
+  data.Client2FinalDispositionPrimaryPhone = fd2Primary?.phone ?? "";
+  data.Client2FinalDispositionPrimaryStreetAddress = fd2Primary?.addressStreet ?? "";
+  data.Client2FinalDispositionPrimaryCity = fd2Primary?.addressCity ?? "";
+  data.Client2FinalDispositionPrimaryState = fd2Primary?.addressState ?? "";
+  data.Client2FinalDispositionPrimaryZip = fd2Primary?.addressZip ?? "";
+
+  const fmtAlt = (p?: Person) => {
+    if (!p) return "";
+    const bits = [p.name, p.email, formatAddress(p)].filter((x) => (x || "").trim());
+    return bits.join(" — ");
+  };
+
+  const fmtSuccessors = (ranks: string[][]) => {
+    const out: string[] = [];
+    for (let i = 1; i < (ranks || []).length; i++) {
+      const ids = (ranks[i] || []).filter(Boolean);
+      if (!ids.length) continue;
+      const peopleText = ids.map((id) => fmtAlt(byId(intake.people, id))).filter(Boolean).join("; ");
+      if (!peopleText) continue;
+      out.push(`Successor ${i}: ${peopleText}`);
+    }
+    return out.join("\n");
+  };
+
+  data.Client1FinalDispositionAlternatesText = fmtSuccessors(fd1Ranks || []);
+  data.Client2FinalDispositionAlternatesText = fmtSuccessors(fd2Ranks || []);
 
   return data;
 }

@@ -46,6 +46,11 @@ type RoleAssignment = {
   alternate2?: string;
 };
 
+type RoleAssignmentByClient = {
+  client1: RoleAssignment;
+  client2: RoleAssignment;
+};
+
 function newId() {
   return `p_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
 }
@@ -94,30 +99,375 @@ function RoleBlock({
   return (
     <section style={cardStyle}>
       <div style={{ fontWeight: 800, marginBottom: 10 }}>{title}</div>
-      <div
-        style={{
-          display: "grid",
-          gap: 10,
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+      <RoleFields people={people} value={value} onChange={onChange} />
+    </section>
+  );
+}
+
+function RoleFields({
+  people,
+  value,
+  onChange,
+}: {
+  people: Person[];
+  value: RoleAssignment;
+  onChange: (next: RoleAssignment) => void;
+}) {
+  return (
+    <div
+      style={{
+        display: "grid",
+        gap: 10,
+        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+      }}
+    >
+      <PersonSelect
+        label="Primary"
+        people={people}
+        value={value.primary}
+        onChange={(id) => onChange({ ...value, primary: id || undefined })}
+      />
+      <PersonSelect
+        label="Alternate 1"
+        people={people}
+        value={value.alternate1}
+        onChange={(id) => onChange({ ...value, alternate1: id || undefined })}
+      />
+      <PersonSelect
+        label="Alternate 2"
+        people={people}
+        value={value.alternate2}
+        onChange={(id) => onChange({ ...value, alternate2: id || undefined })}
+      />
+    </div>
+  );
+}
+
+function RoleBlockByClient({
+  title,
+  client1Label,
+  client2Label,
+  people,
+  value,
+  onChange,
+}: {
+  title: string;
+  client1Label: string;
+  client2Label: string;
+  people: Person[];
+  value: RoleAssignmentByClient;
+  onChange: (next: RoleAssignmentByClient) => void;
+}) {
+  return (
+    <section style={cardStyle}>
+      <div style={{ fontWeight: 800, marginBottom: 10 }}>{title}</div>
+      <div style={{ display: "grid", gap: 18 }}>
+        <div style={{ display: "grid", gap: 10 }}>
+          <div style={{ fontWeight: 800 }}>{client1Label}</div>
+          <RoleFields
+            people={people}
+            value={value.client1}
+            onChange={(client1) => onChange({ ...value, client1 })}
+          />
+        </div>
+
+        <div style={{ display: "grid", gap: 10 }}>
+          <div style={{ fontWeight: 800 }}>{client2Label}</div>
+          <RoleFields
+            people={people}
+            value={value.client2}
+            onChange={(client2) => onChange({ ...value, client2 })}
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function OrderedAppointeesByClient({
+  title,
+  client1Label,
+  client2Label,
+  people,
+  value,
+  onChange,
+}: {
+  title: string;
+  client1Label: string;
+  client2Label: string;
+  people: Person[];
+  value: { client1: string[]; client2: string[] };
+  onChange: (next: { client1: string[]; client2: string[] }) => void;
+}) {
+  const labelFor = (id: string) => people.find((p) => p.id === id)?.name || "(unnamed)";
+
+  const Block = ({
+    label,
+    ids,
+    setIds,
+  }: {
+    label: string;
+    ids: string[];
+    setIds: (next: string[]) => void;
+  }) => (
+    <div style={{ display: "grid", gap: 10 }}>
+      <div style={{ fontWeight: 800 }}>{label}</div>
+
+      {ids.length ? (
+        <div style={{ display: "grid", gap: 8 }}>
+          {ids.map((id, idx) => (
+            <div key={`${id}_${idx}`} style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ fontWeight: 700 }}>
+                {idx === 0 ? "Primary: " : `Alternate ${idx}: `}
+                {labelFor(id)}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = [...ids];
+                  next.splice(idx, 1);
+                  setIds(next);
+                }}
+                style={secondaryBtn}
+              >
+                Remove
+              </button>
+              <button
+                type="button"
+                disabled={idx === 0}
+                onClick={() => {
+                  if (idx === 0) return;
+                  const next = [...ids];
+                  [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+                  setIds(next);
+                }}
+                style={{ ...secondaryBtn, opacity: idx === 0 ? 0.5 : 1 }}
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                disabled={idx === ids.length - 1}
+                onClick={() => {
+                  if (idx >= ids.length - 1) return;
+                  const next = [...ids];
+                  [next[idx + 1], next[idx]] = [next[idx], next[idx + 1]];
+                  setIds(next);
+                }}
+                style={{ ...secondaryBtn, opacity: idx === ids.length - 1 ? 0.5 : 1 }}
+              >
+                ↓
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ color: "var(--sw-muted)" }}>No one selected.</div>
+      )}
+
+      <select
+        value=""
+        onChange={(e) => {
+          const id = e.target.value;
+          if (!id) return;
+          if (ids.includes(id)) return;
+          setIds([...ids, id]);
         }}
+        style={inputStyle}
       >
-        <PersonSelect
-          label="Primary"
-          people={people}
-          value={value.primary}
-          onChange={(id) => onChange({ ...value, primary: id || undefined })}
+        <option value="">+ Add person…</option>
+        {people
+          .filter((p) => p?.id)
+          .map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name || "(unnamed)"}
+            </option>
+          ))}
+      </select>
+    </div>
+  );
+
+  return (
+    <section style={cardStyle}>
+      <div style={{ fontWeight: 800, marginBottom: 10 }}>{title}</div>
+      <div style={{ display: "grid", gap: 18 }}>
+        <Block
+          label={client1Label}
+          ids={value.client1}
+          setIds={(client1) => onChange({ ...value, client1 })}
         />
-        <PersonSelect
-          label="Alternate 1"
-          people={people}
-          value={value.alternate1}
-          onChange={(id) => onChange({ ...value, alternate1: id || undefined })}
+        <Block
+          label={client2Label}
+          ids={value.client2}
+          setIds={(client2) => onChange({ ...value, client2 })}
         />
-        <PersonSelect
-          label="Alternate 2"
-          people={people}
-          value={value.alternate2}
-          onChange={(id) => onChange({ ...value, alternate2: id || undefined })}
+      </div>
+    </section>
+  );
+}
+
+function CoAgentRanksByClient({
+  title,
+  client1Label,
+  client2Label,
+  people,
+  value,
+  onChange,
+}: {
+  title: string;
+  client1Label: string;
+  client2Label: string;
+  people: Person[];
+  value: { client1: string[][]; client2: string[][] };
+  onChange: (next: { client1: string[][]; client2: string[][] }) => void;
+}) {
+  const labelFor = (id: string) => people.find((p) => p.id === id)?.name || "(unnamed)";
+
+  const RankBlock = ({
+    label,
+    ranks,
+    setRanks,
+  }: {
+    label: string;
+    ranks: string[][];
+    setRanks: (next: string[][]) => void;
+  }) => (
+    <div style={{ display: "grid", gap: 10 }}>
+      <div style={{ fontWeight: 800 }}>{label}</div>
+
+      <div style={{ display: "grid", gap: 10 }}>
+        {(ranks.length ? ranks : [[]]).map((rankIds, idx) => (
+          <div
+            key={idx}
+            style={{
+              padding: 12,
+              borderRadius: "var(--sw-radius-sm)",
+              border: "1px solid var(--sw-border)",
+              background: "rgba(255,255,255,0.02)",
+            }}
+          >
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ fontWeight: 800 }}>
+                {idx === 0 ? "Representative" : `Successor ${idx}`}
+              </div>
+              {idx > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = [...ranks];
+                    next.splice(idx, 1);
+                    setRanks(next.length ? next : [[]]);
+                  }}
+                  style={dangerBtn}
+                >
+                  Remove successor
+                </button>
+              ) : null}
+              <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+                <button
+                  type="button"
+                  disabled={idx === 0}
+                  onClick={() => {
+                    if (idx === 0) return;
+                    const next = [...ranks];
+                    [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+                    setRanks(next);
+                  }}
+                  style={{ ...secondaryBtn, opacity: idx === 0 ? 0.5 : 1 }}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  disabled={idx >= ranks.length - 1}
+                  onClick={() => {
+                    if (idx >= ranks.length - 1) return;
+                    const next = [...ranks];
+                    [next[idx + 1], next[idx]] = [next[idx], next[idx + 1]];
+                    setRanks(next);
+                  }}
+                  style={{ ...secondaryBtn, opacity: idx >= ranks.length - 1 ? 0.5 : 1 }}
+                >
+                  ↓
+                </button>
+              </div>
+            </div>
+
+            {rankIds.length ? (
+              <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                {rankIds.map((id, pidx) => (
+                  <div key={`${id}_${pidx}`} style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                    <div style={{ flex: 1, fontWeight: 700 }}>{labelFor(id)}</div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = [...ranks];
+                        const ids = [...(next[idx] || [])];
+                        ids.splice(pidx, 1);
+                        next[idx] = ids;
+                        setRanks(next);
+                      }}
+                      style={secondaryBtn}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ marginTop: 10, color: "var(--sw-muted)" }}>No one selected.</div>
+            )}
+
+            <div style={{ marginTop: 10 }}>
+              <select
+                value=""
+                onChange={(e) => {
+                  const id = e.target.value;
+                  if (!id) return;
+                  const next = [...ranks];
+                  const ids = Array.from(new Set([...(next[idx] || []), id]));
+                  next[idx] = ids;
+                  setRanks(next);
+                }}
+                style={inputStyle}
+              >
+                <option value="">+ Add co-agent…</option>
+                {people
+                  .filter((p) => p?.id)
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name || "(unnamed)"}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          </div>
+        ))}
+
+        <button
+          type="button"
+          onClick={() => setRanks([...(ranks.length ? ranks : [[]]), []])}
+          style={secondaryBtn}
+        >
+          + Add successor rank
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <section style={cardStyle}>
+      <div style={{ fontWeight: 800, marginBottom: 10 }}>{title}</div>
+      <div style={{ display: "grid", gap: 18 }}>
+        <RankBlock
+          label={client1Label}
+          ranks={value.client1}
+          setRanks={(client1) => onChange({ ...value, client1 })}
+        />
+        <RankBlock
+          label={client2Label}
+          ranks={value.client2}
+          setRanks={(client2) => onChange({ ...value, client2 })}
         />
       </div>
     </section>
@@ -170,10 +520,14 @@ export function NewMatterForm() {
   ]);
 
   // Role assignments (store person IDs)
-  const [trustees, setTrustees] = useState<RoleAssignment>({});
-  const [executors, setExecutors] = useState<RoleAssignment>({});
-  const [financialAgents, setFinancialAgents] = useState<RoleAssignment>({});
-  const [healthAgents, setHealthAgents] = useState<RoleAssignment>({});
+  const [trustees, setTrustees] = useState<RoleAssignmentByClient>({ client1: {}, client2: {} });
+  const [executors, setExecutors] = useState<RoleAssignmentByClient>({ client1: {}, client2: {} });
+  const [financialAgents, setFinancialAgents] = useState<RoleAssignmentByClient>({ client1: {}, client2: {} });
+  const [healthAgents, setHealthAgents] = useState<RoleAssignmentByClient>({ client1: {}, client2: {} });
+  const [finalDispositionAgents, setFinalDispositionAgents] = useState<{ client1: string[][]; client2: string[][] }>({
+    client1: [[]],
+    client2: [[]],
+  });
   const [guardians, setGuardians] = useState<RoleAssignment>({});
 
   // legacy fields from v0; replaced by People + Role slots
@@ -227,6 +581,7 @@ export function NewMatterForm() {
         executors,
         financialAgents,
         healthAgents,
+        finalDispositionAgents,
         guardians,
       },
       children: children
@@ -254,6 +609,7 @@ export function NewMatterForm() {
     executors,
     financialAgents,
     healthAgents,
+    finalDispositionAgents,
     guardians,
     children,
     scheme,
@@ -279,6 +635,7 @@ export function NewMatterForm() {
       executors,
       financialAgents,
       healthAgents,
+      finalDispositionAgents,
       guardians,
       children,
       scheme,
@@ -298,12 +655,13 @@ export function NewMatterForm() {
     client2Phone,
     trustNameOverride,
     hasMinorChildren,
-    people,
-    trustees,
-    executors,
-    financialAgents,
-    healthAgents,
-    guardians,
+      people,
+      trustees,
+      executors,
+      financialAgents,
+      healthAgents,
+      finalDispositionAgents,
+      guardians,
     children,
     scheme,
     offering,
@@ -817,10 +1175,47 @@ export function NewMatterForm() {
           </div>
         </section>
 
-        <RoleBlock title="Trustees (successor trustees)" people={people} value={trustees} onChange={setTrustees} />
-        <RoleBlock title="Executors (wills)" people={people} value={executors} onChange={setExecutors} />
-        <RoleBlock title="Financial agents (GDPOA)" people={people} value={financialAgents} onChange={setFinancialAgents} />
-        <RoleBlock title="Health care agents (AMD)" people={people} value={healthAgents} onChange={setHealthAgents} />
+        <RoleBlockByClient
+          title="Trustees / successor trustees"
+          client1Label={grantor1.trim() ? `Client 1 — ${grantor1.trim()}` : "Client 1"}
+          client2Label={grantor2.trim() ? `Client 2 — ${grantor2.trim()}` : "Client 2"}
+          people={people}
+          value={trustees}
+          onChange={setTrustees}
+        />
+        <RoleBlockByClient
+          title="Executors / wills"
+          client1Label={grantor1.trim() ? `Client 1 — ${grantor1.trim()}` : "Client 1"}
+          client2Label={grantor2.trim() ? `Client 2 — ${grantor2.trim()}` : "Client 2"}
+          people={people}
+          value={executors}
+          onChange={setExecutors}
+        />
+        <RoleBlockByClient
+          title="Financial agents / GDPOA"
+          client1Label={grantor1.trim() ? `Client 1 — ${grantor1.trim()}` : "Client 1"}
+          client2Label={grantor2.trim() ? `Client 2 — ${grantor2.trim()}` : "Client 2"}
+          people={people}
+          value={financialAgents}
+          onChange={setFinancialAgents}
+        />
+        <RoleBlockByClient
+          title="Health care agents / AMD"
+          client1Label={grantor1.trim() ? `Client 1 — ${grantor1.trim()}` : "Client 1"}
+          client2Label={grantor2.trim() ? `Client 2 — ${grantor2.trim()}` : "Client 2"}
+          people={people}
+          value={healthAgents}
+          onChange={setHealthAgents}
+        />
+
+        <CoAgentRanksByClient
+          title="Final disposition agents"
+          client1Label={grantor1.trim() ? `Client 1 — ${grantor1.trim()}` : "Client 1"}
+          client2Label={grantor2.trim() ? `Client 2 — ${grantor2.trim()}` : "Client 2"}
+          people={people}
+          value={finalDispositionAgents}
+          onChange={setFinalDispositionAgents}
+        />
         {hasMinorChildren ? (
           <RoleBlock title="Guardians (minors only)" people={people} value={guardians} onChange={setGuardians} />
         ) : null}
@@ -926,4 +1321,10 @@ const secondaryBtn: React.CSSProperties = {
   fontWeight: 700,
   color: "var(--sw-text)",
   cursor: "pointer",
+};
+
+const dangerBtn: React.CSSProperties = {
+  ...secondaryBtn,
+  border: "1px solid rgba(255, 80, 80, 0.5)",
+  background: "rgba(255,80,80,0.08)",
 };

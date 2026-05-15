@@ -135,6 +135,7 @@ export async function POST() {
         _source: "google_sheet",
         _source_weekEnding: r.weekEnding,
         _source_year: year,
+        _source_sheet_row: r.sourceRow || null,
       } as any;
 
       const existing = byRowKey.get(r.weekEnding);

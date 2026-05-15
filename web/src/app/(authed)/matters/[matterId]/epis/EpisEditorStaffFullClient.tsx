@@ -20,6 +20,44 @@ type RankedRoles = {
   guardians: RankGroup[];
 };
 
+type RoleAssignment = {
+  primary?: string;
+  alternate1?: string;
+  alternate2?: string;
+};
+
+type RoleAssignmentByClient = {
+  client1: RoleAssignment;
+  client2: RoleAssignment;
+};
+
+function isRecord(x: unknown): x is Record<string, unknown> {
+  return Boolean(x) && typeof x === "object";
+}
+
+function toRoleAssignment(x: unknown): RoleAssignment {
+  if (!isRecord(x)) return {};
+  return {
+    primary: typeof x.primary === "string" ? x.primary : undefined,
+    alternate1: typeof x.alternate1 === "string" ? x.alternate1 : undefined,
+    alternate2: typeof x.alternate2 === "string" ? x.alternate2 : undefined,
+  };
+}
+
+function ensureRoleByClient(x: unknown): RoleAssignmentByClient {
+  if (isRecord(x) && ("client1" in x || "client2" in x) && !("primary" in x || "alternate1" in x || "alternate2" in x)) {
+    return {
+      client1: toRoleAssignment((x as any).client1),
+      client2: toRoleAssignment((x as any).client2),
+    };
+  }
+  if (isRecord(x) && ("primary" in x || "alternate1" in x || "alternate2" in x)) {
+    const legacy = toRoleAssignment(x);
+    return { client1: legacy, client2: legacy };
+  }
+  return { client1: {}, client2: {} };
+}
+
 type Wish = { presetKey?: string; text?: string };
 type Wishes = {
   healthcare: { spouse1: Wish; spouse2: Wish };
@@ -359,11 +397,17 @@ function normalizeLegacyRolesFromRanked(intake: Intake) {
       alternate2: flat[2],
     };
   };
+
+  const isByClient = (x: any) => {
+    if (!x || typeof x !== "object") return false;
+    return ("client1" in x || "client2" in x) && !("primary" in x || "alternate1" in x || "alternate2" in x);
+  };
+
   intake.roles = intake.roles || {};
-  intake.roles.trustees = pick(ranked.trustees);
-  intake.roles.executors = pick(ranked.executors);
-  intake.roles.financialAgents = pick(ranked.financialAgents);
-  intake.roles.healthAgents = pick(ranked.healthAgents);
+  if (!isByClient(intake.roles.trustees)) intake.roles.trustees = pick(ranked.trustees);
+  if (!isByClient(intake.roles.executors)) intake.roles.executors = pick(ranked.executors);
+  if (!isByClient(intake.roles.financialAgents)) intake.roles.financialAgents = pick(ranked.financialAgents);
+  if (!isByClient(intake.roles.healthAgents)) intake.roles.healthAgents = pick(ranked.healthAgents);
   intake.roles.guardians = pick(ranked.guardians);
 }
 
@@ -391,6 +435,48 @@ function ensureSpousesExist(intake: Intake) {
 
   // Return spouse ids only when we have both.
   return ids.length >= 2 ? ids.slice(0, 2) : [];
+}
+
+function ensureFinalDispositionRanksByClient(x: unknown): { client1: string[][]; client2: string[][] } {
+  const empty = { client1: [[]] as string[][], client2: [[]] as string[][] };
+  if (!x) return empty;
+
+  const isStrArr = (v: any) => Array.isArray(v) && v.every((s: any) => typeof s === "string");
+  const isRankArr = (v: any) => Array.isArray(v) && v.every((r: any) => isStrArr(r));
+
+  if (typeof x === "object" && !Array.isArray(x)) {
+    const o: any = x;
+    if (isRankArr(o.client1) || isRankArr(o.client2)) {
+      return {
+        client1: (isRankArr(o.client1) ? o.client1 : [[]]).map((r: any) => r.filter((s: any) => typeof s === "string")),
+        client2: (isRankArr(o.client2) ? o.client2 : [[]]).map((r: any) => r.filter((s: any) => typeof s === "string")),
+      };
+    }
+
+    if ("primary" in o || "alternate1" in o || "alternate2" in o) {
+      const list = [o.primary, o.alternate1, o.alternate2].filter((v: any) => typeof v === "string");
+      return { client1: [list.slice(0, 1), ...list.slice(1).map((id: string) => [id])], client2: [list.slice(0, 1), ...list.slice(1).map((id: string) => [id])] };
+    }
+
+    if ("client1" in o || "client2" in o) {
+      const from = (r: any) =>
+        r && typeof r === "object"
+          ? [r.primary, r.alternate1, r.alternate2].filter((v: any) => typeof v === "string")
+          : [];
+      const l1 = from(o.client1);
+      const l2 = from(o.client2);
+      const pack = (list: string[]) => [list.slice(0, 1), ...list.slice(1).map((id) => [id])];
+      return { client1: pack(l1.length ? l1 : []), client2: pack(l2.length ? l2 : []) };
+    }
+  }
+
+  if (isStrArr(x)) {
+    const list = (x as any[]).filter((v) => typeof v === "string") as string[];
+    const packed = [list.slice(0, 1), ...list.slice(1).map((id) => [id])];
+    return { client1: packed.length ? packed : [[]], client2: packed.length ? packed : [[]] };
+  }
+
+  return empty;
 }
 
 function PeopleEditor({ people, onChange }: { people: any[]; onChange: (p: any[]) => void }) {
@@ -440,6 +526,374 @@ function PeopleEditor({ people, onChange }: { people: any[]; onChange: (p: any[]
         >
           + Add person
         </button>
+      </div>
+    </section>
+  );
+}
+
+function PersonSelect({
+  label,
+  people,
+  value,
+  onChange,
+}: {
+  label: string;
+  people: any[];
+  value?: string;
+  onChange: (id: string | undefined) => void;
+}) {
+  return (
+    <label style={{ display: "grid", gap: 6, minWidth: 220 }}>
+      <span style={{ color: "var(--sw-muted)", fontSize: 12 }}>{label}</span>
+      <select
+        value={value || ""}
+        onChange={(e) => onChange(e.target.value || undefined)}
+        style={input}
+      >
+        <option value="">(none)</option>
+        {people
+          .filter((p) => p?.id)
+          .map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name || "(unnamed)"}
+            </option>
+          ))}
+      </select>
+    </label>
+  );
+}
+
+function RoleFields({
+  people,
+  value,
+  onChange,
+}: {
+  people: any[];
+  value: RoleAssignment;
+  onChange: (next: RoleAssignment) => void;
+}) {
+  return (
+    <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+      <PersonSelect
+        label="Primary"
+        people={people}
+        value={value.primary}
+        onChange={(id) => onChange({ ...value, primary: id })}
+      />
+      <PersonSelect
+        label="Alternate 1"
+        people={people}
+        value={value.alternate1}
+        onChange={(id) => onChange({ ...value, alternate1: id })}
+      />
+      <PersonSelect
+        label="Alternate 2"
+        people={people}
+        value={value.alternate2}
+        onChange={(id) => onChange({ ...value, alternate2: id })}
+      />
+    </div>
+  );
+}
+
+function RoleBlockByClient({
+  title,
+  client1Label,
+  client2Label,
+  people,
+  value,
+  onChange,
+}: {
+  title: string;
+  client1Label: string;
+  client2Label: string;
+  people: any[];
+  value: RoleAssignmentByClient;
+  onChange: (next: RoleAssignmentByClient) => void;
+}) {
+  return (
+    <section style={card}>
+      <div style={{ fontWeight: 800, marginBottom: 10 }}>{title}</div>
+      <div style={{ display: "grid", gap: 18 }}>
+        <div style={{ display: "grid", gap: 10 }}>
+          <div style={{ fontWeight: 800 }}>{client1Label}</div>
+          <RoleFields people={people} value={value.client1} onChange={(client1) => onChange({ ...value, client1 })} />
+        </div>
+        <div style={{ display: "grid", gap: 10 }}>
+          <div style={{ fontWeight: 800 }}>{client2Label}</div>
+          <RoleFields people={people} value={value.client2} onChange={(client2) => onChange({ ...value, client2 })} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function OrderedAppointeesByClient({
+  title,
+  client1Label,
+  client2Label,
+  people,
+  value,
+  onChange,
+}: {
+  title: string;
+  client1Label: string;
+  client2Label: string;
+  people: any[];
+  value: { client1: string[]; client2: string[] };
+  onChange: (next: { client1: string[]; client2: string[] }) => void;
+}) {
+  const labelFor = (id: string) => people.find((p) => p.id === id)?.name || "(unnamed)";
+
+  const Block = ({
+    label,
+    ids,
+    setIds,
+  }: {
+    label: string;
+    ids: string[];
+    setIds: (next: string[]) => void;
+  }) => (
+    <div style={{ display: "grid", gap: 10 }}>
+      <div style={{ fontWeight: 800 }}>{label}</div>
+
+      {ids.length ? (
+        <div style={{ display: "grid", gap: 8 }}>
+          {ids.map((id, idx) => (
+            <div key={`${id}_${idx}`} style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ fontWeight: 700 }}>
+                {idx === 0 ? "Primary: " : `Alternate ${idx}: `}
+                {labelFor(id)}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = [...ids];
+                  next.splice(idx, 1);
+                  setIds(next);
+                }}
+                style={btnSecondary}
+              >
+                Remove
+              </button>
+              <button
+                type="button"
+                disabled={idx === 0}
+                onClick={() => {
+                  if (idx === 0) return;
+                  const next = [...ids];
+                  [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+                  setIds(next);
+                }}
+                style={{ ...btnSecondary, opacity: idx === 0 ? 0.5 : 1 }}
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                disabled={idx === ids.length - 1}
+                onClick={() => {
+                  if (idx >= ids.length - 1) return;
+                  const next = [...ids];
+                  [next[idx + 1], next[idx]] = [next[idx], next[idx + 1]];
+                  setIds(next);
+                }}
+                style={{ ...btnSecondary, opacity: idx === ids.length - 1 ? 0.5 : 1 }}
+              >
+                ↓
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ color: "var(--sw-muted)" }}>No one selected.</div>
+      )}
+
+      <select
+        value=""
+        onChange={(e) => {
+          const id = e.target.value;
+          if (!id) return;
+          if (ids.includes(id)) return;
+          setIds([...ids, id]);
+        }}
+        style={input}
+      >
+        <option value="">+ Add person…</option>
+        {people
+          .filter((p) => p?.id)
+          .map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name || "(unnamed)"}
+            </option>
+          ))}
+      </select>
+    </div>
+  );
+
+  return (
+    <section style={card}>
+      <div style={{ fontWeight: 800, marginBottom: 10 }}>{title}</div>
+      <div style={{ display: "grid", gap: 18 }}>
+        <Block label={client1Label} ids={value.client1} setIds={(client1) => onChange({ ...value, client1 })} />
+        <Block label={client2Label} ids={value.client2} setIds={(client2) => onChange({ ...value, client2 })} />
+      </div>
+    </section>
+  );
+}
+
+function CoAgentRanksByClient({
+  title,
+  client1Label,
+  client2Label,
+  people,
+  value,
+  onChange,
+}: {
+  title: string;
+  client1Label: string;
+  client2Label: string;
+  people: any[];
+  value: { client1: string[][]; client2: string[][] };
+  onChange: (next: { client1: string[][]; client2: string[][] }) => void;
+}) {
+  const labelFor = (id: string) => people.find((p) => p.id === id)?.name || "(unnamed)";
+
+  const RankBlock = ({
+    label,
+    ranks,
+    setRanks,
+  }: {
+    label: string;
+    ranks: string[][];
+    setRanks: (next: string[][]) => void;
+  }) => (
+    <div style={{ display: "grid", gap: 10 }}>
+      <div style={{ fontWeight: 800 }}>{label}</div>
+      <div style={{ display: "grid", gap: 10 }}>
+        {(ranks.length ? ranks : [[]]).map((rankIds, idx) => (
+          <div
+            key={idx}
+            style={{
+              padding: 12,
+              borderRadius: "var(--sw-radius-sm)",
+              border: "1px solid var(--sw-border)",
+              background: "rgba(255,255,255,0.02)",
+            }}
+          >
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ fontWeight: 800 }}>{idx === 0 ? "Representative" : `Successor ${idx}`}</div>
+              {idx > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = [...ranks];
+                    next.splice(idx, 1);
+                    setRanks(next.length ? next : [[]]);
+                  }}
+                  style={btnDanger}
+                >
+                  Remove successor
+                </button>
+              ) : null}
+              <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+                <button
+                  type="button"
+                  disabled={idx === 0}
+                  onClick={() => {
+                    if (idx === 0) return;
+                    const next = [...ranks];
+                    [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+                    setRanks(next);
+                  }}
+                  style={{ ...btnSecondary, opacity: idx === 0 ? 0.5 : 1 }}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  disabled={idx >= ranks.length - 1}
+                  onClick={() => {
+                    if (idx >= ranks.length - 1) return;
+                    const next = [...ranks];
+                    [next[idx + 1], next[idx]] = [next[idx], next[idx + 1]];
+                    setRanks(next);
+                  }}
+                  style={{ ...btnSecondary, opacity: idx >= ranks.length - 1 ? 0.5 : 1 }}
+                >
+                  ↓
+                </button>
+              </div>
+            </div>
+
+            {rankIds.length ? (
+              <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                {rankIds.map((id, pidx) => (
+                  <div key={`${id}_${pidx}`} style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                    <div style={{ flex: 1, fontWeight: 700 }}>{labelFor(id)}</div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = [...ranks];
+                        const ids = [...(next[idx] || [])];
+                        ids.splice(pidx, 1);
+                        next[idx] = ids;
+                        setRanks(next);
+                      }}
+                      style={btnSecondary}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ marginTop: 10, color: "var(--sw-muted)" }}>No one selected.</div>
+            )}
+
+            <div style={{ marginTop: 10 }}>
+              <select
+                value=""
+                onChange={(e) => {
+                  const id = e.target.value;
+                  if (!id) return;
+                  const next = [...ranks];
+                  const ids = Array.from(new Set([...(next[idx] || []), id]));
+                  next[idx] = ids;
+                  setRanks(next);
+                }}
+                style={input}
+              >
+                <option value="">+ Add co-agent…</option>
+                {people
+                  .filter((p) => p?.id)
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name || "(unnamed)"}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          </div>
+        ))}
+
+        <button
+          type="button"
+          onClick={() => setRanks([...(ranks.length ? ranks : [[]]), []])}
+          style={btnSecondary}
+        >
+          + Add successor rank
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <section style={card}>
+      <div style={{ fontWeight: 800, marginBottom: 10 }}>{title}</div>
+      <div style={{ display: "grid", gap: 18 }}>
+        <RankBlock label={client1Label} ranks={value.client1} setRanks={(client1) => onChange({ ...value, client1 })} />
+        <RankBlock label={client2Label} ranks={value.client2} setRanks={(client2) => onChange({ ...value, client2 })} />
       </div>
     </section>
   );
@@ -636,7 +1090,14 @@ export function EpisEditorStaffFullClient({ matterId }: { matterId: string }) {
       incoming.__staffNotes = ensureNotes(incoming);
       incoming.rankedRoles = ensureRankedRoles(incoming);
 
-      // Ensure spouse people exist and add default spouse rank1 across roles.
+      // Ensure per-client role assignment shapes exist for the roles we draft separately.
+      incoming.roles = incoming.roles || {};
+      incoming.roles.executors = ensureRoleByClient(incoming.roles.executors);
+      incoming.roles.financialAgents = ensureRoleByClient(incoming.roles.financialAgents);
+      incoming.roles.healthAgents = ensureRoleByClient(incoming.roles.healthAgents);
+      incoming.roles.finalDispositionAgents = ensureFinalDispositionRanksByClient(incoming.roles.finalDispositionAgents);
+
+      // Ensure spouse people exist and add default spouse rank1 for trustees.
       const spouseIds = ensureSpousesExist(incoming);
       if (spouseIds.length === 2) {
         const ranked = ensureRankedRoles(incoming);
@@ -645,11 +1106,8 @@ export function EpisEditorStaffFullClient({ matterId }: { matterId: string }) {
           return [{ actingMode: "EITHER" as ActingMode, personIds: [...spouseIds] }, ...arr];
         };
         incoming.rankedRoles = {
+          ...ranked,
           trustees: ensure(ranked.trustees),
-          executors: ensure(ranked.executors),
-          financialAgents: ensure(ranked.financialAgents),
-          healthAgents: ensure(ranked.healthAgents),
-          guardians: ensure(ranked.guardians),
         };
       }
 
@@ -695,6 +1153,7 @@ export function EpisEditorStaffFullClient({ matterId }: { matterId: string }) {
   if (!intake || !ranked || !wishes || !pets || !advisors || !assets) return <div>{status || "Unable to load."}</div>;
 
   const trustProtector = (intake.trustProtector ?? {}) as { enabled?: boolean; name?: string };
+  const [client1Name, client2Name] = Array.isArray(intake.grantors) ? intake.grantors : ["Client 1", "Client 2"];
 
   return (
     <main style={{ maxWidth: 1200, margin: "0 auto", padding: "44px 18px 64px" }}>
@@ -768,23 +1227,37 @@ export function EpisEditorStaffFullClient({ matterId }: { matterId: string }) {
           </div>
         ) : null}
       </section>
-      <RoleRankEditor
-        title="Executors (ranked)"
+      <RoleBlockByClient
+        title="Executors / wills"
+        client1Label={client1Name ? `Client 1 — ${client1Name}` : "Client 1"}
+        client2Label={client2Name ? `Client 2 — ${client2Name}` : "Client 2"}
         people={intake.people}
-        groups={ranked.executors}
-        onChange={(groups) => queueSave({ ...intake, rankedRoles: { ...ranked, executors: groups } })}
+        value={ensureRoleByClient(intake.roles?.executors)}
+        onChange={(executors) => queueSave({ ...intake, roles: { ...(intake.roles || {}), executors } })}
       />
-      <RoleRankEditor
-        title="Financial agents (ranked)"
+      <RoleBlockByClient
+        title="Financial agents / GDPOA"
+        client1Label={client1Name ? `Client 1 — ${client1Name}` : "Client 1"}
+        client2Label={client2Name ? `Client 2 — ${client2Name}` : "Client 2"}
         people={intake.people}
-        groups={ranked.financialAgents}
-        onChange={(groups) => queueSave({ ...intake, rankedRoles: { ...ranked, financialAgents: groups } })}
+        value={ensureRoleByClient(intake.roles?.financialAgents)}
+        onChange={(financialAgents) => queueSave({ ...intake, roles: { ...(intake.roles || {}), financialAgents } })}
       />
-      <RoleRankEditor
-        title="Health care agents (ranked)"
+      <RoleBlockByClient
+        title="Health care agents / AMD"
+        client1Label={client1Name ? `Client 1 — ${client1Name}` : "Client 1"}
+        client2Label={client2Name ? `Client 2 — ${client2Name}` : "Client 2"}
         people={intake.people}
-        groups={ranked.healthAgents}
-        onChange={(groups) => queueSave({ ...intake, rankedRoles: { ...ranked, healthAgents: groups } })}
+        value={ensureRoleByClient(intake.roles?.healthAgents)}
+        onChange={(healthAgents) => queueSave({ ...intake, roles: { ...(intake.roles || {}), healthAgents } })}
+      />
+      <CoAgentRanksByClient
+        title="Final disposition agents"
+        client1Label={client1Name ? `Client 1 — ${client1Name}` : "Client 1"}
+        client2Label={client2Name ? `Client 2 — ${client2Name}` : "Client 2"}
+        people={intake.people}
+        value={ensureFinalDispositionRanksByClient(intake.roles?.finalDispositionAgents)}
+        onChange={(finalDispositionAgents) => queueSave({ ...intake, roles: { ...(intake.roles || {}), finalDispositionAgents } })}
       />
       <RoleRankEditor
         title="Guardians (ranked)"

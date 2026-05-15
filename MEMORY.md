@@ -19,6 +19,10 @@
 - TFM preference: trust funding memorandum should be a **portal-friendly web report** with **Word export**, visible to clients pre-signing and provided as hard copy at signing. (2026-03-11)
 - Waiting on: template bloodline trust distribution language details as needed, and (if missing) delayed principal withdrawal arrangements; coaching prompts likely deferred until UI exists and a dedicated coaching agent is trained. (2026-03-11)
 
+## Branding colors
+- **“Speedwell law blue”** = `#3F64AE`. (2026-05-13)
+- **Legacy Guardians primary blue** = `#2E4A7F`. (2026-05-13)
+
 ## Vercel deployment notes
 - Vercel project Root Directory confirmed as `web/`. (2026-05-09)
 - Vercel environment variable *names* inventory captured (values not stored) in `memory/2026-05-09.md`. (2026-05-09)

@@ -10,6 +10,56 @@ const REQUIRED_HEADERS = [
   "Total Conversion",
 ] as const;
 
+type RequiredHeader = (typeof REQUIRED_HEADERS)[number];
+
+function normalizeHeaderLabel(v: unknown): string {
+  return String(v ?? "")
+    .trim()
+    .toLowerCase()
+    // Drop parenthetical notes ("Week Ending (Friday)" -> "Week Ending")
+    .replace(/\([^)]*\)/g, " ")
+    // Make percent stable
+    .replace(/%/g, " percent ")
+    // Collapse punctuation to spaces
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const REQUIRED_HEADER_MATCHERS: Record<RequiredHeader, (norm: string) => boolean> = {
+  "Week Ending": (s) => s === "week ending" || s.startsWith("week ending "),
+  "Total Intake Calls": (s) => s === "total intake calls" || s.startsWith("total intake calls "),
+  "Design Meetings HELD": (s) => s === "design meetings held" || s.startsWith("design meetings held "),
+  "Design Meetings CANCELLED": (s) =>
+    s === "design meetings cancelled" ||
+    s.startsWith("design meetings cancelled ") ||
+    s === "design meetings canceled" ||
+    s.startsWith("design meetings canceled "),
+  "% Qualified": (s) =>
+    s === "percent qualified" ||
+    s.startsWith("percent qualified ") ||
+    s === "pct qualified" ||
+    s.startsWith("pct qualified "),
+  "Total Conversion": (s) => s === "total conversion" || s.startsWith("total conversion "),
+};
+
+function resolveRequiredHeaderIndexes(row: unknown[]): Record<RequiredHeader, number> | null {
+  const cells = (row || []).map((v) => {
+    const raw = String(v ?? "").trim();
+    const norm = normalizeHeaderLabel(raw);
+    return { raw, norm };
+  });
+
+  const out = {} as Record<RequiredHeader, number>;
+  for (const h of REQUIRED_HEADERS) {
+    const match = REQUIRED_HEADER_MATCHERS[h];
+    const col = cells.findIndex((c) => c.raw && match(c.norm));
+    if (col < 0) return null;
+    out[h] = col;
+  }
+  return out;
+}
+
 function excelSerialToIsoDate(serial: number) {
   // Google Sheets serial dates are days since 1899-12-30 (same as Excel for modern dates).
   const epoch = Date.UTC(1899, 11, 30);
@@ -61,6 +111,8 @@ export type IntakeKpiSheetRow = {
   designMeetingsCancelled: number;
   pctQualified: number; // 0-1 if sheet uses percent, or 0-100 if typed that way; we keep raw numeric.
   totalConversion: number; // raw numeric
+  // Raw row snapshot for future slicing/dicing across additional columns.
+  sourceRow?: { header: string; value: any; col: number }[];
 };
 
 export async function getDefaultGoogleEmailForUser(userEmail: string) {
@@ -108,16 +160,11 @@ export async function getIntakeKpisFromSheet({
 
   // Find the header row.
   let headerRowIdx = -1;
-  let headerMap: Record<string, number> | null = null;
+  let headerMap: Record<RequiredHeader, number> | null = null;
   for (let i = 0; i < Math.min(values.length, 50); i++) {
     const row = values[i] || [];
-    const map: Record<string, number> = {};
-    for (let c = 0; c < row.length; c++) {
-      const label = String(row[c] ?? "").trim();
-      if (label) map[label] = c;
-    }
-    const hasAll = REQUIRED_HEADERS.every((h) => map[h] != null);
-    if (hasAll) {
+    const map = resolveRequiredHeaderIndexes(row);
+    if (map) {
       headerRowIdx = i;
       headerMap = map;
       break;
@@ -127,8 +174,11 @@ export async function getIntakeKpisFromSheet({
     throw new Error(`Could not find required headers in sheet tab "${sheetName}". Expected: ${REQUIRED_HEADERS.join(", ")}`);
   }
 
-  const idx = (h: (typeof REQUIRED_HEADERS)[number]) => headerMap![h];
+  const idx = (h: RequiredHeader) => headerMap![h];
   const rows: IntakeKpiSheetRow[] = [];
+
+  const headerRow: unknown[] = values[headerRowIdx] || [];
+  const headers = headerRow.map((h) => String(h ?? "").trim());
 
   for (let r = headerRowIdx + 1; r < values.length; r++) {
     const row = values[r] || [];
@@ -142,6 +192,9 @@ export async function getIntakeKpisFromSheet({
       designMeetingsCancelled: toNumber(row[idx("Design Meetings CANCELLED")]),
       pctQualified: toNumber(row[idx("% Qualified")]),
       totalConversion: toNumber(row[idx("Total Conversion")]),
+      sourceRow: headers
+        .map((header, col) => ({ header, col, value: row[col] ?? null }))
+        .filter((x) => x.header),
     });
   }
 
@@ -150,4 +203,3 @@ export async function getIntakeKpisFromSheet({
 
   return { sheetName, rows };
 }
-
