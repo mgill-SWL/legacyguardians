@@ -110,10 +110,11 @@ export type IntakeV1 = {
   trustNameOverride?: string;
 
   /**
-   * Reciprocal trusts: optional per-client “display name” / label for each individual trust.
-   * (This is distinct from Matter.displayName, which is the matter-level label.)
+   * Reciprocal trusts: optional per-client trust-name overrides (for each individual's trust).
+   * This is distinct from Matter.displayName (matter label) and from trustNameOverride
+   * (single override for joint/individual trust offerings).
    */
-  reciprocalTrustDisplayNames?: {
+  trustNameOverridesByClient?: {
     client1?: string;
     client2?: string;
   };

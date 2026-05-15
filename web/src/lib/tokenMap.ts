@@ -168,7 +168,13 @@ export function tokenDataFromIntakeWithOptions(intake: IntakeV1, options?: Token
   const spouseFirst = spouseName.split(" ")[0] ?? "";
   const spouseSurname = spouseName.trim().split(/\s+/).slice(-1)[0] ?? "";
 
-  const rawOverride = (intake.trustNameOverride || "").trim();
+  const rawOverride = (
+    (povClient === 1
+      ? intake.trustNameOverridesByClient?.client1
+      : intake.trustNameOverridesByClient?.client2) ||
+    intake.trustNameOverride ||
+    ""
+  ).trim();
   const normalizedOverride = rawOverride
     ? rawOverride.replace(/^the\s+/i, "").trim()
     : "";

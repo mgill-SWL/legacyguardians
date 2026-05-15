@@ -498,9 +498,9 @@ export function NewMatterForm() {
 
   const [trustNameOverride, setTrustNameOverride] = useState("");
 
-  // Reciprocal trusts: per-client trust display names (labels for each individual trust).
-  const [reciprocalTrustDisplayNameClient1, setReciprocalTrustDisplayNameClient1] = useState("");
-  const [reciprocalTrustDisplayNameClient2, setReciprocalTrustDisplayNameClient2] = useState("");
+  // Reciprocal trusts: per-client trust name overrides.
+  const [trustNameOverrideClient1, setTrustNameOverrideClient1] = useState("");
+  const [trustNameOverrideClient2, setTrustNameOverrideClient2] = useState("");
 
   const [children, setChildren] = useState<Child[]>([]);
   const [hasMinorChildren, setHasMinorChildren] = useState(false);
@@ -558,9 +558,9 @@ export function NewMatterForm() {
   >({ kind: "idle" });
 
   const intakePayload = useMemo(() => {
-    const reciprocalNames = {
-      client1: reciprocalTrustDisplayNameClient1.trim() || undefined,
-      client2: reciprocalTrustDisplayNameClient2.trim() || undefined,
+    const trustOverridesByClient = {
+      client1: trustNameOverrideClient1.trim() || undefined,
+      client2: trustNameOverrideClient2.trim() || undefined,
     };
 
     return {
@@ -583,10 +583,11 @@ export function NewMatterForm() {
         client1: client1Phone.trim() || undefined,
         client2: client2Phone.trim() || undefined,
       },
-      trustNameOverride: trustNameOverride.trim() || undefined,
-      reciprocalTrustDisplayNames:
-        offering === "RECIPROCAL_TRUSTS" && (reciprocalNames.client1 || reciprocalNames.client2)
-          ? reciprocalNames
+      trustNameOverride:
+        offering === "RECIPROCAL_TRUSTS" ? undefined : trustNameOverride.trim() || undefined,
+      trustNameOverridesByClient:
+        offering === "RECIPROCAL_TRUSTS" && (trustOverridesByClient.client1 || trustOverridesByClient.client2)
+          ? trustOverridesByClient
           : undefined,
       people,
       roles: {
@@ -617,8 +618,8 @@ export function NewMatterForm() {
     client1Phone,
     client2Phone,
     trustNameOverride,
-    reciprocalTrustDisplayNameClient1,
-    reciprocalTrustDisplayNameClient2,
+    trustNameOverrideClient1,
+    trustNameOverrideClient2,
     people,
     trustees,
     executors,
@@ -644,8 +645,8 @@ export function NewMatterForm() {
       client1Phone,
       client2Phone,
       trustNameOverride,
-      reciprocalTrustDisplayNameClient1,
-      reciprocalTrustDisplayNameClient2,
+      trustNameOverrideClient1,
+      trustNameOverrideClient2,
       hasMinorChildren,
       people,
       trustees,
@@ -671,8 +672,8 @@ export function NewMatterForm() {
     client1Phone,
     client2Phone,
     trustNameOverride,
-    reciprocalTrustDisplayNameClient1,
-    reciprocalTrustDisplayNameClient2,
+    trustNameOverrideClient1,
+    trustNameOverrideClient2,
     hasMinorChildren,
       people,
       trustees,
@@ -826,39 +827,6 @@ export function NewMatterForm() {
               />
             </label>
           </div>
-
-          {offering === "RECIPROCAL_TRUSTS" ? (
-            <div style={{ marginTop: 12 }}>
-              <div style={{ fontWeight: 800, marginBottom: 10 }}>Reciprocal trust display names</div>
-              <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
-                <label style={{ display: "grid", gap: 6 }}>
-                  <span style={{ color: "var(--sw-muted)" }}>
-                    Client 1 trust display name (optional)
-                  </span>
-                  <input
-                    value={reciprocalTrustDisplayNameClient1}
-                    onChange={(e) => setReciprocalTrustDisplayNameClient1(e.target.value)}
-                    placeholder={`${grantor1 || "Client 1"} (Individual Trust)`.trim()}
-                    style={inputStyle}
-                  />
-                </label>
-                <label style={{ display: "grid", gap: 6 }}>
-                  <span style={{ color: "var(--sw-muted)" }}>
-                    Client 2 trust display name (optional)
-                  </span>
-                  <input
-                    value={reciprocalTrustDisplayNameClient2}
-                    onChange={(e) => setReciprocalTrustDisplayNameClient2(e.target.value)}
-                    placeholder={`${grantor2 || "Client 2"} (Individual Trust)`.trim()}
-                    style={inputStyle}
-                  />
-                </label>
-              </div>
-              <p style={{ marginTop: 8, marginBottom: 0, color: "var(--sw-muted)", fontSize: 12 }}>
-                These label the two individual trusts within a reciprocal-trust matter.
-              </p>
-            </div>
-          ) : null}
         </section>
 
         <section style={cardStyle}>
@@ -939,18 +907,49 @@ export function NewMatterForm() {
 
         <section style={cardStyle}>
           <div style={{ fontWeight: 800, marginBottom: 10 }}>Trust name (optional override)</div>
-          <label style={{ display: "grid", gap: 6, maxWidth: 640 }}>
-            <span style={{ color: "var(--sw-muted)" }}>Trust name override</span>
-            <input
-              value={trustNameOverride}
-              onChange={(e) => setTrustNameOverride(e.target.value)}
-              placeholder="THE DOE FAMILY LIVING TRUST"
-              style={inputStyle}
-            />
-          </label>
-          <p style={{ marginTop: 8, marginBottom: 0, color: "var(--sw-muted)", fontSize: 12 }}>
-            If blank, the system will default to “THE [Client 1 surname] FAMILY LIVING TRUST”.
-          </p>
+
+          {offering === "RECIPROCAL_TRUSTS" ? (
+            <>
+              <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ color: "var(--sw-muted)" }}>Client 1 trust name override</span>
+                  <input
+                    value={trustNameOverrideClient1}
+                    onChange={(e) => setTrustNameOverrideClient1(e.target.value)}
+                    placeholder="THE DOE FAMILY LIVING TRUST"
+                    style={inputStyle}
+                  />
+                </label>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ color: "var(--sw-muted)" }}>Client 2 trust name override</span>
+                  <input
+                    value={trustNameOverrideClient2}
+                    onChange={(e) => setTrustNameOverrideClient2(e.target.value)}
+                    placeholder="THE SMITH FAMILY LIVING TRUST"
+                    style={inputStyle}
+                  />
+                </label>
+              </div>
+              <p style={{ marginTop: 8, marginBottom: 0, color: "var(--sw-muted)", fontSize: 12 }}>
+                If blank, each trust defaults to “THE [that client’s surname] FAMILY LIVING TRUST”.
+              </p>
+            </>
+          ) : (
+            <>
+              <label style={{ display: "grid", gap: 6, maxWidth: 640 }}>
+                <span style={{ color: "var(--sw-muted)" }}>Trust name override</span>
+                <input
+                  value={trustNameOverride}
+                  onChange={(e) => setTrustNameOverride(e.target.value)}
+                  placeholder="THE DOE FAMILY LIVING TRUST"
+                  style={inputStyle}
+                />
+              </label>
+              <p style={{ marginTop: 8, marginBottom: 0, color: "var(--sw-muted)", fontSize: 12 }}>
+                If blank, the system will default to “THE [Client 1 surname] FAMILY LIVING TRUST”.
+              </p>
+            </>
+          )}
         </section>
 
         <section style={cardStyle}>
