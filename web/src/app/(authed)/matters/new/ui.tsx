@@ -498,6 +498,10 @@ export function NewMatterForm() {
 
   const [trustNameOverride, setTrustNameOverride] = useState("");
 
+  // Reciprocal trusts: per-client trust display names (labels for each individual trust).
+  const [reciprocalTrustDisplayNameClient1, setReciprocalTrustDisplayNameClient1] = useState("");
+  const [reciprocalTrustDisplayNameClient2, setReciprocalTrustDisplayNameClient2] = useState("");
+
   const [children, setChildren] = useState<Child[]>([]);
   const [hasMinorChildren, setHasMinorChildren] = useState(false);
 
@@ -554,6 +558,11 @@ export function NewMatterForm() {
   >({ kind: "idle" });
 
   const intakePayload = useMemo(() => {
+    const reciprocalNames = {
+      client1: reciprocalTrustDisplayNameClient1.trim() || undefined,
+      client2: reciprocalTrustDisplayNameClient2.trim() || undefined,
+    };
+
     return {
       offering,
       // Back-compat: older saved intakes used matterType.
@@ -575,6 +584,10 @@ export function NewMatterForm() {
         client2: client2Phone.trim() || undefined,
       },
       trustNameOverride: trustNameOverride.trim() || undefined,
+      reciprocalTrustDisplayNames:
+        offering === "RECIPROCAL_TRUSTS" && (reciprocalNames.client1 || reciprocalNames.client2)
+          ? reciprocalNames
+          : undefined,
       people,
       roles: {
         trustees,
@@ -604,6 +617,8 @@ export function NewMatterForm() {
     client1Phone,
     client2Phone,
     trustNameOverride,
+    reciprocalTrustDisplayNameClient1,
+    reciprocalTrustDisplayNameClient2,
     people,
     trustees,
     executors,
@@ -629,6 +644,8 @@ export function NewMatterForm() {
       client1Phone,
       client2Phone,
       trustNameOverride,
+      reciprocalTrustDisplayNameClient1,
+      reciprocalTrustDisplayNameClient2,
       hasMinorChildren,
       people,
       trustees,
@@ -654,6 +671,8 @@ export function NewMatterForm() {
     client1Phone,
     client2Phone,
     trustNameOverride,
+    reciprocalTrustDisplayNameClient1,
+    reciprocalTrustDisplayNameClient2,
     hasMinorChildren,
       people,
       trustees,
@@ -807,6 +826,39 @@ export function NewMatterForm() {
               />
             </label>
           </div>
+
+          {offering === "RECIPROCAL_TRUSTS" ? (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontWeight: 800, marginBottom: 10 }}>Reciprocal trust display names</div>
+              <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ color: "var(--sw-muted)" }}>
+                    Client 1 trust display name (optional)
+                  </span>
+                  <input
+                    value={reciprocalTrustDisplayNameClient1}
+                    onChange={(e) => setReciprocalTrustDisplayNameClient1(e.target.value)}
+                    placeholder={`${grantor1 || "Client 1"} (Individual Trust)`.trim()}
+                    style={inputStyle}
+                  />
+                </label>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ color: "var(--sw-muted)" }}>
+                    Client 2 trust display name (optional)
+                  </span>
+                  <input
+                    value={reciprocalTrustDisplayNameClient2}
+                    onChange={(e) => setReciprocalTrustDisplayNameClient2(e.target.value)}
+                    placeholder={`${grantor2 || "Client 2"} (Individual Trust)`.trim()}
+                    style={inputStyle}
+                  />
+                </label>
+              </div>
+              <p style={{ marginTop: 8, marginBottom: 0, color: "var(--sw-muted)", fontSize: 12 }}>
+                These label the two individual trusts within a reciprocal-trust matter.
+              </p>
+            </div>
+          ) : null}
         </section>
 
         <section style={cardStyle}>
