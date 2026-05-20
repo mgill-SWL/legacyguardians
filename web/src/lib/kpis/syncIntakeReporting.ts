@@ -18,7 +18,7 @@ export const INTAKE_SYNC_COLUMNS: { key: string; label: string; type: "NUMBER" |
   { key: "design_meetings_held", label: "Design Meetings Held", type: "NUMBER" },
   { key: "design_meetings_cancelled", label: "Design Meetings Cancelled", type: "NUMBER" },
   { key: "close_ea_matters", label: "Closed EA Matters", type: "NUMBER" },
-  { key: "doc_tour_held", label: "Doc Tour Held", type: "NUMBER" },
+  { key: "doc_tour_held", label: "Document Tours Held", type: "NUMBER" },
   { key: "signing_held", label: "Signing Held", type: "NUMBER" },
   { key: "reviews_5_star", label: "5-star Reviews", type: "NUMBER" },
   { key: "pct_qualified", label: "% Qualified", type: "PERCENT" },
@@ -153,7 +153,20 @@ export async function syncIntakeReportingFromSheet({
       design_meetings_cancelled: r.designMeetingsCancelled,
 
       close_ea_matters: pickSheetNumber(sr, (h) => h.startsWith("closed ea matters") || h.startsWith("close ea matters")),
-      doc_tour_held: pickSheetNumber(sr, (h) => h === "doc tour held" || h.startsWith("doc tour held ")),
+      doc_tour_held:
+        r.documentToursHeld ||
+        pickSheetNumber(
+          sr,
+          (h) =>
+            h === "doc tour held" ||
+            h.startsWith("doc tour held ") ||
+            h === "doc tours held" ||
+            h.startsWith("doc tours held ") ||
+            h === "document tour held" ||
+            h.startsWith("document tour held ") ||
+            h === "document tours held" ||
+            h.startsWith("document tours held ")
+        ),
       signing_held: pickSheetNumber(sr, (h) => h === "signing held" || h.startsWith("signing held ")),
       reviews_5_star: pickSheetNumber(sr, (h) => h.includes("star") && (h.includes("review") || h.includes("reviews"))),
 

@@ -10,8 +10,10 @@ type IntakeStatsBlock = {
   title: string;
   periodLabel: string;
   calls: number;
+  designBooked: number;
   designHeld: number;
   designCancelled: number;
+  documentToursHeld: number;
   pctQualified: number;
   totalConversion: number;
 };
@@ -27,8 +29,17 @@ type Meeting = {
 type BillingPoint = { key: string; label: string; billedCents: number; collectedCents: number };
 
 type StageStat = { stageName: string; matterCount: number; totalValueCents: number };
+type DashboardTask = {
+  id: string;
+  title: string;
+  deadline: string | null;
+  completionPercent: number;
+  assigneeName: string;
+  matterId: string | null;
+  matterName: string | null;
+};
 
-const DEFAULT_WIDGETS = ["financial", "intake", "wip", "meetings", "billing"] as const;
+const DEFAULT_WIDGETS = ["financial", "intake", "wip", "tasks", "meetings", "billing"] as const;
 
 export function DashboardClient({
   financialKpis,
@@ -38,6 +49,7 @@ export function DashboardClient({
   meetings,
   billing,
   wipBreakdown,
+  tasks,
 }: {
   financialKpis: Kpi[];
   intakeKpis: Kpi[];
@@ -46,6 +58,7 @@ export function DashboardClient({
   meetings: Meeting[];
   billing: { series: BillingPoint[]; billedMtdCents: number; collectedMtdCents: number };
   wipBreakdown: { preDesignStages: StageStat[]; preDocTourStages: StageStat[] };
+  tasks: DashboardTask[];
 }) {
   const [editMode, setEditMode] = useState(false);
 
@@ -148,6 +161,11 @@ const widgetDefs: Record<
       title: "Today’s meetings",
       className: "lg:col-span-1",
       render: () => <MeetingsList meetings={meetings} />,
+    },
+    tasks: {
+      title: "Tasks",
+      className: "lg:col-span-1",
+      render: () => <DashboardTasks tasks={tasks} />,
     },
   };
 
@@ -295,6 +313,11 @@ function IntakeStatsAtAGlance({ blocks }: { blocks: IntakeStatsBlock[] }) {
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, fontSize: 13 }}>
                 <div className="sw-muted" style={{ fontWeight: 900 }}>
+                  Design Meetings BOOKED
+                </div>
+                <div style={{ fontWeight: 950 }}>{fmtInt(b.designBooked)}</div>
+
+                <div className="sw-muted" style={{ fontWeight: 900 }}>
                   Design Meetings HELD
                 </div>
                 <div style={{ fontWeight: 950 }}>{fmtInt(b.designHeld)}</div>
@@ -303,6 +326,11 @@ function IntakeStatsAtAGlance({ blocks }: { blocks: IntakeStatsBlock[] }) {
                   Design Meetings CANCELLED
                 </div>
                 <div style={{ fontWeight: 950 }}>{fmtInt(b.designCancelled)}</div>
+
+                <div className="sw-muted" style={{ fontWeight: 900 }}>
+                  Document Tours HELD
+                </div>
+                <div style={{ fontWeight: 950 }}>{fmtInt(b.documentToursHeld)}</div>
 
                 <div className="sw-muted" style={{ fontWeight: 900 }}>
                   % Qualified
@@ -410,6 +438,77 @@ function WipStages({ preDesign, preDocTour }: { preDesign: StageStat[]; preDocTo
     <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: 12 }}>
       <StageTable title="Pre-design meeting stages" rows={preDesign} />
       <StageTable title="Pre-document tour stages" rows={preDocTour} />
+    </div>
+  );
+}
+
+function DashboardTasks({ tasks }: { tasks: DashboardTask[] }) {
+  const [nowMs] = useState(() => Date.now());
+
+  function fmtDate(iso: string | null) {
+    if (!iso) return "No deadline";
+    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+
+  function overdue(iso: string | null) {
+    if (!iso) return false;
+    const d = new Date(iso);
+    d.setHours(23, 59, 59, 999);
+    return d.getTime() < nowMs;
+  }
+
+  return (
+    <div className="sw-card sw-card-pad" style={{ height: "100%" }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ fontWeight: 900 }}>Open tasks</div>
+        <Link className="sw-muted" style={{ fontSize: 12, textDecoration: "none" }} href="/tasks">
+          Tasks →
+        </Link>
+      </div>
+
+      <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+        {tasks.length ? (
+          tasks.map((task) => (
+            <div
+              key={task.id}
+              style={{
+                border: "1px solid var(--sw-border)",
+                borderRadius: 12,
+                padding: 12,
+                background: "rgba(255,255,255,0.02)",
+                display: "grid",
+                gap: 8,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                <div style={{ fontWeight: 950 }}>{task.title}</div>
+                <div className="sw-muted" style={{ fontSize: 12, whiteSpace: "nowrap", color: overdue(task.deadline) ? "#ef4444" : undefined }}>
+                  {fmtDate(task.deadline)}
+                </div>
+              </div>
+              <div className="sw-muted" style={{ fontSize: 12 }}>
+                {task.assigneeName}{task.matterName ? ` • ${task.matterName}` : ""}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "center" }}>
+                <div style={{ height: 10, borderRadius: 999, overflow: "hidden", background: "rgba(255,255,255,0.06)", border: "1px solid var(--sw-border)" }}>
+                  <div
+                    style={{
+                      width: `${Math.max(0, Math.min(100, task.completionPercent))}%`,
+                      height: "100%",
+                      background: "linear-gradient(135deg, rgba(110,231,255,0.75), rgba(167,139,250,0.65))",
+                    }}
+                  />
+                </div>
+                <div className="sw-muted" style={{ fontSize: 12, fontWeight: 900 }}>{task.completionPercent}%</div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="sw-muted" style={{ padding: 12, border: "1px dashed var(--sw-border)", borderRadius: 12 }}>
+            No open tasks.
+          </div>
+        )}
+      </div>
     </div>
   );
 }

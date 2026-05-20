@@ -9,7 +9,9 @@ export function PipelineFieldsForm({
   estimatedValueCents,
   intakeSpecialistId,
   leadAttorneyId,
+  referralSourceContactId,
   users,
+  contacts,
 }: {
   matterId: string;
   primaryEmail: string | null;
@@ -17,13 +19,16 @@ export function PipelineFieldsForm({
   estimatedValueCents: number;
   intakeSpecialistId: string | null;
   leadAttorneyId: string | null;
+  referralSourceContactId: string | null;
   users: { id: string; email: string | null; name: string | null }[];
+  contacts: { id: string; displayName: string; organization: string | null }[];
 }) {
   const [email, setEmail] = useState(primaryEmail || "");
   const [phone, setPhone] = useState(primaryPhone || "");
   const [value, setValue] = useState(estimatedValueCents ? String(Math.round(estimatedValueCents / 100)) : "");
   const [intakeId, setIntakeId] = useState(intakeSpecialistId || "");
   const [attorneyId, setAttorneyId] = useState(leadAttorneyId || "");
+  const [referralId, setReferralId] = useState(referralSourceContactId || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -43,6 +48,7 @@ export function PipelineFieldsForm({
           estimatedValueCents: cents,
           intakeSpecialistId: intakeId || null,
           leadAttorneyId: attorneyId || null,
+          referralSourceContactId: referralId || null,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -144,6 +150,28 @@ export function PipelineFieldsForm({
             {users.map((u) => (
               <option key={u.id} value={u.id} style={{ color: "#000" }}>
                 {u.email}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label style={{ display: "grid", gap: 6 }}>
+          <span style={{ fontSize: 12, color: "var(--sw-muted)" }}>Referral source</span>
+          <select
+            value={referralId}
+            onChange={(e) => setReferralId(e.target.value)}
+            style={{
+              padding: "10px 12px",
+              borderRadius: "var(--sw-radius-sm)",
+              border: "1px solid var(--sw-border)",
+              background: "rgba(0,0,0,0.02)",
+              color: "inherit",
+            }}
+          >
+            <option value="">—</option>
+            {contacts.map((c) => (
+              <option key={c.id} value={c.id} style={{ color: "#000" }}>
+                {c.displayName}{c.organization ? ` — ${c.organization}` : ""}
               </option>
             ))}
           </select>

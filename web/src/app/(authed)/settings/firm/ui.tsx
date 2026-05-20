@@ -5,6 +5,7 @@ import { FormEvent, useMemo, useState } from "react";
 type Firm = { id: string; name: string; slug: string } | null;
 type Location = { id: string; name: string; slug: string; active: boolean };
 type UserRow = { id: string; email: string | null; name: string | null; locationId: string | null; kind: string };
+type MatterField = { id: string; key: string; label: string; type: string; helpText: string | null; required: boolean; active: boolean; sortOrder: number; options: string[]; lookupTarget: string | null };
 
 const KIND_OPTIONS = [
   { value: "INTAKER", label: "Intaker" },
@@ -15,21 +16,38 @@ const KIND_OPTIONS = [
   { value: "STAFF", label: "Staff" },
 ];
 
+const FIELD_TYPE_OPTIONS = [
+  { value: "TEXT", label: "Text" },
+  { value: "LONG_TEXT", label: "Long text" },
+  { value: "DATE", label: "Date" },
+  { value: "CURRENCY", label: "Currency" },
+  { value: "NUMBER", label: "Number" },
+  { value: "TRUE_FALSE", label: "True/False" },
+  { value: "PICKLIST", label: "Picklist" },
+  { value: "MULTI_SELECT_PICKLIST", label: "Multi-select picklist" },
+  { value: "USER", label: "User/staff member" },
+  { value: "CONTACT", label: "Contact/person" },
+  { value: "LOOKUP", label: "Lookup" },
+];
+
 export function FirmSettingsClient({
   firm,
   locations,
   users,
+  matterFields,
   canAdmin,
 }: {
   firm: Firm;
   locations: Location[];
   users: UserRow[];
+  matterFields: MatterField[];
   canAdmin: boolean;
 }) {
   const [newLocationName, setNewLocationName] = useState("");
   const [newLocationSlug, setNewLocationSlug] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldForm, setFieldForm] = useState({ key: "", label: "", type: "TEXT", helpText: "", optionsText: "", lookupTarget: "", required: false });
   const [locEdits, setLocEdits] = useState<Record<string, { name: string; slug: string; active: boolean }>>(() => {
     const init: Record<string, { name: string; slug: string; active: boolean }> = {};
     for (const l of locations) init[l.id] = { name: l.name, slug: l.slug, active: l.active };
@@ -133,6 +151,35 @@ export function FirmSettingsClient({
       ...prev,
       [locationId]: { ...(prev[locationId] || { name: "", slug: "", active: true }), name: "Willow Oaks", slug: "WO", active: true },
     }));
+  }
+
+  async function createMatterField(e: FormEvent) {
+    e.preventDefault();
+    if (!canAdmin) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/settings/firm/matter-fields", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          key: fieldForm.key,
+          label: fieldForm.label,
+          type: fieldForm.type,
+          helpText: fieldForm.helpText || null,
+          required: fieldForm.required,
+          options: fieldForm.optionsText.split("\n").map((s) => s.trim()).filter(Boolean),
+          lookupTarget: fieldForm.lookupTarget || null,
+        }),
+      });
+      const json = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) throw new Error(json.error || "Create failed");
+      window.location.reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Create failed");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -343,6 +390,67 @@ export function FirmSettingsClient({
           </div>
           <div className="sw-muted" style={{ marginTop: 10, fontSize: 12 }}>
             Editing is currently restricted to global admins.
+          </div>
+        </div>
+
+        <div className="sw-card sw-card-pad">
+          <div style={{ fontWeight: 900 }}>Matter fields</div>
+          <div className="sw-muted" style={{ marginTop: 6, fontSize: 12 }}>
+            Admin-defined custom fields shown on matter pages. Form mapping comes next.
+          </div>
+
+          {canAdmin ? (
+            <form onSubmit={createMatterField} style={{ marginTop: 12, display: "grid", gap: 10 }}>
+              <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: 10 }}>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span className="sw-muted" style={{ fontSize: 12 }}>Label</span>
+                  <input value={fieldForm.label} onChange={(e) => setFieldForm((f) => ({ ...f, label: e.target.value }))} placeholder="Date of qualification" />
+                </label>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span className="sw-muted" style={{ fontSize: 12 }}>Key</span>
+                  <input value={fieldForm.key} onChange={(e) => setFieldForm((f) => ({ ...f, key: e.target.value }))} placeholder="date_of_qualification" />
+                </label>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span className="sw-muted" style={{ fontSize: 12 }}>Type</span>
+                  <select value={fieldForm.type} onChange={(e) => setFieldForm((f) => ({ ...f, type: e.target.value }))}>
+                    {FIELD_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </label>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span className="sw-muted" style={{ fontSize: 12 }}>Lookup target</span>
+                  <input value={fieldForm.lookupTarget} onChange={(e) => setFieldForm((f) => ({ ...f, lookupTarget: e.target.value }))} placeholder="e.g. matter, contact, user" />
+                </label>
+              </div>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span className="sw-muted" style={{ fontSize: 12 }}>Picklist options — one per line</span>
+                <textarea rows={3} value={fieldForm.optionsText} onChange={(e) => setFieldForm((f) => ({ ...f, optionsText: e.target.value }))} />
+              </label>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span className="sw-muted" style={{ fontSize: 12 }}>Help text</span>
+                <input value={fieldForm.helpText} onChange={(e) => setFieldForm((f) => ({ ...f, helpText: e.target.value }))} />
+              </label>
+              <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input type="checkbox" checked={fieldForm.required} onChange={(e) => setFieldForm((f) => ({ ...f, required: e.target.checked }))} />
+                <span className="sw-muted" style={{ fontSize: 12 }}>Required</span>
+              </label>
+              <button className="sw-btn" disabled={submitting || !fieldForm.key.trim() || !fieldForm.label.trim()}>
+                {submitting ? "Saving…" : "Add matter field"}
+              </button>
+            </form>
+          ) : null}
+
+          <div style={{ marginTop: 14, display: "grid", gap: 8 }}>
+            {matterFields.length ? matterFields.map((f) => (
+              <div key={f.id} style={{ border: "1px solid var(--sw-border)", borderRadius: 12, padding: 10 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                  <div style={{ fontWeight: 900 }}>{f.label}</div>
+                  <div className="sw-muted" style={{ fontSize: 12 }}>{f.type}{f.active ? "" : " • inactive"}</div>
+                </div>
+                <div className="sw-muted" style={{ marginTop: 4, fontSize: 12 }}>
+                  {f.key}{f.lookupTarget ? ` • lookup: ${f.lookupTarget}` : ""}{f.options.length ? ` • ${f.options.length} options` : ""}
+                </div>
+              </div>
+            )) : <div className="sw-muted" style={{ marginTop: 12 }}>No custom matter fields yet.</div>}
           </div>
         </div>
       </div>

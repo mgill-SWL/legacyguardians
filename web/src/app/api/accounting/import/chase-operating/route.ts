@@ -311,5 +311,38 @@ export async function POST(request: Request) {
     });
   }
 
+  // Best-effort auto-clear: if imported outflows have a check number, link them to an issued check.
+  // Matching rules: same account + same check # + same amount + check not already cleared.
+  const withCheck = await prisma.rawFinancialTransaction.findMany({
+    where: {
+      importBatchId: batch.id,
+      direction: "OUTFLOW",
+      accountId: account.id,
+    },
+    select: { id: true, amountCents: true, rawData: true },
+  });
+
+  for (const t of withCheck) {
+    const rd = (t.rawData as Record<string, unknown>) || {};
+    const cn = typeof rd["checkNumber"] === "string" ? String(rd["checkNumber"]).trim() : "";
+    if (!cn) continue;
+
+    const match = await prisma.operatingCheck.findFirst({
+      where: {
+        firmId: user.activeFirmId,
+        financialAccountId: account.id,
+        checkNumber: cn,
+        amountCents: t.amountCents,
+        clearedRawTransactionId: null,
+        status: { in: ["ISSUED", "DRAFT"] },
+      },
+      select: { id: true },
+    });
+
+    if (match) {
+      await prisma.operatingCheck.update({ where: { id: match.id }, data: { clearedRawTransactionId: t.id, status: "CLEARED" } });
+    }
+  }
+
   return NextResponse.json({ ok: true, batchId: batch.id, parsedRows: parsed.length, insertedRows: created.count });
 }

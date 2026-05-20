@@ -11,8 +11,8 @@ export default async function TemplatesPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) redirect("/login");
 
-  const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-  const canEdit = user?.role === "ADMIN";
+  const user = await prisma.user.findUnique({ where: { email: session.user.email }, select: { activeFirmId: true } });
+  const canEdit = !!user?.activeFirmId;
 
   const firmId = user?.activeFirmId || undefined;
 

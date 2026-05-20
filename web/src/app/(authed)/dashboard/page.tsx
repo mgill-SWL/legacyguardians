@@ -16,12 +16,31 @@ type IntakeStatsBlock = {
   // For rollups, this is a range like "YYYY-MM-DD → YYYY-MM-DD".
   periodLabel: string;
   calls: number;
+  designBooked: number;
   designHeld: number;
   designCancelled: number;
+  documentToursHeld: number;
   pctQualified: number;
   totalConversion: number;
 };
 type StageStat = { stageName: string; matterCount: number; totalValueCents: number };
+type DashboardTask = {
+  id: string;
+  title: string;
+  deadline: string | null;
+  completionPercent: number;
+  assigneeName: string;
+  matterId: string | null;
+  matterName: string | null;
+};
+type RawDashboardTask = {
+  id: string;
+  title: string;
+  deadline: Date | string | null;
+  completionPercent: number;
+  assigneeUser?: { name: string | null; email: string | null } | null;
+  matter?: { id: string; displayName: string } | null;
+};
 
 function usd(cents: number) {
   const n = (cents || 0) / 100;
@@ -192,7 +211,18 @@ export default async function DashboardPage() {
     return Number.isFinite(x) ? x : 0;
   }
 
-  function buildStatsAtGlanceFromRows(rows: Array<{ weekEnding: string; totalIntakeCalls: number; designMeetingsHeld: number; designMeetingsCancelled: number; pctQualified: number; totalConversion: number }>) {
+  function buildStatsAtGlanceFromRows(
+    rows: Array<{
+      weekEnding: string;
+      totalIntakeCalls: number;
+      designMeetingsHeld: number;
+      designMeetingsCancelled: number;
+      designMeetingsBooked?: number;
+      documentToursHeld?: number;
+      pctQualified: number;
+      totalConversion: number;
+    }>
+  ) {
     const byWeek = new Map(rows.map((r) => [r.weekEnding, r] as const));
 
     const thisWeekEnding = weekEndingFridayIso(now);
@@ -208,8 +238,10 @@ export default async function DashboardPage() {
       byWeek.get(weekEnding) || {
         weekEnding,
         totalIntakeCalls: 0,
+        designMeetingsBooked: 0,
         designMeetingsHeld: 0,
         designMeetingsCancelled: 0,
+        documentToursHeld: 0,
         pctQualified: 0,
         totalConversion: 0,
       };
@@ -219,8 +251,10 @@ export default async function DashboardPage() {
 
     const last4 = last4WeekEndings.map(pick);
     const last4Calls = last4.reduce((acc, r) => acc + n(r.totalIntakeCalls), 0);
+    const last4Booked = last4.reduce((acc, r) => acc + n(r.designMeetingsBooked ?? n(r.designMeetingsHeld) + n(r.designMeetingsCancelled)), 0);
     const last4Held = last4.reduce((acc, r) => acc + n(r.designMeetingsHeld), 0);
     const last4Cancelled = last4.reduce((acc, r) => acc + n(r.designMeetingsCancelled), 0);
+    const last4DocumentToursHeld = last4.reduce((acc, r) => acc + n(r.documentToursHeld), 0);
 
     // Weighted averages (weight by calls) so rollups feel consistent.
     const last4AvgQualified = last4Calls
@@ -235,8 +269,10 @@ export default async function DashboardPage() {
         title: "Last 4 weeks",
         periodLabel: `${last4WeekEndings[0]} → ${last4WeekEndings[last4WeekEndings.length - 1]}`,
         calls: last4Calls,
+        designBooked: last4Booked,
         designHeld: last4Held,
         designCancelled: last4Cancelled,
+        documentToursHeld: last4DocumentToursHeld,
         pctQualified: last4AvgQualified,
         totalConversion: last4AvgConversion,
       },
@@ -244,8 +280,10 @@ export default async function DashboardPage() {
         title: "Last week",
         periodLabel: lastWeekEnding,
         calls: n(lastWeek.totalIntakeCalls),
+        designBooked: n(lastWeek.designMeetingsBooked ?? n(lastWeek.designMeetingsHeld) + n(lastWeek.designMeetingsCancelled)),
         designHeld: n(lastWeek.designMeetingsHeld),
         designCancelled: n(lastWeek.designMeetingsCancelled),
+        documentToursHeld: n(lastWeek.documentToursHeld),
         pctQualified: n(lastWeek.pctQualified),
         totalConversion: n(lastWeek.totalConversion),
       },
@@ -253,8 +291,10 @@ export default async function DashboardPage() {
         title: "This week",
         periodLabel: thisWeekEnding,
         calls: n(thisWeek.totalIntakeCalls),
+        designBooked: n(thisWeek.designMeetingsBooked ?? n(thisWeek.designMeetingsHeld) + n(thisWeek.designMeetingsCancelled)),
         designHeld: n(thisWeek.designMeetingsHeld),
         designCancelled: n(thisWeek.designMeetingsCancelled),
+        documentToursHeld: n(thisWeek.documentToursHeld),
         pctQualified: n(thisWeek.pctQualified),
         totalConversion: n(thisWeek.totalConversion),
       },
@@ -292,8 +332,10 @@ export default async function DashboardPage() {
         return {
           weekEnding: r.rowKey,
           totalIntakeCalls: n(d.total_intake_calls),
+          designMeetingsBooked: n(d.design_meetings_booked) || n(d.design_meetings_held) + n(d.design_meetings_cancelled),
           designMeetingsHeld: n(d.design_meetings_held),
           designMeetingsCancelled: n(d.design_meetings_cancelled),
+          documentToursHeld: n(d.document_tours_held) || n(d.doc_tour_held),
           pctQualified: n(d.pct_qualified),
           totalConversion: n(d.total_conversion),
         };
@@ -306,12 +348,13 @@ export default async function DashboardPage() {
         const d = r.data || {};
         acc.scheduled += n(d.scheduled_intake);
         acc.qualified += n(d.qualified);
+        acc.designBooked += n(d.design_meetings_booked) || n(d.design_meetings_held) + n(d.design_meetings_cancelled);
         acc.designHeld += n(d.design_meetings_held);
         acc.docTours += n(d.doc_tour_held);
         acc.signings += n(d.signing_held);
         return acc;
       },
-      { scheduled: 0, qualified: 0, designHeld: 0, docTours: 0, signings: 0 }
+      { scheduled: 0, qualified: 0, designBooked: 0, designHeld: 0, docTours: 0, signings: 0 }
     );
 
     intakeKpis = [
@@ -322,8 +365,9 @@ export default async function DashboardPage() {
         value: intakeTotals.qualified.toLocaleString(),
         sub: intakeTotals.scheduled ? `${Math.round((intakeTotals.qualified / intakeTotals.scheduled) * 1000) / 10}% of scheduled` : undefined,
       },
+      { id: "design_booked", label: "Design meetings booked", value: intakeTotals.designBooked.toLocaleString() },
       { id: "design", label: "Design meetings held", value: intakeTotals.designHeld.toLocaleString() },
-      { id: "doc_tours", label: "Doc tours held", value: intakeTotals.docTours.toLocaleString() },
+      { id: "doc_tours", label: "Document tours held", value: intakeTotals.docTours.toLocaleString() },
       { id: "signings", label: "Signings held", value: intakeTotals.signings.toLocaleString() },
     ];
   }
@@ -362,6 +406,31 @@ export default async function DashboardPage() {
       })
     : [];
 
+  const tasks: DashboardTask[] = anyPrisma.task
+    ? (
+        await anyPrisma.task.findMany({
+          where: {
+            ...(firmId ? { firmId } : {}),
+            completionPercent: { lt: 100 },
+          },
+          orderBy: [{ deadline: "asc" }, { createdAt: "desc" }],
+          take: 8,
+          include: {
+            assigneeUser: { select: { name: true, email: true } },
+            matter: { select: { id: true, displayName: true } },
+          },
+        })
+      ).map((t: RawDashboardTask) => ({
+        id: t.id,
+        title: t.title,
+        deadline: t.deadline ? new Date(t.deadline).toISOString() : null,
+        completionPercent: Number(t.completionPercent || 0),
+        assigneeName: t.assigneeUser?.name || t.assigneeUser?.email || "Unassigned",
+        matterId: t.matter?.id || null,
+        matterName: t.matter?.displayName || null,
+      }))
+    : [];
+
   return (
       <DashboardClient
         financialKpis={financialKpis}
@@ -378,6 +447,7 @@ export default async function DashboardPage() {
       }))}
       billing={billing}
       wipBreakdown={{ preDesignStages: intakePipelineStats, preDocTourStages: epStats }}
+      tasks={tasks}
     />
   );
 }

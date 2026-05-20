@@ -15,6 +15,7 @@ type Body = {
   intakeSpecialistId?: string | null;
   leadAttorneyId?: string | null;
   primaryLocationId?: string | null;
+  referralSourceContactId?: string | null;
 };
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ matterId: string }> }) {
@@ -53,6 +54,17 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ matterId: str
     }
   }
 
+  let referralSourceContactId: string | null | undefined = undefined;
+  if (body.referralSourceContactId !== undefined) {
+    if (body.referralSourceContactId === null) {
+      referralSourceContactId = null;
+    } else {
+      const contact = await prisma.contact.findFirst({ where: { id: body.referralSourceContactId, firmId: user.activeFirmId } });
+      if (!contact) return NextResponse.json({ error: "invalid referralSourceContactId" }, { status: 400 });
+      referralSourceContactId = contact.id;
+    }
+  }
+
   const updated = await prisma.matter.update({
     where: { id: matterId },
     data: {
@@ -63,6 +75,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ matterId: str
       intakeSpecialistId: body.intakeSpecialistId === undefined ? undefined : body.intakeSpecialistId,
       leadAttorneyId: body.leadAttorneyId === undefined ? undefined : body.leadAttorneyId,
       primaryLocationId,
+      referralSourceContactId,
       status: body.intake ? "INTAKE_IN_PROGRESS" : undefined,
       intake: body.intake
         ? {

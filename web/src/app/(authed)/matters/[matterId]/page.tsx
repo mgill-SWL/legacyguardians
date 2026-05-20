@@ -8,6 +8,8 @@ import { PipelineFieldsForm } from "./PipelineFieldsForm";
 import { TimeEntriesCard } from "./TimeEntriesCard";
 import { MatterLocationForm } from "./MatterLocationForm";
 import { BillingCard } from "./BillingCard";
+import { TimelineCard } from "./TimelineCard";
+import { MatterFieldsCard } from "./MatterFieldsCard";
 
 export default async function MatterDetailPage({
   params,
@@ -61,6 +63,39 @@ export default async function MatterDetailPage({
     select: { id: true, invoiceNumber: true, status: true, subtotalCents: true, totalCents: true, createdAt: true },
   });
 
+  const tasks = await prisma.task.findMany({
+    where: { matterId },
+    orderBy: [{ completionPercent: "asc" }, { deadline: "asc" }, { createdAt: "desc" }],
+    take: 20,
+    include: { assigneeUser: { select: { name: true, email: true } } },
+  });
+
+  const timelineEvents = await prisma.matterTimelineEvent.findMany({
+    where: { matterId },
+    orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }],
+    take: 100,
+    include: { actorUser: { select: { name: true, email: true } } },
+  });
+
+  const matterFieldDefinitions = user?.activeFirmId
+    ? await prisma.matterFieldDefinition.findMany({
+        where: { firmId: user.activeFirmId, active: true },
+        orderBy: [{ sortOrder: "asc" }, { label: "asc" }],
+        select: { id: true, key: true, label: true, type: true, helpText: true, required: true, options: true, lookupTarget: true },
+      })
+    : [];
+  const matterFieldValues = matterFieldDefinitions.length
+    ? await prisma.matterFieldValue.findMany({ where: { matterId }, include: { fieldDefinition: { select: { key: true } } } })
+    : [];
+  const contacts = user?.activeFirmId
+      ? await prisma.contact.findMany({
+        where: { firmId: user.activeFirmId },
+        orderBy: [{ displayName: "asc" }],
+        take: 250,
+        select: { id: true, displayName: true, email: true, organization: true },
+      })
+    : [];
+
   if (!matter) {
     return (
       <main style={{ padding: 24 }}>
@@ -95,7 +130,9 @@ export default async function MatterDetailPage({
           estimatedValueCents={matter.estimatedValueCents}
           intakeSpecialistId={matter.intakeSpecialistId}
           leadAttorneyId={matter.leadAttorneyId}
+          referralSourceContactId={matter.referralSourceContactId}
           users={users}
+          contacts={contacts.map((c) => ({ id: c.id, displayName: c.displayName, organization: c.organization }))}
         />
       </section>
 
@@ -111,6 +148,23 @@ export default async function MatterDetailPage({
         <div style={{ fontWeight: 800, marginBottom: 10 }}>Location</div>
         <MatterLocationForm matterId={matter.id} primaryLocationId={matter.primaryLocationId ?? null} locations={allFirmLocations} />
       </section>
+
+      <MatterFieldsCard
+        matterId={matter.id}
+        fields={matterFieldDefinitions.map((f) => ({
+          id: f.id,
+          key: f.key,
+          label: f.label,
+          type: f.type,
+          helpText: f.helpText,
+          required: f.required,
+          options: Array.isArray(f.options) ? f.options.map(String) : [],
+          lookupTarget: f.lookupTarget,
+        }))}
+        values={Object.fromEntries(matterFieldValues.map((v) => [v.fieldDefinition.key, v.value]))}
+        users={users}
+        contacts={contacts.map((c) => ({ id: c.id, displayName: c.displayName, email: c.email }))}
+      />
 
       <TimeEntriesCard
         matterId={matter.id}
@@ -141,6 +195,53 @@ export default async function MatterDetailPage({
           createdAt: i.createdAt.toISOString(),
         }))}
       />
+
+      <TimelineCard
+        matterId={matter.id}
+        initialEvents={timelineEvents.map((ev) => ({
+          id: ev.id,
+          eventType: ev.eventType,
+          title: ev.title,
+          body: ev.body,
+          occurredAt: ev.occurredAt.toISOString(),
+          actorName: ev.actorUser?.name || ev.actorUser?.email || null,
+        }))}
+      />
+
+      <section
+        style={{
+          marginTop: 18,
+          padding: 18,
+          borderRadius: "var(--sw-radius)",
+          background: "var(--sw-card)",
+          border: "1px solid var(--sw-border)",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
+          <div style={{ fontWeight: 800 }}>Tasks</div>
+          <Link href="/tasks" style={{ color: "var(--sw-muted)", textDecoration: "none", fontSize: 13 }}>
+            Manage tasks →
+          </Link>
+        </div>
+        <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+          {tasks.length ? (
+            tasks.map((t) => (
+              <div key={t.id} style={{ border: "1px solid var(--sw-border)", borderRadius: 12, padding: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <div style={{ fontWeight: 900 }}>{t.title}</div>
+                  <div style={{ color: "var(--sw-muted)", fontSize: 12 }}>{t.completionPercent}% • {t.billingStatus.replace("_", " ")}</div>
+                </div>
+                <div style={{ marginTop: 6, color: "var(--sw-muted)", fontSize: 12 }}>
+                  Assigned to {t.assigneeUser.name || t.assigneeUser.email || "Unknown"}
+                  {t.deadline ? ` • Due ${t.deadline.toISOString().slice(0, 10)}` : ""}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div style={{ color: "var(--sw-muted)" }}>No tasks linked to this matter yet.</div>
+          )}
+        </div>
+      </section>
 
       <section
         style={{

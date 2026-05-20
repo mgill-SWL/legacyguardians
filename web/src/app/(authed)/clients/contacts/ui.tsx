@@ -8,25 +8,72 @@ type Contact = {
   email: string | null;
   phone: string | null;
   organization: string | null;
-  categories: ("CLIENT" | "VENDOR" | "REFERRER")[];
+  categories: ContactCategory[];
+  professionalType: ProfessionalType | null;
+  referralSourceStatus: ReferralSourceStatus | null;
+  relationshipOwnerId: string | null;
+  relationshipOwner: UserOption | null;
   notes: string | null;
   updatedAt: string;
 };
 
-export function ContactsClient({ initialContacts }: { initialContacts: any[] }) {
+type ContactCategory = "CLIENT" | "VENDOR" | "REFERRER" | "PROFESSIONAL_ADVISOR" | "GENERAL";
+type ProfessionalType = "FINANCIAL_ADVISOR" | "CPA" | "INSURANCE" | "BANKER" | "REALTOR" | "CARE_MANAGER" | "ATTORNEY" | "OTHER";
+type ReferralSourceStatus = "PROSPECT" | "ACTIVE" | "INACTIVE";
+type UserOption = { id: string; name: string | null; email: string | null };
+
+const CATEGORY_OPTIONS: Array<{ value: ContactCategory; label: string }> = [
+  { value: "CLIENT", label: "Client" },
+  { value: "VENDOR", label: "Vendor" },
+  { value: "REFERRER", label: "Referrer" },
+  { value: "PROFESSIONAL_ADVISOR", label: "Professional advisor" },
+  { value: "GENERAL", label: "General contact" },
+];
+
+const PROFESSIONAL_TYPE_OPTIONS: Array<{ value: ProfessionalType; label: string }> = [
+  { value: "FINANCIAL_ADVISOR", label: "Financial advisor" },
+  { value: "CPA", label: "CPA" },
+  { value: "INSURANCE", label: "Insurance" },
+  { value: "BANKER", label: "Banker" },
+  { value: "REALTOR", label: "Realtor" },
+  { value: "CARE_MANAGER", label: "Care manager" },
+  { value: "ATTORNEY", label: "Attorney" },
+  { value: "OTHER", label: "Other" },
+];
+
+const REFERRAL_STATUS_OPTIONS: Array<{ value: ReferralSourceStatus; label: string }> = [
+  { value: "PROSPECT", label: "Prospect" },
+  { value: "ACTIVE", label: "Active" },
+  { value: "INACTIVE", label: "Inactive" },
+];
+
+function displayUser(u: UserOption | null | undefined) {
+  if (!u) return "";
+  return u.name || u.email || u.id;
+}
+
+function enumLabel<T extends string>(options: Array<{ value: T; label: string }>, value: T | null) {
+  if (!value) return "";
+  return options.find((o) => o.value === value)?.label || value;
+}
+
+export function ContactsClient({ initialContacts, users }: { initialContacts: any[]; users: UserOption[] }) {
   const contacts: Contact[] = (initialContacts || []).map((c) => ({
     ...c,
     updatedAt: typeof c.updatedAt === "string" ? c.updatedAt : new Date(c.updatedAt).toISOString(),
   }));
 
-  const [filter, setFilter] = useState<"ALL" | "CLIENT" | "VENDOR" | "REFERRER">("ALL");
+  const [filter, setFilter] = useState<"ALL" | ContactCategory>("ALL");
   const [q, setQ] = useState("");
   const [form, setForm] = useState({
     displayName: "",
     email: "",
     phone: "",
     organization: "",
-    categories: { CLIENT: true, VENDOR: false, REFERRER: false },
+    categories: { CLIENT: false, VENDOR: false, REFERRER: false, PROFESSIONAL_ADVISOR: false, GENERAL: true } as Record<ContactCategory, boolean>,
+    professionalType: "" as "" | ProfessionalType,
+    referralSourceStatus: "" as "" | ReferralSourceStatus,
+    relationshipOwnerId: "",
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +107,10 @@ export function ContactsClient({ initialContacts }: { initialContacts: any[] }) 
           email: form.email.trim() || null,
           phone: form.phone.trim() || null,
           organization: form.organization.trim() || null,
-          categories: cats,
+          categories: cats.length ? cats : ["GENERAL"],
+          professionalType: form.professionalType || null,
+          referralSourceStatus: form.referralSourceStatus || null,
+          relationshipOwnerId: form.relationshipOwnerId || null,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -110,22 +160,34 @@ export function ContactsClient({ initialContacts }: { initialContacts: any[] }) 
             placeholder="Organization"
             className="sw-input"
           />
+          <select className="sw-input" value={form.professionalType} onChange={(e) => setForm((f) => ({ ...f, professionalType: e.target.value as typeof form.professionalType }))}>
+            <option value="">Professional type — optional</option>
+            {PROFESSIONAL_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          <select className="sw-input" value={form.referralSourceStatus} onChange={(e) => setForm((f) => ({ ...f, referralSourceStatus: e.target.value as typeof form.referralSourceStatus }))}>
+            <option value="">Referral status — optional</option>
+            {REFERRAL_STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          <select className="sw-input" value={form.relationshipOwnerId} onChange={(e) => setForm((f) => ({ ...f, relationshipOwnerId: e.target.value }))}>
+            <option value="">Relationship owner — optional</option>
+            {users.map((u) => <option key={u.id} value={u.id}>{displayUser(u)}</option>)}
+          </select>
         </div>
 
         <div style={{ marginTop: 10, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
-          {(["CLIENT", "VENDOR", "REFERRER"] as const).map((c) => (
-            <label key={c} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--sw-muted)" }}>
+          {CATEGORY_OPTIONS.map((category) => (
+            <label key={category.value} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--sw-muted)" }}>
               <input
                 type="checkbox"
-                checked={(form.categories as any)[c]}
+                checked={form.categories[category.value]}
                 onChange={(e) =>
                   setForm((f) => ({
                     ...f,
-                    categories: { ...f.categories, [c]: e.target.checked },
+                    categories: { ...f.categories, [category.value]: e.target.checked },
                   }))
                 }
               />
-              {c}
+              {category.label}
             </label>
           ))}
 
@@ -146,9 +208,7 @@ export function ContactsClient({ initialContacts }: { initialContacts: any[] }) 
         />
         <select value={filter} onChange={(e) => setFilter(e.target.value as any)} className="sw-input">
           <option value="ALL">All</option>
-          <option value="CLIENT">Clients</option>
-          <option value="VENDOR">Vendors</option>
-          <option value="REFERRER">Referrers</option>
+          {CATEGORY_OPTIONS.map((category) => <option key={category.value} value={category.value}>{category.label}</option>)}
         </select>
         <div style={{ fontSize: 12, color: "var(--sw-muted)" }}>{filtered.length} shown</div>
       </div>
@@ -162,6 +222,9 @@ export function ContactsClient({ initialContacts }: { initialContacts: any[] }) 
               <th className="sw-th">Email</th>
               <th className="sw-th">Phone</th>
               <th className="sw-th">Organization</th>
+              <th className="sw-th">Professional type</th>
+              <th className="sw-th">Referral status</th>
+              <th className="sw-th">Relationship owner</th>
             </tr>
           </thead>
           <tbody>
@@ -172,6 +235,9 @@ export function ContactsClient({ initialContacts }: { initialContacts: any[] }) 
                 <td className="sw-td">{c.email || ""}</td>
                 <td className="sw-td">{c.phone || ""}</td>
                 <td className="sw-td">{c.organization || ""}</td>
+                <td className="sw-td">{enumLabel(PROFESSIONAL_TYPE_OPTIONS, c.professionalType)}</td>
+                <td className="sw-td">{enumLabel(REFERRAL_STATUS_OPTIONS, c.referralSourceStatus)}</td>
+                <td className="sw-td">{displayUser(c.relationshipOwner)}</td>
               </tr>
             ))}
           </tbody>

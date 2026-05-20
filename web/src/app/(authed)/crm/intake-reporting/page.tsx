@@ -25,7 +25,7 @@ const DEFAULT_COLUMNS: { key: string; label: string; type?: any }[] = [
   { key: "design_meetings_held", label: "Design Meetings Held", type: "NUMBER" },
   { key: "design_meetings_cancelled", label: "Design Meetings Cancelled", type: "NUMBER" },
   { key: "close_ea_matters", label: "Closed EA Matters", type: "NUMBER" },
-  { key: "doc_tour_held", label: "Doc Tour Held", type: "NUMBER" },
+  { key: "doc_tour_held", label: "Document Tours Held", type: "NUMBER" },
   { key: "signing_held", label: "Signing Held", type: "NUMBER" },
   { key: "reviews_5_star", label: "5-star Reviews", type: "NUMBER" },
   { key: "pct_qualified", label: "% Qualified", type: "PERCENT" },

@@ -11,11 +11,17 @@ type Tpl = {
   body: string;
   isHtml: boolean;
   attachmentUrl: string | null;
-  updatedAt: string;
+  updatedAt: string | Date;
 };
 
-export function TemplatesClient({ initialTemplates, canEdit }: { initialTemplates: any[]; canEdit: boolean }) {
-  const templates: Tpl[] = (initialTemplates || []).map((t) => ({
+type Draft = { key: string; channel: "EMAIL" | "SMS"; name: string; subject: string; body: string; attachmentUrl: string; isHtml: boolean };
+
+function errorMessage(e: unknown) {
+  return e instanceof Error ? e.message : "Failed";
+}
+
+export function TemplatesClient({ initialTemplates, canEdit }: { initialTemplates: Tpl[]; canEdit: boolean }) {
+  const templates: (Tpl & { updatedAt: string })[] = (initialTemplates || []).map((t) => ({
     ...t,
     updatedAt: typeof t.updatedAt === "string" ? t.updatedAt : new Date(t.updatedAt).toISOString(),
   }));
@@ -23,7 +29,7 @@ export function TemplatesClient({ initialTemplates, canEdit }: { initialTemplate
   const [selectedId, setSelectedId] = useState<string | null>(templates[0]?.id || null);
   const selected = useMemo(() => templates.find((t) => t.id === selectedId) || null, [templates, selectedId]);
 
-  const [draft, setDraft] = useState<{ key: string; channel: "EMAIL" | "SMS"; name: string; subject: string; body: string; attachmentUrl: string; isHtml: boolean }>(
+  const [draft, setDraft] = useState<Draft>(
     selected
       ? {
           key: selected.key,
@@ -61,8 +67,8 @@ export function TemplatesClient({ initialTemplates, canEdit }: { initialTemplate
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
       window.location.reload();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(errorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -88,8 +94,8 @@ export function TemplatesClient({ initialTemplates, canEdit }: { initialTemplate
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       window.location.reload();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(errorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -133,7 +139,7 @@ export function TemplatesClient({ initialTemplates, canEdit }: { initialTemplate
               {busy ? "Saving…" : selected ? "Save" : "Create"}
             </button>
           ) : (
-            <div className="sw-muted" style={{ fontSize: 12 }}>Admin-only edit</div>
+            <div className="sw-muted" style={{ fontSize: 12 }}>Sign in with an active firm to edit</div>
           )}
         </div>
 
@@ -147,7 +153,7 @@ export function TemplatesClient({ initialTemplates, canEdit }: { initialTemplate
             </label>
             <label style={{ display: "grid", gap: 6 }}>
               <span className="sw-muted" style={{ fontSize: 12 }}>Channel</span>
-              <select className="sw-input" value={draft.channel} onChange={(e) => setDraft((d) => ({ ...d, channel: e.target.value as any }))} disabled={!canEdit}>
+              <select className="sw-input" value={draft.channel} onChange={(e) => setDraft((d) => ({ ...d, channel: e.target.value as Draft["channel"] }))} disabled={!canEdit}>
                 <option value="EMAIL">EMAIL</option>
                 <option value="SMS">SMS</option>
               </select>

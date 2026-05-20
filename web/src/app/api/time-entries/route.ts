@@ -146,5 +146,25 @@ export async function POST(request: Request) {
     select: { id: true },
   });
 
+  await prisma.matterTimelineEvent.create({
+    data: {
+      firmId: user.activeFirmId,
+      matterId: matter.id,
+      actorUserId: user.id,
+      eventType: "TIME_ENTRY_CREATED",
+      title: "Draft timecard created",
+      body: narrative,
+      relatedTimeEntryId: entry.id,
+      details: {
+        pricingMode,
+        durationMinutes,
+        hourlyRateCents,
+        flatAmountCents,
+        billable,
+        timekeeperUserId: timekeeper.id,
+      },
+    },
+  });
+
   return NextResponse.json({ ok: true, id: entry.id });
 }

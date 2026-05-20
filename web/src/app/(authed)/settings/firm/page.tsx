@@ -16,7 +16,7 @@ export default async function FirmSettingsPage() {
   if (!user?.activeFirmId) redirect("/unauthorized");
   const canAdmin = user.role === "ADMIN";
 
-  const [firm, locations, users, firmMembers, locationMembers] = await Promise.all([
+  const [firm, locations, users, firmMembers, locationMembers, matterFields] = await Promise.all([
     prisma.firm.findUnique({ where: { id: user.activeFirmId }, select: { id: true, name: true, slug: true } }),
     prisma.firmLocation.findMany({
       where: { firmId: user.activeFirmId },
@@ -34,6 +34,11 @@ export default async function FirmSettingsPage() {
     prisma.firmLocationMember.findMany({
       where: { firmLocation: { firmId: user.activeFirmId } },
       select: { userId: true, firmLocationId: true },
+    }),
+    prisma.matterFieldDefinition.findMany({
+      where: { firmId: user.activeFirmId },
+      orderBy: [{ sortOrder: "asc" }, { label: "asc" }],
+      select: { id: true, key: true, label: true, type: true, helpText: true, required: true, active: true, sortOrder: true, options: true, lookupTarget: true },
     }),
   ]);
 
@@ -57,6 +62,18 @@ export default async function FirmSettingsPage() {
         name: u.name,
         locationId: membershipByUserId[u.id] || u.defaultLocationId || null,
         kind: kindByUserId[u.id] || "STAFF",
+      }))}
+      matterFields={matterFields.map((f) => ({
+        id: f.id,
+        key: f.key,
+        label: f.label,
+        type: f.type,
+        helpText: f.helpText,
+        required: f.required,
+        active: f.active,
+        sortOrder: f.sortOrder,
+        options: Array.isArray(f.options) ? f.options.map(String) : [],
+        lookupTarget: f.lookupTarget,
       }))}
       canAdmin={canAdmin}
     />

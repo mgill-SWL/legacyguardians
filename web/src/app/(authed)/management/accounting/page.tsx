@@ -87,10 +87,16 @@ export default async function AccountingHubPage() {
               <Link href="/management/accounting/ar">Accounts receivable</Link> (open invoices, aging)
             </li>
             <li>
+              <Link href="/management/accounting/banks">Banks</Link> (bank accounts + register)
+            </li>
+            <li>
               <Link href="/management/accounting/trust-ledger">Trust ledger</Link> (running balances, no-negative guardrail)
             </li>
             <li>
               <Link href="/management/accounting/reconciliation">Three-way reconciliation</Link> (monthly, auditable)
+            </li>
+            <li>
+              <Link href="/management/accounting/checks">Operating checks</Link> (check register)
             </li>
           </ul>
         </div>

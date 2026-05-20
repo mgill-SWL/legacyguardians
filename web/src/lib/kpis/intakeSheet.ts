@@ -43,12 +43,16 @@ const REQUIRED_HEADER_MATCHERS: Record<RequiredHeader, (norm: string) => boolean
   "Total Conversion": (s) => s === "total conversion" || s.startsWith("total conversion "),
 };
 
-function resolveRequiredHeaderIndexes(row: unknown[]): Record<RequiredHeader, number> | null {
-  const cells = (row || []).map((v) => {
+function headerCells(row: unknown[]) {
+  return (row || []).map((v) => {
     const raw = String(v ?? "").trim();
     const norm = normalizeHeaderLabel(raw);
     return { raw, norm };
   });
+}
+
+function resolveRequiredHeaderIndexes(row: unknown[]): Record<RequiredHeader, number> | null {
+  const cells = headerCells(row);
 
   const out = {} as Record<RequiredHeader, number>;
   for (const h of REQUIRED_HEADERS) {
@@ -60,6 +64,24 @@ function resolveRequiredHeaderIndexes(row: unknown[]): Record<RequiredHeader, nu
   return out;
 }
 
+function findOptionalHeaderIndex(row: unknown[], match: (norm: string) => boolean) {
+  const cells = headerCells(row);
+  return cells.findIndex((c) => c.raw && match(c.norm));
+}
+
+function isDocumentToursHeldHeader(s: string) {
+  return (
+    s === "doc tour held" ||
+    s.startsWith("doc tour held ") ||
+    s === "doc tours held" ||
+    s.startsWith("doc tours held ") ||
+    s === "document tour held" ||
+    s.startsWith("document tour held ") ||
+    s === "document tours held" ||
+    s.startsWith("document tours held ")
+  );
+}
+
 function excelSerialToIsoDate(serial: number) {
   // Google Sheets serial dates are days since 1899-12-30 (same as Excel for modern dates).
   const epoch = Date.UTC(1899, 11, 30);
@@ -69,7 +91,7 @@ function excelSerialToIsoDate(serial: number) {
   return d.toISOString().slice(0, 10);
 }
 
-function parseWeekEnding(v: any): string | null {
+function parseWeekEnding(v: unknown): string | null {
   if (v == null || v === "") return null;
   if (typeof v === "number" && Number.isFinite(v)) return excelSerialToIsoDate(v);
 
@@ -98,7 +120,7 @@ function parseWeekEnding(v: any): string | null {
   return null;
 }
 
-function toNumber(v: any) {
+function toNumber(v: unknown) {
   if (v == null || v === "") return 0;
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
@@ -109,10 +131,11 @@ export type IntakeKpiSheetRow = {
   totalIntakeCalls: number;
   designMeetingsHeld: number;
   designMeetingsCancelled: number;
+  documentToursHeld: number;
   pctQualified: number; // 0-1 if sheet uses percent, or 0-100 if typed that way; we keep raw numeric.
   totalConversion: number; // raw numeric
   // Raw row snapshot for future slicing/dicing across additional columns.
-  sourceRow?: { header: string; value: any; col: number }[];
+  sourceRow?: { header: string; value: unknown; col: number }[];
 };
 
 export async function getDefaultGoogleEmailForUser(userEmail: string) {
@@ -179,6 +202,7 @@ export async function getIntakeKpisFromSheet({
 
   const headerRow: unknown[] = values[headerRowIdx] || [];
   const headers = headerRow.map((h) => String(h ?? "").trim());
+  const documentToursHeldIdx = findOptionalHeaderIndex(headerRow, isDocumentToursHeldHeader);
 
   for (let r = headerRowIdx + 1; r < values.length; r++) {
     const row = values[r] || [];
@@ -190,6 +214,7 @@ export async function getIntakeKpisFromSheet({
       totalIntakeCalls: toNumber(row[idx("Total Intake Calls")]),
       designMeetingsHeld: toNumber(row[idx("Design Meetings HELD")]),
       designMeetingsCancelled: toNumber(row[idx("Design Meetings CANCELLED")]),
+      documentToursHeld: documentToursHeldIdx >= 0 ? toNumber(row[documentToursHeldIdx]) : 0,
       pctQualified: toNumber(row[idx("% Qualified")]),
       totalConversion: toNumber(row[idx("Total Conversion")]),
       sourceRow: headers

@@ -16,20 +16,23 @@ type Body = {
   isHtml?: boolean;
 };
 
+function validChannel(channel: unknown): channel is Body["channel"] {
+  return channel === "EMAIL" || channel === "SMS";
+}
+
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
 
-  const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-  if (!user || user.role !== "ADMIN") return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
-
-  const firmId = user.activeFirmId;
+  const user = await prisma.user.findUnique({ where: { email: session.user.email }, select: { activeFirmId: true } });
+  const firmId = user?.activeFirmId;
   if (!firmId) return NextResponse.json({ ok: false, error: "no active firm" }, { status: 400 });
 
   const body = (await req.json().catch(() => null)) as Body | null;
   if (!body?.key?.trim() || !body?.name?.trim() || !body?.body?.trim()) {
     return NextResponse.json({ ok: false, error: "key, name, body required" }, { status: 400 });
   }
+  if (!validChannel(body.channel)) return NextResponse.json({ ok: false, error: "channel must be EMAIL or SMS" }, { status: 400 });
 
   const tpl = await prisma.messageTemplate.create({
     data: {

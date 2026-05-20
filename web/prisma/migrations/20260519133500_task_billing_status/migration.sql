@@ -1,0 +1,3 @@
+CREATE TYPE "TaskBillingStatus" AS ENUM ('BILLABLE', 'BILLED', 'NON_BILLABLE', 'NO_CHARGE');
+
+ALTER TABLE "Task" ADD COLUMN "billingStatus" "TaskBillingStatus" NOT NULL DEFAULT 'NON_BILLABLE';

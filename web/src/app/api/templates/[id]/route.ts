@@ -6,9 +6,11 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+type TemplateChannel = "EMAIL" | "SMS";
+
 type Body = {
   key?: string;
-  channel?: "EMAIL" | "SMS";
+  channel?: TemplateChannel;
   name?: string;
   subject?: string | null;
   body?: string;
@@ -16,25 +18,40 @@ type Body = {
   isHtml?: boolean;
 };
 
-export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
+function validChannel(channel: unknown): channel is TemplateChannel {
+  return channel === "EMAIL" || channel === "SMS";
+}
+
+async function requireActiveFirm() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  if (!session?.user?.email) return { ok: false as const, status: 401, error: "unauthorized" };
 
-  const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-  if (!user || user.role !== "ADMIN") return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    select: { role: true, activeFirmId: true },
+  });
+  if (!user) return { ok: false as const, status: 401, error: "unauthorized" };
+  if (!user.activeFirmId) return { ok: false as const, status: 400, error: "no active firm" };
 
-  const firmId = user.activeFirmId;
-  if (!firmId) return NextResponse.json({ ok: false, error: "no active firm" }, { status: 400 });
+  return { ok: true as const, firmId: user.activeFirmId, isAdmin: user.role === "ADMIN" };
+}
+
+export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const access = await requireActiveFirm();
+  if (!access.ok) return NextResponse.json({ ok: false, error: access.error }, { status: access.status });
 
   const { id } = await ctx.params;
   const body = (await req.json().catch(() => null)) as Body | null;
   if (!body) return NextResponse.json({ ok: false, error: "body required" }, { status: 400 });
+  if (body.channel !== undefined && !validChannel(body.channel)) {
+    return NextResponse.json({ ok: false, error: "channel must be EMAIL or SMS" }, { status: 400 });
+  }
 
   const r = await prisma.messageTemplate.updateMany({
-    where: { id, firmId },
+    where: { id, firmId: access.firmId },
     data: {
       key: body.key?.trim() ? body.key.trim() : undefined,
-      channel: body.channel as any,
+      channel: body.channel,
       name: body.name?.trim() ? body.name.trim() : undefined,
       subject: body.subject === undefined ? undefined : body.subject,
       body: body.body === undefined ? undefined : body.body,
@@ -49,17 +66,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
 }
 
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
-
-  const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-  if (!user || user.role !== "ADMIN") return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
-
-  const firmId = user.activeFirmId;
-  if (!firmId) return NextResponse.json({ ok: false, error: "no active firm" }, { status: 400 });
+  const access = await requireActiveFirm();
+  if (!access.ok) return NextResponse.json({ ok: false, error: access.error }, { status: access.status });
+  if (!access.isAdmin) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
 
   const { id } = await ctx.params;
-  const r = await prisma.messageTemplate.deleteMany({ where: { id, firmId } });
+  const r = await prisma.messageTemplate.deleteMany({ where: { id, firmId: access.firmId } });
   if (r.count !== 1) return NextResponse.json({ ok: false, error: "not found" }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

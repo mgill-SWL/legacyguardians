@@ -15,7 +15,10 @@ type Group = { label: string; items: Item[]; defaultOpen?: boolean };
 const GROUPS: Group[] = [
   {
     label: "",
-    items: [{ href: "/dashboard", label: "Dashboard", icon: "D" }],
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: "D" },
+      { href: "/tasks", label: "Tasks", icon: "✓" },
+    ],
   },
   {
     label: "Leads",

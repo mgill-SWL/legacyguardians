@@ -40,6 +40,25 @@ enum ContactCategory {
   CLIENT
   VENDOR
   REFERRER
+  PROFESSIONAL_ADVISOR
+  GENERAL
+}
+
+enum ContactProfessionalType {
+  FINANCIAL_ADVISOR
+  CPA
+  INSURANCE
+  BANKER
+  REALTOR
+  CARE_MANAGER
+  ATTORNEY
+  OTHER
+}
+
+enum ReferralSourceStatus {
+  PROSPECT
+  ACTIVE
+  INACTIVE
 }
 
 enum CrmTaskType {
@@ -220,6 +239,48 @@ enum FinancialClassificationType {
   IGNORE
 }
 
+enum OperatingCheckStatus {
+  DRAFT
+  ISSUED
+  CLEARED
+  VOID
+}
+
+enum TaskBillingStatus {
+  BILLABLE
+  BILLED
+  NON_BILLABLE
+  NO_CHARGE
+}
+
+enum MatterTimelineEventType {
+  MANUAL_PHONE_CALL
+  MANUAL_TEXT
+  MANUAL_EMAIL
+  MANUAL_MEETING
+  MANUAL_INTERNAL_NOTE
+  MANUAL_OTHER
+  TASK_CREATED
+  TASK_COMPLETED
+  TIME_ENTRY_CREATED
+  PIPELINE_STAGE_CHANGED
+  MATTER_FIELD_UPDATED
+}
+
+enum MatterFieldType {
+  TEXT
+  LONG_TEXT
+  DATE
+  CURRENCY
+  NUMBER
+  TRUE_FALSE
+  PICKLIST
+  MULTI_SELECT_PICKLIST
+  USER
+  CONTACT
+  LOOKUP
+}
+
 enum CrmMessageDirection {
   INBOUND
   OUTBOUND
@@ -265,13 +326,13 @@ enum FirmMemberKind {
 }
 
 model Firm {
-  id   String @id @default(cuid())
-  name String
-  slug String @unique @db.VarChar(4)
+  id       String @id @default(cuid())
+  name     String
+  slug     String @unique @db.VarChar(4)
   timeZone String @default("America/New_York")
 
-  members FirmMember[]
-  activeUsers User[] @relation("UserActiveFirm")
+  members     FirmMember[]
+  activeUsers User[]       @relation("UserActiveFirm")
 
   // Firm-scoped records (nullable firmId for now; backfilled in migration step)
   messageTemplates MessageTemplate[]
@@ -281,35 +342,43 @@ model Firm {
   managementPages  ManagementPage[]
   reportTables     ReportTable[]
 
-  matters          Matter[]
-  contacts         Contact[]
-  crmContacts      CrmContact[]
+  matters     Matter[]
+  contacts    Contact[]
+  crmContacts CrmContact[]
 
-  pipelines        Pipeline[]
-  pipelineStages   PipelineStage[]
-  matterPipelines  MatterPipeline[]
+  pipelines       Pipeline[]
+  pipelineStages  PipelineStage[]
+  matterPipelines MatterPipeline[]
 
-  billingAccounts  BillingAccount[]
-  kpiImportBatches KpiImportBatch[]
-  financialEvents  MatterFinancialEvent[]
-  financialAccounts FinancialAccount[]
-  financialImportBatches FinancialImportBatch[]
+  billingAccounts          BillingAccount[]
+  kpiImportBatches         KpiImportBatch[]
+  financialEvents          MatterFinancialEvent[]
+  financialAccounts        FinancialAccount[]
+  financialImportBatches   FinancialImportBatch[]
   rawFinancialTransactions RawFinancialTransaction[]
 
-  locations        FirmLocation[]
+  financialAccountCheckSequences FinancialAccountCheckSequence[]
+  operatingChecks                OperatingCheck[]
 
-  timeEntries      TimeEntry[]
-  owners           FirmOwner[]
-  ownershipStakes  FirmOwnershipStake[]
-  revenueSplits    FirmRevenueSplit[]
+  locations FirmLocation[]
+
+  timeEntries     TimeEntry[]
+  owners          FirmOwner[]
+  ownershipStakes FirmOwnershipStake[]
+  revenueSplits   FirmRevenueSplit[]
 
   invoiceNumberSequences InvoiceNumberSequence[]
-  invoices Invoice[]
-  payments Payment[]
+  invoices               Invoice[]
+  payments               Payment[]
 
   scheduledJobs ScheduledJob[]
 
   appointmentTypes AppointmentType[]
+
+  tasks Task[]
+
+  timelineEvents MatterTimelineEvent[]
+  matterFieldDefinitions MatterFieldDefinition[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -330,9 +399,9 @@ model FirmOwner {
   firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
 
   // PLLC ownership: attorney-person only.
-  fullName String
+  fullName  String
   barNumber String?
-  barState String?
+  barState  String?
 
   email String?
 
@@ -348,7 +417,7 @@ model FirmOwner {
 }
 
 model FirmRevenueSplit {
-  id     String @id @default(cuid())
+  id String @id @default(cuid())
 
   firmId String
   firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
@@ -370,10 +439,10 @@ model FirmRevenueSplit {
 }
 
 model FirmOwnershipStake {
-  id      String @id @default(cuid())
+  id String @id @default(cuid())
 
-  firmId  String
-  firm    Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
 
   ownerId String
   owner   FirmOwner @relation(fields: [ownerId], references: [id], onDelete: Cascade)
@@ -397,27 +466,27 @@ model FirmLocation {
   firmId String
   firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
 
-  activeUsers User[] @relation("UserActiveLocation")
+  activeUsers  User[] @relation("UserActiveLocation")
   defaultUsers User[] @relation("UserDefaultLocation")
 
   members FirmLocationMember[]
 
-  matters Matter[]
+  matters     Matter[]
   timeEntries TimeEntry[]
-  invoices Invoice[]
+  invoices    Invoice[]
 
   name String
   slug String
 
-  address1 String?
-  address2 String?
-  city String?
-  state String?
+  address1   String?
+  address2   String?
+  city       String?
+  state      String?
   postalCode String?
-  phone String?
+  phone      String?
 
-  sortOrder Int @default(0)
-  active Boolean @default(true)
+  sortOrder Int     @default(0)
+  active    Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -433,7 +502,7 @@ model FirmLocationMember {
   firmLocation   FirmLocation @relation(fields: [firmLocationId], references: [id], onDelete: Cascade)
 
   userId String
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Mirror firm membership roles (simple for v1)
   role FirmMemberRole @default(MEMBER)
@@ -454,10 +523,10 @@ model FirmMember {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  role   FirmMemberRole @default(MEMBER)
+  role FirmMemberRole @default(MEMBER)
 
   // Functional role in the firm (used for booking/calendar access).
-  kind   FirmMemberKind @default(STAFF)
+  kind FirmMemberKind @default(STAFF)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -474,13 +543,18 @@ model User {
   emailVerified DateTime?
   image         String?
 
-  role          UserRole  @default(STAFF)
+  role                   UserRole @default(STAFF)
   cosmolexTimekeeperName String?
 
-  accounts      Account[]
-  sessions      Session[]
+  accounts Account[]
+  sessions Session[]
 
-  matters       Matter[]  @relation("MattersCreatedBy")
+  matters Matter[] @relation("MattersCreatedBy")
+
+  createdTasks  Task[] @relation("TasksCreatedBy")
+  assignedTasks Task[] @relation("TasksAssignedTo")
+  matterTimelineEvents MatterTimelineEvent[] @relation("MatterTimelineActor")
+  ownedContacts Contact[] @relation("ContactRelationshipOwner")
 
   intakeSpecialistMatters Matter[] @relation("MatterIntakeSpecialist")
   leadAttorneyMatters     Matter[] @relation("MatterLeadAttorney")
@@ -489,16 +563,19 @@ model User {
 
   googleConnections GoogleConnection[]
 
-  ownedAppointmentTypes AppointmentType[] @relation("AppointmentTypeOwner")
-  createdBookingLinks   BookingLink[] @relation("BookingLinkCreator")
-  uploadedKpiImportBatches KpiImportBatch[] @relation("KpiImportBatchUploadedByUser")
-  createdFinancialEvents MatterFinancialEvent[] @relation("MatterFinancialEventCreatedByUser")
-  financialAttributions MatterFinancialAttribution[]
-  importedFinancialBatches FinancialImportBatch[] @relation("FinancialImportBatchImportedByUser")
-  reviewedTransactionItems TransactionReviewItem[] @relation("TransactionReviewReviewedByUser")
-  createdFinancialClassifications FinancialClassification[] @relation("FinancialClassificationCreatedByUser")
+  ownedAppointmentTypes           AppointmentType[]            @relation("AppointmentTypeOwner")
+  createdBookingLinks             BookingLink[]                @relation("BookingLinkCreator")
+  uploadedKpiImportBatches        KpiImportBatch[]             @relation("KpiImportBatchUploadedByUser")
+  createdFinancialEvents          MatterFinancialEvent[]       @relation("MatterFinancialEventCreatedByUser")
+  financialAttributions           MatterFinancialAttribution[]
+  importedFinancialBatches        FinancialImportBatch[]       @relation("FinancialImportBatchImportedByUser")
+  reviewedTransactionItems        TransactionReviewItem[]      @relation("TransactionReviewReviewedByUser")
+  createdFinancialClassifications FinancialClassification[]    @relation("FinancialClassificationCreatedByUser")
 
-  timeEntriesCreated TimeEntry[] @relation("TimeEntriesCreatedBy")
+  operatingChecksCreated OperatingCheck[] @relation("OperatingChecksCreatedBy")
+  operatingChecksPrinted OperatingCheck[] @relation("OperatingChecksPrintedBy")
+
+  timeEntriesCreated      TimeEntry[] @relation("TimeEntriesCreatedBy")
   timeEntriesAsTimekeeper TimeEntry[] @relation("TimeEntriesTimekeeper")
 
   invoicesCreated Invoice[] @relation("InvoicesCreatedBy")
@@ -508,7 +585,7 @@ model User {
 
   // v1: user's active firm for scoping queries (until we ship a firm switcher UI)
   activeFirmId String?
-  activeFirm   Firm? @relation("UserActiveFirm", fields: [activeFirmId], references: [id], onDelete: SetNull)
+  activeFirm   Firm?   @relation("UserActiveFirm", fields: [activeFirmId], references: [id], onDelete: SetNull)
 
   activeLocationId String?
   activeLocation   FirmLocation? @relation("UserActiveLocation", fields: [activeLocationId], references: [id], onDelete: SetNull)
@@ -523,16 +600,16 @@ model User {
   ftmEnsureOwnerSteps FtmStep[] @relation("FtmEnsureOwner")
   ftmDoerSteps        FtmStep[] @relation("FtmDoer")
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model RingCentralConnection {
-  id           String   @id @default(cuid())
-  userId       String   @unique
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  rcUserId     String?
+  rcUserId      String?
   rcExtensionId String?
 
   accessToken  String
@@ -540,12 +617,12 @@ model RingCentralConnection {
   expiresAt    DateTime
   scope        String?
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model GoogleConnection {
-  id        String @id @default(cuid())
+  id          String @id @default(cuid())
   googleEmail String @unique
 
   // OAuth tokens
@@ -555,23 +632,23 @@ model GoogleConnection {
   scope        String?
 
   connectedByUserId String?
-  connectedByUser   User? @relation(fields: [connectedByUserId], references: [id], onDelete: SetNull)
+  connectedByUser   User?   @relation(fields: [connectedByUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model BillingAccount {
-  id          String @id @default(cuid())
-  firmId      String
-  firm        Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
 
   name        String
   accountType BillingAccountType
 
   sourceSystem FinancialSourceSystem @default(MANUAL)
   externalId   String?
-  active       Boolean @default(true)
+  active       Boolean               @default(true)
 
   financialEventsFrom MatterFinancialEvent[] @relation("FinancialEventFromAccount")
   financialEventsTo   MatterFinancialEvent[] @relation("FinancialEventToAccount")
@@ -584,20 +661,23 @@ model BillingAccount {
 }
 
 model FinancialAccount {
-  id        String @id @default(cuid())
-  firmId    String
-  firm      Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
 
-  name      String
-  kind      FinancialAccountKind
+  name String
+  kind FinancialAccountKind
 
   institutionName String?
   last4           String?
   externalId      String?
   active          Boolean @default(true)
 
-  importBatches    FinancialImportBatch[]
-  rawTransactions  RawFinancialTransaction[]
+  importBatches   FinancialImportBatch[]
+  rawTransactions RawFinancialTransaction[]
+
+  operatingCheckSequence FinancialAccountCheckSequence?
+  operatingChecks        OperatingCheck[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -606,19 +686,79 @@ model FinancialAccount {
   @@index([firmId, kind, active])
 }
 
+model FinancialAccountCheckSequence {
+  id String @id @default(cuid())
+
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  financialAccountId String           @unique
+  financialAccount   FinancialAccount @relation(fields: [financialAccountId], references: [id], onDelete: Cascade)
+
+  // Next proposed check number for this bank account.
+  nextNumber Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([firmId])
+}
+
+model OperatingCheck {
+  id String @id @default(cuid())
+
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  financialAccountId String
+  financialAccount   FinancialAccount @relation(fields: [financialAccountId], references: [id], onDelete: Cascade)
+
+  status OperatingCheckStatus @default(DRAFT)
+
+  // Stored as text because some check stock uses leading zeros / suffixes.
+  // NOTE: When toBePrinted=true, the check number is assigned at print-time.
+  checkNumber String?
+  issueDate   DateTime
+  payeeName   String
+  amountCents Int
+  memo        String?
+
+  // If true, this check is intended to be printed by LG (vs handwritten / printed elsewhere).
+  toBePrinted Boolean @default(true)
+
+  printedAt       DateTime?
+  printedByUserId String?
+  printedByUser   User?     @relation("OperatingChecksPrintedBy", fields: [printedByUserId], references: [id], onDelete: SetNull)
+
+  // When a bank CSV transaction clears this check.
+  clearedRawTransactionId String?
+  clearedRawTransaction   RawFinancialTransaction? @relation("OperatingCheckClearedRawTransaction", fields: [clearedRawTransactionId], references: [id], onDelete: SetNull)
+
+  createdByUserId String?
+  createdByUser   User?   @relation("OperatingChecksCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([financialAccountId, checkNumber])
+  @@index([firmId, financialAccountId, issueDate])
+  @@index([status, issueDate])
+  @@index([clearedRawTransactionId])
+}
+
 model FinancialImportBatch {
-  id        String @id @default(cuid())
-  firmId    String
-  firm      Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
 
-  source        FinancialFeedSource
-  accountId     String?
-  account       FinancialAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  source    FinancialFeedSource
+  accountId String?
+  account   FinancialAccount?   @relation(fields: [accountId], references: [id], onDelete: SetNull)
 
-  sourceFilename String?
-  sourceFileUrl  String?
+  sourceFilename   String?
+  sourceFileUrl    String?
   importedByUserId String?
-  importedByUser   User? @relation("FinancialImportBatchImportedByUser", fields: [importedByUserId], references: [id], onDelete: SetNull)
+  importedByUser   User?   @relation("FinancialImportBatchImportedByUser", fields: [importedByUserId], references: [id], onDelete: SetNull)
 
   rawTransactions RawFinancialTransaction[]
 
@@ -629,9 +769,9 @@ model FinancialImportBatch {
 }
 
 model RawFinancialTransaction {
-  id        String @id @default(cuid())
-  firmId    String
-  firm      Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
 
   accountId String?
   account   FinancialAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
@@ -654,8 +794,10 @@ model RawFinancialTransaction {
   rawData    Json
   dedupeHash String
 
-  reviewItems      TransactionReviewItem[]
+  reviewItems     TransactionReviewItem[]
   classifications FinancialClassification[]
+
+  clearedOperatingChecks OperatingCheck[] @relation("OperatingCheckClearedRawTransaction")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -667,18 +809,18 @@ model RawFinancialTransaction {
 }
 
 model TransactionReviewItem {
-  id        String @id @default(cuid())
+  id String @id @default(cuid())
 
   rawTransactionId String
   rawTransaction   RawFinancialTransaction @relation(fields: [rawTransactionId], references: [id], onDelete: Cascade)
 
-  status            TransactionReviewStatus @default(UNREVIEWED)
+  status            TransactionReviewStatus      @default(UNREVIEWED)
   suggestedCategory FinancialClassificationType?
   reviewNotes       String?
 
   reviewedByUserId String?
-  reviewedByUser   User? @relation("TransactionReviewReviewedByUser", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
-  reviewedAt DateTime?
+  reviewedByUser   User?     @relation("TransactionReviewReviewedByUser", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  reviewedAt       DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -688,7 +830,7 @@ model TransactionReviewItem {
 }
 
 model FinancialClassification {
-  id        String @id @default(cuid())
+  id String @id @default(cuid())
 
   rawTransactionId String
   rawTransaction   RawFinancialTransaction @relation(fields: [rawTransactionId], references: [id], onDelete: Cascade)
@@ -709,7 +851,7 @@ model FinancialClassification {
   confidence    Int?
 
   createdByUserId String?
-  createdByUser   User? @relation("FinancialClassificationCreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdByUser   User?   @relation("FinancialClassificationCreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -721,13 +863,13 @@ model FinancialClassification {
 }
 
 model KpiImportBatch {
-  id        String @id @default(cuid())
-  firmId    String
-  firm      Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
 
   sourceSystem FinancialSourceSystem @default(COSMOLEX)
   reportType   KpiImportReportType
-  status       KpiImportBatchStatus @default(PENDING)
+  status       KpiImportBatchStatus  @default(PENDING)
 
   rangeStart DateTime?
   rangeEnd   DateTime?
@@ -737,7 +879,7 @@ model KpiImportBatch {
   errorMessage   String?
 
   uploadedByUserId String?
-  uploadedByUser   User? @relation("KpiImportBatchUploadedByUser", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+  uploadedByUser   User?   @relation("KpiImportBatchUploadedByUser", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
 
   financialEvents MatterFinancialEvent[]
 
@@ -749,12 +891,12 @@ model KpiImportBatch {
 }
 
 model MatterFinancialEvent {
-  id        String @id @default(cuid())
-  firmId    String
-  firm      Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
 
-  matterId  String?
-  matter    Matter? @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  matterId String?
+  matter   Matter? @relation(fields: [matterId], references: [id], onDelete: SetNull)
 
   eventType MatterFinancialEventType
   eventDate DateTime
@@ -762,13 +904,13 @@ model MatterFinancialEvent {
   amountCents Int
   currency    String @default("USD")
 
-  sourceSystem        FinancialSourceSystem @default(IMPORT)
-  sourceReference     String?
-  sourceInvoiceNumber String?
+  sourceSystem           FinancialSourceSystem @default(IMPORT)
+  sourceReference        String?
+  sourceInvoiceNumber    String?
   sourceMatterFileNumber String?
-  sourceClientName    String?
-  sourceMatterName    String?
-  notes               String?
+  sourceClientName       String?
+  sourceMatterName       String?
+  notes                  String?
 
   fromAccountId String?
   fromAccount   BillingAccount? @relation("FinancialEventFromAccount", fields: [fromAccountId], references: [id], onDelete: SetNull)
@@ -780,7 +922,7 @@ model MatterFinancialEvent {
   importBatch   KpiImportBatch? @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
 
   createdByUserId String?
-  createdByUser   User? @relation("MatterFinancialEventCreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdByUser   User?   @relation("MatterFinancialEventCreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   attributions MatterFinancialAttribution[]
 
@@ -794,13 +936,13 @@ model MatterFinancialEvent {
 }
 
 model MatterFinancialAttribution {
-  id        String @id @default(cuid())
+  id String @id @default(cuid())
 
   financialEventId String
   financialEvent   MatterFinancialEvent @relation(fields: [financialEventId], references: [id], onDelete: Cascade)
 
-  userId      String?
-  user        User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   displayName String
   role        FinancialAttributionRole @default(TIMEKEEPER)
@@ -824,16 +966,16 @@ enum AppointmentStatus {
 }
 
 model AppointmentType {
-  id    String @id @default(cuid())
-  slug  String @unique
-  name  String
+  id   String @id @default(cuid())
+  slug String @unique
+  name String
 
   // Multi-firm + ownership (v2)
   firmId String?
-  firm   Firm?  @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  firm   Firm?   @relation(fields: [firmId], references: [id], onDelete: Cascade)
 
   ownerUserId String?
-  ownerUser   User?  @relation("AppointmentTypeOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  ownerUser   User?   @relation("AppointmentTypeOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
 
   // Public link id (unguessable) for sharing.
   publicId String @unique @default(cuid())
@@ -849,7 +991,7 @@ model AppointmentType {
   rollingWeeks     Int @default(8)
   maxPerDay        Int @default(6)
 
-  assignees AppointmentAssignee[]
+  assignees    AppointmentAssignee[]
   appointments Appointment[]
 
   bookingLinks BookingLink[]
@@ -867,7 +1009,7 @@ model BookingLink {
   type   AppointmentType @relation(fields: [typeId], references: [id], onDelete: Cascade)
 
   createdByUserId String?
-  createdByUser   User? @relation("BookingLinkCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdByUser   User?   @relation("BookingLinkCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   // Use limits
   maxUses  Int @default(1)
@@ -875,7 +1017,7 @@ model BookingLink {
 
   // Optional expiry
   expiresAt DateTime?
-  enabled Boolean @default(true)
+  enabled   Boolean   @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -885,13 +1027,13 @@ model BookingLink {
 }
 
 model AppointmentAssignee {
-  id      String @id @default(cuid())
-  typeId  String
-  type    AppointmentType @relation(fields: [typeId], references: [id], onDelete: Cascade)
+  id     String          @id @default(cuid())
+  typeId String
+  type   AppointmentType @relation(fields: [typeId], references: [id], onDelete: Cascade)
 
   googleEmail String
   displayName String?
-  timeZone    String @default("America/New_York")
+  timeZone    String  @default("America/New_York")
 
   // Weekday office hours (minutes since midnight). MVP assumes Mon–Fri only.
   weekdayStartMin Int @default(540) // 09:00
@@ -907,11 +1049,11 @@ model AppointmentAssignee {
 }
 
 model Appointment {
-  id      String @id @default(cuid())
-  typeId  String
-  type    AppointmentType @relation(fields: [typeId], references: [id], onDelete: Cascade)
+  id     String          @id @default(cuid())
+  typeId String
+  type   AppointmentType @relation(fields: [typeId], references: [id], onDelete: Cascade)
 
-  status  AppointmentStatus @default(SCHEDULED)
+  status AppointmentStatus @default(SCHEDULED)
 
   startsAt DateTime
   endsAt   DateTime
@@ -943,17 +1085,17 @@ enum ScheduledJobStatus {
 }
 
 model ScheduledJob {
-  id     String @id @default(cuid())
+  id String @id @default(cuid())
 
   firmId String
   firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
 
-  runAt  DateTime
-  type   ScheduledJobType
-  status ScheduledJobStatus @default(PENDING)
-  attempts Int @default(0)
+  runAt     DateTime
+  type      ScheduledJobType
+  status    ScheduledJobStatus @default(PENDING)
+  attempts  Int                @default(0)
   lastError String?
-  payload Json
+  payload   Json
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -968,9 +1110,9 @@ enum MessageChannel {
 }
 
 model MessageTemplate {
-  id      String @id @default(cuid())
+  id      String         @id @default(cuid())
   firmId  String
-  firm    Firm  @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  firm    Firm           @relation(fields: [firmId], references: [id], onDelete: Cascade)
   key     String
   channel MessageChannel
   name    String
@@ -999,22 +1141,22 @@ enum FeeFeatureType {
 }
 
 model FeeFeature {
-  id    String @id @default(cuid())
+  id     String         @id @default(cuid())
   firmId String?
-  firm   Firm?  @relation(fields: [firmId], references: [id], onDelete: SetNull)
-  key   String @unique
-  label String
-  group String?
-  type  FeeFeatureType @default(MONEY)
+  firm   Firm?          @relation(fields: [firmId], references: [id], onDelete: SetNull)
+  key    String         @unique
+  label  String
+  group  String?
+  type   FeeFeatureType @default(MONEY)
 
-  moneyCents Int? @default(0)
-  textValue  String?
-  boolValue  Boolean?
+  moneyCents  Int?     @default(0)
+  textValue   String?
+  boolValue   Boolean?
   numberValue Float?
 
   description String?
-  sortOrder Int @default(0)
-  active Boolean @default(true)
+  sortOrder   Int     @default(0)
+  active      Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1029,17 +1171,17 @@ enum HelpContentFormat {
 }
 
 model HelpArticle {
-  id    String @id @default(cuid())
+  id     String            @id @default(cuid())
   firmId String?
-  firm   Firm?  @relation(fields: [firmId], references: [id], onDelete: SetNull)
-  slug  String @unique
-  title String
+  firm   Firm?             @relation(fields: [firmId], references: [id], onDelete: SetNull)
+  slug   String            @unique
+  title  String
   format HelpContentFormat @default(MARKDOWN)
-  body  String
+  body   String
 
-  tags String[]
-  published Boolean @default(true)
-  sortOrder Int @default(0)
+  tags      String[]
+  published Boolean  @default(true)
+  sortOrder Int      @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1082,29 +1224,32 @@ model VerificationToken {
 }
 
 model Matter {
-  id          String       @id @default(cuid())
-  firmId      String?
-  firm        Firm?        @relation(fields: [firmId], references: [id], onDelete: SetNull)
-  status      MatterStatus @default(DRAFT)
+  id     String       @id @default(cuid())
+  firmId String?
+  firm   Firm?        @relation(fields: [firmId], references: [id], onDelete: SetNull)
+  status MatterStatus @default(DRAFT)
 
   // v0: keep it simple; later we can normalize people/roles.
   displayName String
 
   // lightweight contact/value fields for pipeline cards (MVP)
-  primaryEmail String?
-  primaryPhone String?
-  estimatedValueCents Int @default(0)
+  primaryEmail        String?
+  primaryPhone        String?
+  estimatedValueCents Int     @default(0)
 
   // assignments for pipeline cards (MVP)
   intakeSpecialistId String?
-  intakeSpecialist   User? @relation("MatterIntakeSpecialist", fields: [intakeSpecialistId], references: [id], onDelete: SetNull)
+  intakeSpecialist   User?   @relation("MatterIntakeSpecialist", fields: [intakeSpecialistId], references: [id], onDelete: SetNull)
 
   leadAttorneyId String?
-  leadAttorney   User? @relation("MatterLeadAttorney", fields: [leadAttorneyId], references: [id], onDelete: SetNull)
+  leadAttorney   User?   @relation("MatterLeadAttorney", fields: [leadAttorneyId], references: [id], onDelete: SetNull)
 
   // primary client contact (v1; later: MatterContact join for multiple parties)
   primaryContactId String?
-  primaryContact   Contact? @relation(fields: [primaryContactId], references: [id], onDelete: SetNull)
+  primaryContact   Contact? @relation("MatterPrimaryContact", fields: [primaryContactId], references: [id], onDelete: SetNull)
+
+  referralSourceContactId String?
+  referralSourceContact   Contact? @relation("MatterReferralSource", fields: [referralSourceContactId], references: [id], onDelete: SetNull)
 
   // Location attribution for reporting (P&L by location)
   primaryLocationId String?
@@ -1113,21 +1258,137 @@ model Matter {
   convertedFromLeads CrmLeadPipeline[] @relation("LeadConvertedMatter")
 
   createdById String
-  createdBy   User         @relation("MattersCreatedBy", fields: [createdById], references: [id])
+  createdBy   User   @relation("MattersCreatedBy", fields: [createdById], references: [id])
 
-  intake      IntakeResponse?
-  documents   GeneratedDocument[]
-  pipelineLinks MatterPipeline[]
-  financialEvents MatterFinancialEvent[]
-  timeEntries TimeEntry[]
+  intake                   IntakeResponse?
+  documents                GeneratedDocument[]
+  pipelineLinks            MatterPipeline[]
+  financialEvents          MatterFinancialEvent[]
+  timeEntries              TimeEntry[]
   financialClassifications FinancialClassification[]
 
   invoices Invoice[]
 
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  tasks Task[]
+  timelineEvents MatterTimelineEvent[]
+  fieldValues MatterFieldValue[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([firmId, primaryLocationId])
+  @@index([referralSourceContactId])
+}
+
+model Task {
+  id     String @id @default(cuid())
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  matterId String?
+  matter   Matter? @relation(fields: [matterId], references: [id], onDelete: SetNull)
+
+  title       String
+  description String @db.Text
+
+  deadline DateTime?
+
+  // 0-100, enforced by migration check constraint in increments of 10.
+  completionPercent Int @default(0)
+
+  billingStatus TaskBillingStatus @default(NON_BILLABLE)
+
+  createdByUserId String
+  createdByUser   User   @relation("TasksCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  assigneeUserId String
+  assigneeUser   User   @relation("TasksAssignedTo", fields: [assigneeUserId], references: [id], onDelete: Restrict)
+
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([firmId, completionPercent, deadline])
+  @@index([firmId, assigneeUserId, completionPercent, deadline])
+  @@index([matterId, completionPercent, deadline])
+  @@index([createdByUserId])
+}
+
+model MatterTimelineEvent {
+  id     String @id @default(cuid())
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  matterId String
+  matter   Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
+
+  actorUserId String?
+  actorUser   User?   @relation("MatterTimelineActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  eventType MatterTimelineEventType
+  title     String
+  body      String?
+  details   Json?
+
+  relatedTaskId           String?
+  relatedTimeEntryId      String?
+  relatedMatterPipelineId String?
+
+  occurredAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([firmId, occurredAt])
+  @@index([matterId, occurredAt])
+  @@index([actorUserId, occurredAt])
+  @@index([relatedTaskId])
+  @@index([relatedTimeEntryId])
+  @@index([relatedMatterPipelineId])
+}
+
+model MatterFieldDefinition {
+  id     String @id @default(cuid())
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  key       String
+  label     String
+  type      MatterFieldType
+  helpText  String?
+  sortOrder Int             @default(0)
+  active    Boolean         @default(true)
+  required  Boolean         @default(false)
+
+  // Picklist/multi-select options, and lookup target metadata.
+  options      Json?
+  lookupTarget String?
+
+  values MatterFieldValue[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([firmId, key])
+  @@index([firmId, active, sortOrder])
+}
+
+model MatterFieldValue {
+  id String @id @default(cuid())
+
+  matterId String
+  matter   Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
+
+  fieldDefinitionId String
+  fieldDefinition   MatterFieldDefinition @relation(fields: [fieldDefinitionId], references: [id], onDelete: Cascade)
+
+  value Json
+
+  updatedByUserId String?
+  updatedAt       DateTime @updatedAt
+  createdAt       DateTime @default(now())
+
+  @@unique([matterId, fieldDefinitionId])
+  @@index([fieldDefinitionId])
 }
 
 model TimeEntry {
@@ -1143,32 +1404,32 @@ model TimeEntry {
 
   // Who did the work (billable timekeeper)
   timekeeperId String
-  timekeeper   User @relation("TimeEntriesTimekeeper", fields: [timekeeperId], references: [id], onDelete: Restrict)
+  timekeeper   User   @relation("TimeEntriesTimekeeper", fields: [timekeeperId], references: [id], onDelete: Restrict)
 
   // Who created/edited the entry (admin/staff)
   createdByUserId String?
-  createdByUser   User? @relation("TimeEntriesCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdByUser   User?   @relation("TimeEntriesCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
-  workDate DateTime
+  workDate  DateTime
   narrative String
 
   pricingMode TimeEntryPricingMode @default(HOURLY)
 
   // For HOURLY entries (store minutes; UI can accept tenths-of-hour)
-  durationMinutes Int @default(0)
+  durationMinutes Int  @default(0)
   hourlyRateCents Int?
 
   // For FLAT entries (amount is stored directly on the entry)
   flatAmountCents Int?
 
-  billable Boolean @default(true)
+  billable Boolean         @default(true)
   status   TimeEntryStatus @default(DRAFT)
 
   // Future: link to invoice line item
-  invoiceId String?
+  invoiceId     String?
   invoiceLineId String?
 
-  invoice Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  invoice     Invoice?     @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
   invoiceLine InvoiceLine? @relation(fields: [invoiceLineId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
@@ -1182,12 +1443,12 @@ model TimeEntry {
 }
 
 model InvoiceNumberSequence {
-  id     String @id @default(cuid())
+  id String @id @default(cuid())
 
   firmId String
   firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
 
-  year   Int
+  year    Int
   nextSeq Int @default(1)
 
   createdAt DateTime @default(now())
@@ -1198,7 +1459,7 @@ model InvoiceNumberSequence {
 }
 
 model Invoice {
-  id     String @id @default(cuid())
+  id String @id @default(cuid())
 
   firmId String
   firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
@@ -1213,23 +1474,23 @@ model Invoice {
 
   // Immutable numbering
   firmSlugAtIssue String @db.VarChar(4)
-  invoiceYear Int
-  invoiceSeq  Int
-  invoiceNumber String
+  invoiceYear     Int
+  invoiceSeq      Int
+  invoiceNumber   String
 
   issueDate DateTime?
   dueDate   DateTime?
 
-  currency String @default("USD")
-  notes String?
+  currency String  @default("USD")
+  notes    String?
 
   subtotalCents Int @default(0)
   totalCents    Int @default(0)
 
   createdByUserId String?
-  createdByUser   User? @relation("InvoicesCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdByUser   User?   @relation("InvoicesCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
-  lines InvoiceLine[]
+  lines       InvoiceLine[]
   allocations PaymentAllocation[]
   timeEntries TimeEntry[]
 
@@ -1251,10 +1512,10 @@ model InvoiceLine {
 
   lineType InvoiceLineType @default(FEE)
 
-  description String
-  quantityTenths Int @default(0)
-  unitPriceCents Int @default(0)
-  amountCents Int
+  description    String
+  quantityTenths Int    @default(0)
+  unitPriceCents Int    @default(0)
+  amountCents    Int
 
   timeEntryId String?
 
@@ -1274,11 +1535,11 @@ model Payment {
   id String @id @default(cuid())
 
   firmId String
-  firm   Firm @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
 
   receivedAt DateTime
-  method PaymentMethod @default(OTHER)
-  status PaymentStatus @default(POSTED)
+  method     PaymentMethod @default(OTHER)
+  status     PaymentStatus @default(POSTED)
 
   direction PaymentDirection @default(INFLOW)
 
@@ -1286,10 +1547,10 @@ model Payment {
   reference String?
 
   amountCents Int
-  currency String @default("USD")
+  currency    String @default("USD")
 
   createdByUserId String?
-  createdByUser   User? @relation("PaymentsCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdByUser   User?   @relation("PaymentsCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   allocations PaymentAllocation[]
 
@@ -1307,7 +1568,7 @@ model PaymentAllocation {
   firmId String
 
   paymentId String
-  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
 
   invoiceId String
   invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
@@ -1326,17 +1587,22 @@ model PaymentAllocation {
 }
 
 model Contact {
-  id            String @id @default(cuid())
-  firmId        String?
-  firm          Firm?   @relation(fields: [firmId], references: [id], onDelete: SetNull)
-  displayName   String
-  email         String?
-  phone         String?
-  organization  String?
-  categories    ContactCategory[]
-  notes         String?
+  id           String            @id @default(cuid())
+  firmId       String?
+  firm         Firm?             @relation(fields: [firmId], references: [id], onDelete: SetNull)
+  displayName  String
+  email        String?
+  phone        String?
+  organization String?
+  categories   ContactCategory[]
+  professionalType ContactProfessionalType?
+  referralSourceStatus ReferralSourceStatus?
+  relationshipOwnerId String?
+  relationshipOwner   User? @relation("ContactRelationshipOwner", fields: [relationshipOwnerId], references: [id], onDelete: SetNull)
+  notes        String?
 
-  matters       Matter[]
+  primaryMatters Matter[] @relation("MatterPrimaryContact")
+  referredMatters Matter[] @relation("MatterReferralSource")
 
   financialClassifications FinancialClassification[]
 
@@ -1346,13 +1612,16 @@ model Contact {
   updatedAt DateTime @updatedAt
 
   @@index([displayName])
+  @@index([firmId, professionalType])
+  @@index([firmId, referralSourceStatus])
+  @@index([relationshipOwnerId])
 }
 
 model ManagementPage {
-  id      String @id @default(cuid())
+  id      String  @id @default(cuid())
   firmId  String?
   firm    Firm?   @relation(fields: [firmId], references: [id], onDelete: SetNull)
-  slug    String @unique
+  slug    String  @unique
   title   String
   content String
 
@@ -1361,13 +1630,13 @@ model ManagementPage {
 }
 
 model HelpTopic {
-  id    String @id @default(cuid())
+  id     String   @id @default(cuid())
   firmId String?
-  firm   Firm?  @relation(fields: [firmId], references: [id], onDelete: SetNull)
-  slug  String @unique
-  title String
-  body  String
-  tags  String[]
+  firm   Firm?    @relation(fields: [firmId], references: [id], onDelete: SetNull)
+  slug   String   @unique
+  title  String
+  body   String
+  tags   String[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1382,11 +1651,11 @@ enum ReportColumnType {
 }
 
 model ReportTable {
-  id   String @id @default(cuid())
+  id     String  @id @default(cuid())
   firmId String?
-  firm   Firm?  @relation(fields: [firmId], references: [id], onDelete: SetNull)
-  slug String @unique
-  name String
+  firm   Firm?   @relation(fields: [firmId], references: [id], onDelete: SetNull)
+  slug   String  @unique
+  name   String
 
   columns ReportColumn[]
   rows    ReportRow[]
@@ -1396,14 +1665,14 @@ model ReportTable {
 }
 
 model ReportColumn {
-  id      String @id @default(cuid())
+  id      String      @id @default(cuid())
   tableId String
   table   ReportTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
 
-  key      String
-  label    String
-  type     ReportColumnType @default(TEXT)
-  sortOrder Int @default(0)
+  key       String
+  label     String
+  type      ReportColumnType @default(TEXT)
+  sortOrder Int              @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1413,14 +1682,14 @@ model ReportColumn {
 }
 
 model ReportRow {
-  id      String @id @default(cuid())
+  id      String      @id @default(cuid())
   tableId String
   table   ReportTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
 
-  rowKey  String
-  label   String
-  sortOrder Int @default(0)
-  data    Json
+  rowKey    String
+  label     String
+  sortOrder Int    @default(0)
+  data      Json
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1430,29 +1699,29 @@ model ReportRow {
 }
 
 model IntakeResponse {
-  id        String   @id @default(cuid())
-  matterId  String   @unique
-  matter    Matter   @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  matterId String @unique
+  matter   Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
 
   // v0: JSON blob; evolve to structured columns as forms stabilize.
-  data      Json
+  data Json
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model GeneratedDocument {
-  id        String       @id @default(cuid())
-  matterId  String
-  matter    Matter       @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  matterId String
+  matter   Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
 
-  type      DocumentType
+  type DocumentType
 
   // For MVP we can store generated content as a Blob later; for now store metadata.
-  fileName  String?
-  fileUrl   String?
+  fileName String?
+  fileUrl  String?
 
-  createdAt DateTime     @default(now())
+  createdAt DateTime @default(now())
 
   @@index([matterId])
 }
@@ -1469,33 +1738,33 @@ model CrmContact {
 
   phoneVerifiedAt DateTime?
 
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   registrations CrmRegistration[]
   tasks         CrmTask[]
   threads       CrmMessageThread[]
-  verifications CrmVerification[] @relation("CrmContactVerifications")
+  verifications CrmVerification[]  @relation("CrmContactVerifications")
 
   prequalSubmissions CrmPrequalSubmission[]
   pipelineRecords    CrmLeadPipeline[]
 }
 
 model CrmCampaign {
-  id        String @id @default(cuid())
-  slug      String @unique
-  name      String
+  id   String @id @default(cuid())
+  slug String @unique
+  name String
 
   // Config defaults (MVP)
-  defaultSenderName String @default("Noah")
+  defaultSenderName String  @default("Noah")
   bookingUrl        String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  showings       CrmShowing[]
-  registrations  CrmRegistration[]
-  tasks          CrmTask[]
+  showings      CrmShowing[]
+  registrations CrmRegistration[]
+  tasks         CrmTask[]
 
   prequalSubmissions CrmPrequalSubmission[]
   pipelineRecords    CrmLeadPipeline[]
@@ -1507,10 +1776,10 @@ model CrmShowing {
   campaignId String
   campaign   CrmCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
-  startsAt   DateTime
-  endsAt     DateTime
+  startsAt DateTime
+  endsAt   DateTime
 
-  createdAt  DateTime @default(now())
+  createdAt DateTime @default(now())
 
   registrations CrmRegistration[]
   tasks         CrmTask[]
@@ -1520,7 +1789,7 @@ model CrmShowing {
 }
 
 model CrmRegistration {
-  id        String @id @default(cuid())
+  id String @id @default(cuid())
 
   contactId String
   contact   CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
@@ -1531,7 +1800,7 @@ model CrmRegistration {
   showingId String
   showing   CrmShowing @relation(fields: [showingId], references: [id], onDelete: Cascade)
 
-  status    String @default("REGISTERED") // TODO enum later when we wire attendance
+  status     String  @default("REGISTERED") // TODO enum later when we wire attendance
   watchToken String? @unique
 
   phoneVerifiedAt DateTime?
@@ -1548,8 +1817,8 @@ model CrmRegistration {
 }
 
 model CrmVerification {
-  id        String @id @default(cuid())
-  purpose   CrmVerificationPurpose
+  id      String                 @id @default(cuid())
+  purpose CrmVerificationPurpose
 
   contactId String
   contact   CrmContact @relation("CrmContactVerifications", fields: [contactId], references: [id], onDelete: Cascade)
@@ -1559,9 +1828,9 @@ model CrmVerification {
 
   codeHash  String
   expiresAt DateTime
-  attempts  Int @default(0)
+  attempts  Int      @default(0)
 
-  sentAt    DateTime @default(now())
+  sentAt     DateTime  @default(now())
   verifiedAt DateTime?
 
   createdAt DateTime @default(now())
@@ -1573,7 +1842,7 @@ model CrmVerification {
 }
 
 model CrmPrequalSubmission {
-  id        String @id @default(cuid())
+  id String @id @default(cuid())
 
   contactId String
   contact   CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
@@ -1584,7 +1853,7 @@ model CrmPrequalSubmission {
   registrationId String?
   registration   CrmRegistration? @relation("CrmRegistrationPrequal", fields: [registrationId], references: [id], onDelete: SetNull)
 
-  source    String @default("internal") // typeform|internal
+  source    String  @default("internal") // typeform|internal
   qualified Boolean @default(false)
 
   // Denormalized key answers for reporting
@@ -1596,7 +1865,7 @@ model CrmPrequalSubmission {
   readyToStart        String?
   additionalNotes     String?
 
-  answers   Json
+  answers Json
 
   createdAt DateTime @default(now())
 
@@ -1605,42 +1874,42 @@ model CrmPrequalSubmission {
 }
 
 model CrmLeadPipeline {
-  id         String @id @default(cuid())
+  id String @id @default(cuid())
 
-  contactId  String
-  contact    CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contactId String
+  contact   CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
   campaignId String
   campaign   CrmCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
-  dateAdded  DateTime @default(now())
+  dateAdded       DateTime @default(now())
   additionalNotes String?
 
-  intakeCallAttempted Boolean @default(false)
+  intakeCallAttempted   Boolean   @default(false)
   intakeCallAttemptedAt DateTime?
 
-  appt1Scheduled Boolean @default(false)
+  appt1Scheduled Boolean               @default(false)
   appt1At        DateTime?
   appt1Status    CrmAppointmentStatus?
 
   leadQualityScore Int?
 
-  appt2Scheduled Boolean @default(false)
+  appt2Scheduled Boolean               @default(false)
   appt2At        DateTime?
   appt2Status    CrmAppointmentStatus?
 
   // Closing metrics (manual for now)
-  closed          Boolean @default(false)
-  cashCollectedCents Int @default(0)
-  revenueCents       Int @default(0)
+  closed             Boolean @default(false)
+  cashCollectedCents Int     @default(0)
+  revenueCents       Int     @default(0)
 
   // Lead → client conversion (RA signed)
-  raSignedAt        DateTime?
-  convertedAt       DateTime?
+  raSignedAt         DateTime?
+  convertedAt        DateTime?
   convertedContactId String?
-  convertedContact   Contact? @relation("LeadConvertedContact", fields: [convertedContactId], references: [id], onDelete: SetNull)
+  convertedContact   Contact?  @relation("LeadConvertedContact", fields: [convertedContactId], references: [id], onDelete: SetNull)
   convertedMatterId  String?
-  convertedMatter    Matter?  @relation("LeadConvertedMatter", fields: [convertedMatterId], references: [id], onDelete: SetNull)
+  convertedMatter    Matter?   @relation("LeadConvertedMatter", fields: [convertedMatterId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1650,13 +1919,13 @@ model CrmLeadPipeline {
 }
 
 model CrmDailySpend {
-  id        String @id @default(cuid())
+  id String @id @default(cuid())
 
   campaignId String
   campaign   CrmCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   // Store at midnight ET as a DateTime for now (we'll enforce in UI).
-  day       DateTime
+  day         DateTime
   amountCents Int
 
   createdAt DateTime @default(now())
@@ -1669,24 +1938,24 @@ model CrmDailySpend {
 // --- Matter pipelines (Kanban) ---
 
 model MatterPipeline {
-  id         String @id @default(cuid())
-  firmId     String?
-  firm       Firm?  @relation(fields: [firmId], references: [id], onDelete: SetNull)
+  id     String  @id @default(cuid())
+  firmId String?
+  firm   Firm?   @relation(fields: [firmId], references: [id], onDelete: SetNull)
 
-  matterId   String
-  matter     Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  matterId String
+  matter   Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
 
   pipelineId String
   pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
 
-  stageId    String
-  stage      PipelineStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  stageId String
+  stage   PipelineStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
 
   // ordering within a stage column (optional; used later)
-  sortKey    Int @default(0)
+  sortKey Int @default(0)
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([matterId, pipelineId])
   @@index([pipelineId, stageId])
@@ -1694,12 +1963,12 @@ model MatterPipeline {
 }
 
 model Pipeline {
-  id          String @id @default(cuid())
+  id          String  @id @default(cuid())
   firmId      String?
-  firm        Firm?  @relation(fields: [firmId], references: [id], onDelete: SetNull)
+  firm        Firm?   @relation(fields: [firmId], references: [id], onDelete: SetNull)
   name        String
   description String?
-  sortOrder   Int @default(0)
+  sortOrder   Int     @default(0)
 
   stages      PipelineStage[]
   matterLinks MatterPipeline[]
@@ -1709,17 +1978,17 @@ model Pipeline {
 }
 
 model PipelineStage {
-  id         String @id @default(cuid())
+  id         String   @id @default(cuid())
   firmId     String?
-  firm       Firm?  @relation(fields: [firmId], references: [id], onDelete: SetNull)
+  firm       Firm?    @relation(fields: [firmId], references: [id], onDelete: SetNull)
   pipelineId String
   pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
 
-  name       String
-  colorHex   String? // optional UI color
-  sortOrder  Int @default(0)
+  name      String
+  colorHex  String? // optional UI color
+  sortOrder Int     @default(0)
 
-  matters    MatterPipeline[]
+  matters MatterPipeline[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1730,38 +1999,38 @@ model PipelineStage {
 // --- Forever Task Maps (FTMs) ---
 
 model FtmMap {
-  id          String @id @default(cuid())
+  id          String  @id @default(cuid())
   title       String
   description String?
 
   // v1: structured steps (later: diagram nodes/edges)
-  steps       FtmStep[]
+  steps FtmStep[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model FtmStep {
-  id      String @id @default(cuid())
-  mapId   String
-  map     FtmMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  id    String @id @default(cuid())
+  mapId String
+  map   FtmMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
 
-  sortOrder Int @default(0)
-  name    String
+  sortOrder Int    @default(0)
+  name      String
 
   // Role assignments (simplified RACI)
   howOwnerUserId String?
-  howOwnerUser   User? @relation("FtmHowOwner", fields: [howOwnerUserId], references: [id], onDelete: SetNull)
+  howOwnerUser   User?   @relation("FtmHowOwner", fields: [howOwnerUserId], references: [id], onDelete: SetNull)
 
   ensureOwnerUserId String?
-  ensureOwnerUser   User? @relation("FtmEnsureOwner", fields: [ensureOwnerUserId], references: [id], onDelete: SetNull)
+  ensureOwnerUser   User?   @relation("FtmEnsureOwner", fields: [ensureOwnerUserId], references: [id], onDelete: SetNull)
 
   doerUserId String?
-  doerUser   User? @relation("FtmDoer", fields: [doerUserId], references: [id], onDelete: SetNull)
+  doerUser   User?   @relation("FtmDoer", fields: [doerUserId], references: [id], onDelete: SetNull)
   doerRole   String?
 
   // Light documentation
-  howToMd   String?
+  howToMd    String?
   doneWhenMd String?
 
   createdAt DateTime @default(now())
@@ -1771,22 +2040,22 @@ model FtmStep {
 }
 
 model CrmTask {
-  id         String @id @default(cuid())
-  contactId  String
-  contact    CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  id        String     @id @default(cuid())
+  contactId String
+  contact   CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
   campaignId String
   campaign   CrmCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
-  showingId  String?
-  showing    CrmShowing? @relation(fields: [showingId], references: [id], onDelete: SetNull)
+  showingId String?
+  showing   CrmShowing? @relation(fields: [showingId], references: [id], onDelete: SetNull)
 
-  type       CrmTaskType
-  priority   CrmPriority
-  ownerTeam  CrmOwnerTeam
-  status     CrmTaskStatus @default(OPEN)
+  type      CrmTaskType
+  priority  CrmPriority
+  ownerTeam CrmOwnerTeam
+  status    CrmTaskStatus @default(OPEN)
 
-  dueAt      DateTime
+  dueAt       DateTime
   lastTouchAt DateTime?
 
   disposition CrmDisposition?
@@ -1801,12 +2070,12 @@ model CrmTask {
 }
 
 model CrmMessageThread {
-  id        String @id @default(cuid())
+  id String @id @default(cuid())
 
   contactId String
   contact   CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
-  provider  CrmProvider
+  provider               CrmProvider
   providerConversationId String?
 
   lastMessageAt DateTime?
@@ -1814,26 +2083,26 @@ model CrmMessageThread {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  messages  CrmMessage[]
+  messages CrmMessage[]
 
   @@index([contactId])
 }
 
 model CrmMessage {
-  id        String @id @default(cuid())
+  id String @id @default(cuid())
 
-  threadId  String
-  thread    CrmMessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  threadId String
+  thread   CrmMessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
-  direction CrmMessageDirection
+  direction      CrmMessageDirection
   fromNumberE164 String
   toNumberE164   String
-  body      String
+  body           String
 
-  providerMessageId String? @unique
-  status    CrmMessageStatus
+  providerMessageId String?          @unique
+  status            CrmMessageStatus
 
-  sentAt    DateTime?
+  sentAt     DateTime?
   receivedAt DateTime?
 
   createdAt DateTime @default(now())
