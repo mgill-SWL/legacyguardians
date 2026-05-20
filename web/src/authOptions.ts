@@ -53,4 +53,29 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
   },
+  events: {
+    async createUser({ user }) {
+      const email = user.email?.toLowerCase() || "";
+      if (!email.endsWith("@speedwelllaw.com")) return;
+
+      const firm = await prisma.firm.findUnique({ where: { slug: "SWL" }, select: { id: true } });
+      if (!firm) return;
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { activeFirmId: firm.id },
+      });
+
+      await prisma.firmMember.upsert({
+        where: { firmId_userId: { firmId: firm.id, userId: user.id } },
+        update: {},
+        create: {
+          firmId: firm.id,
+          userId: user.id,
+          role: "MEMBER",
+          kind: "STAFF",
+        },
+      });
+    },
+  },
 };
