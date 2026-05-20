@@ -22,7 +22,54 @@
 ## Branding colors
 - **“Speedwell law blue”** = `#3F64AE`. (2026-05-13)
 - **Legacy Guardians primary blue** = `#2E4A7F`. (2026-05-13)
+- Legacy Guardians brand kit direction: Concept D shield is only for app icon/favicon/manifest icons; Concept C arch mark/lockups are the visible in-app logo. Prefer SVG and use light/dark variants based on theme. (2026-05-13)
 
 ## Vercel deployment notes
 - Vercel project Root Directory confirmed as `web/`. (2026-05-09)
 - Vercel environment variable *names* inventory captured (values not stored) in `memory/2026-05-09.md`. (2026-05-09)
+- GitHub push to `main` triggers Vercel auto-deploy; successful auth fix deployment observed for commit `e54c431` on 2026-05-20.
+
+## Bookkeeping / KPI architecture
+- Strategic product direction: Legacy Guardians should become the bookkeeping source of truth rather than CosmoLex; bank/card feeds or CSV imports plus in-app categorization/review should drive normalized financial events. CosmoLex becomes reconciliation/supporting input. (2026-05-05)
+- KPI architecture should use upstream DB-backed financial events/bookkeeping feeding KPIs, with Google Sheets as reporting output only. (2026-05-05)
+- `Trust to General Transfer` / trust-to-operating transfers count as **collection events** for KPI/business purposes, even if bookkeeping models them as transfers between trust and operating. (2026-05-05)
+- Attorney revenue / collected-revenue KPIs count only `4100:Fee Income`; `4200` and `4250` should be tracked separately and excluded. Refunds should reverse KPI credit in the period when the refund occurs. (2026-05-05)
+- Invoice Payment Allocations are the key operating-side source for KPI recognition because they bridge applied date, amount, matter owner, invoice, client-matter, source of funds, and account-level decomposition. Working rule: use Applied Date as collected-KPI recognition date and count only the `4100` portion. (2026-05-05)
+- Operating Retainer By Matter should be treated as a liability-ledger source; negative balances likely indicate over-application / deficit at the operating-retainer liability level. (2026-05-05)
+- Credit-card processor deposits can bundle multiple matters. Deposits are manually transcribed into CosmoLex and reconciled later; processor fees are not netted from each deposit and instead hit separately once monthly near the beginning of the month. (2026-05-05)
+- Bookkeeping priority decision: start with **Operating vendor checks** (check register + match-to-bank outflows) before P&L. Withdrawal by check should support "To be printed" checked by default; if unchecked, user manually enters digits. If checked, assign next check number per bank account at print time, not save time. (2026-05-18)
+- Known account setup notes: Burke & Herbert operating; South State money market checking has its own check stock and check-number sequence; South State line of credit and credit card need liability-side running balances. (2026-05-18)
+
+## Billing / invoicing
+- User wants **timekeeping + invoicing + A/R in Legacy Guardians**, not CosmoLex. (2026-05-08)
+- Flat fees should be captured at the **timecard/time-entry level** with `pricingMode=FLAT`, amount set on the entry, and duration `0.0` (example: "Will Base Price" = $2,800). (2026-05-08)
+- Invoice numbering should include a **4-character firm slug prefix** (e.g. `SWL`) and number invoices **per firm per year**. (2026-05-08)
+- Task billing categories should be **billable**, **billed**, **non-billable**, and **no charge**. Billable tasks require a linked matter before completion. Completing a billable task should eventually prompt Billing Assistant/GPT to suggest narrative, duration/time, classification, billing code/category, and flag vague/risky narratives; assignee reviews/edits/approves to create a draft timecard. (2026-05-19)
+
+## Firm / MSO model
+- Reserved MSO firm slug: **LG**; not yet created as a Firm. (2026-05-08)
+- Merrifield should be a **FirmLocation**, not a separate Firm; want P&L by location. Expected location assignment: Misha + Noah -> Alexandria; Arjan -> Merrifield. MSO is also a location for attribution. (2026-05-08)
+- Firm owners are **person-only**; ownership changes are effective-dated with percentages. (2026-05-08)
+- MSO model needs an effective-dated firm-level revenue split to Legacy Guardians: 0% for SWL, around 15-30% for some future firms. Split base should be net after refunds/chargebacks and exclude advanced client costs. Default payment allocation should be advanced-client-costs-first. (2026-05-08)
+
+## Matter OS / CRM
+- Native GPT-like agents should appear in the left nav as **Assistants**. (2026-05-19)
+- Matter operating-system needs: custom matter fields as admin settings; fields populated from forms; matter timeline; manual action logging with types Phone call/Text/Email/Meeting/Internal note/Other; automation scheduled/run events should appear in timeline. (2026-05-19)
+- Custom matter field types wanted: text, long text, date, currency, number, True/False, picklist, multi-select picklist, user/staff member, contact/person, and likely Lawmatics-style lookup relationship to another object/record. (2026-05-19)
+- Contacts should cover professional advisors/general contacts, not just clients/vendors/referrers. Financial advisors are a major referral source. Professional/referral contact fields include type, referral source status, relationship owner, and matter referral source contact. (2026-05-19)
+- Dashboard intake reporting should show the number of **document tours held**; intake sheet sync should recognize Doc Tour(s) Held and Document Tour(s) Held. (2026-05-20)
+
+## Scheduling / automations
+- Discovery call appointment type should be phone-call only, not Zoom. Other appointment types may use Zoom/calendar invite integration. (2026-05-20)
+- Always send a calendar invite for booked appointments, including discovery calls. Discovery-call calendar invites should say Speedwell will call the client and should not include a Zoom link. (2026-05-20)
+- Message template permissions: any signed-in user with an active firm should be able to create/update email/text message templates; deletion remains admin-only. (2026-05-20)
+- Future `@speedwelllaw.com` users should auto-join Speedwell with an active firm via NextAuth `createUser`; live Christopher blockage was caused by `activeFirmId: null`, no `FirmMember`, and an empty Speedwell `MessageTemplate` table. (2026-05-20)
+
+## Security / access
+- One-time links should use unguessable tokens and expire automatically after 30 days from issuance/creation. Optional issuer-selectable TTLs may be 7/14/21/30 days. Resend/refresh should issue a new token and revoke the prior unused token. (2026-05-10)
+- Extend-on-click for one-time links is acceptable only if the link is not yet used/completed, with a hard max-age cap of 90 days, rate limits, audit logging, and explicit UX. (2026-05-10)
+- Misha wants Noah, Christopher, Arjan, and Jheny to be able to work with Nelson directly with roughly one approval per day from Misha, or when they specifically ask for Misha's approval for sensitive actions like pushing commits. Gateway-protected Discord allowlist/approval config must not be bypassed. (2026-05-20)
+
+## Template rendering
+- Notary sections across all documents need to be wired so they can change based on attorney-user input, likely via template tokens/conditionals instead of hardcoded blocks. Extra blank underlines in notary blocks likely come from literal Word content adjacent to empty token output. (2026-05-15)
+- `renderTemplate.ts` sanitizes Word XML before docxtemplater render: fixes some unclosed tokens like `[[TOKEN],`, strips remaining Jinja tags/vars, uses docxtemplater delimiters `[[...]]`, and returns `""` for missing tokens. (2026-05-15)
