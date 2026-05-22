@@ -53,6 +53,38 @@ function parseCellValue(type: ReportColumnType, v: unknown) {
   return String(v ?? "").trim();
 }
 
+const MONTH_NAMES = new Set([
+  "january",
+  "february",
+  "march",
+  "april",
+  "may",
+  "june",
+  "july",
+  "august",
+  "september",
+  "october",
+  "november",
+  "december",
+]);
+
+function parseMonthSectionLabel(v: unknown) {
+  const label = String(v ?? "").trim();
+  if (!label) return null;
+  const normalized = label.toLowerCase().replace(/[^a-z]+/g, " ").trim();
+  if (!MONTH_NAMES.has(normalized)) return null;
+  return normalized.replace(/\b[a-z]/g, (c) => c.toUpperCase());
+}
+
+function normalizeStopLabel(v: unknown) {
+  return String(v ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function findHeaderRow(values: unknown[][], columns: ReportSheetColumn[]) {
   const expected = new Set(columns.flatMap((c) => [normalizeLabel(c.label), normalizeLabel(c.key)]));
 
@@ -89,7 +121,7 @@ function resolveColumnIndexes(headerRow: unknown[], columns: ReportSheetColumn[]
   return out;
 }
 
-async function ensureReportTable(slug: string, name: string, columns: ReportSheetColumn[]) {
+async function ensureReportTable(slug: string, name: string, columns: ReportSheetColumn[], obsoleteColumnKeys: string[] = []) {
   const table =
     (await prisma.reportTable.findUnique({ where: { slug } })) ||
     (await prisma.reportTable.create({
@@ -103,6 +135,12 @@ async function ensureReportTable(slug: string, name: string, columns: ReportShee
 
   const existing = await prisma.reportColumn.findMany({ where: { tableId: table.id } });
   const byKey = new Map(existing.map((c) => [c.key, c] as const));
+  for (const key of obsoleteColumnKeys) {
+    const found = byKey.get(key);
+    if (!found) continue;
+    await prisma.reportColumn.delete({ where: { id: found.id } });
+    byKey.delete(key);
+  }
   const max = existing.reduce((m, c) => Math.max(m, c.sortOrder), -1);
   let next = max + 1;
 
@@ -144,6 +182,9 @@ export async function syncReportTableFromSheet({
   tableName,
   columns,
   rowKeyColumns,
+  sectionColumnKey,
+  obsoleteColumnKeys,
+  stopAtFirstColumnLabels,
 }: {
   googleEmail: string;
   spreadsheetId: string;
@@ -152,6 +193,9 @@ export async function syncReportTableFromSheet({
   tableName: string;
   columns: ReportSheetColumn[];
   rowKeyColumns: string[];
+  sectionColumnKey?: string;
+  obsoleteColumnKeys?: string[];
+  stopAtFirstColumnLabels?: string[];
 }) {
   const resolvedSheetName = await resolveSheetName({ googleEmail, spreadsheetId, sheetName });
   const range = `'${resolvedSheetName.replaceAll("'", "''")}'!A1:AZ2000`;
@@ -166,17 +210,29 @@ export async function syncReportTableFromSheet({
 
   const headerRowIdx = findHeaderRow(values, columns);
   const colIndexes = resolveColumnIndexes(values[headerRowIdx] || [], columns);
-  const table = await ensureReportTable(slug, tableName, columns);
+  const table = await ensureReportTable(slug, tableName, columns, obsoleteColumnKeys);
   const existingRows = await prisma.reportRow.findMany({ where: { tableId: table.id } });
   const byRowKey = new Map(existingRows.map((r) => [r.rowKey, r] as const));
+  const stopLabels = new Set((stopAtFirstColumnLabels || []).map(normalizeStopLabel).filter(Boolean));
 
   let created = 0;
   let updated = 0;
   let totalSheetRows = 0;
+  let currentSectionLabel: string | null = null;
 
   for (let r = headerRowIdx + 1; r < values.length; r++) {
     const row = values[r] || [];
     if (!row.some((v) => String(v ?? "").trim())) continue;
+    if (stopLabels.has(normalizeStopLabel(row[0]))) break;
+
+    if (sectionColumnKey) {
+      const sectionLabel = parseMonthSectionLabel(row[0]);
+      const hasOtherValues = row.slice(1).some((v) => String(v ?? "").trim());
+      if (sectionLabel && !hasOtherValues) {
+        currentSectionLabel = sectionLabel;
+        continue;
+      }
+    }
 
     const data: Record<string, unknown> = {};
     for (const c of columns) {
@@ -184,6 +240,9 @@ export async function syncReportTableFromSheet({
       if (idx == null) continue;
       data[c.key] = parseCellValue(c.type, row[idx]);
     }
+    if (sectionColumnKey && currentSectionLabel) data[sectionColumnKey] = currentSectionLabel;
+
+    if (String(data.timekeeper ?? "").trim().toLowerCase() === "total") continue;
 
     const rowKeyParts = rowKeyColumns.map((key) => String(data[key] ?? "").trim()).filter(Boolean);
     if (rowKeyParts.length === 0) continue;
@@ -207,7 +266,7 @@ export async function syncReportTableFromSheet({
       });
       updated++;
     } else {
-      await prisma.reportRow.create({
+      const createdRow = await prisma.reportRow.create({
         data: {
           tableId: table.id,
           rowKey,
@@ -216,6 +275,7 @@ export async function syncReportTableFromSheet({
           data: dataPatch,
         },
       });
+      byRowKey.set(rowKey, createdRow);
       created++;
     }
     totalSheetRows++;

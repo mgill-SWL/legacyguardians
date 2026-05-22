@@ -21,7 +21,6 @@ export const L10_REPORT_COLUMNS: ReportSheetColumn[] = [
 ];
 
 export const TIMEKEEPER_REPORT_COLUMNS: ReportSheetColumn[] = [
-  { key: "month", label: "Month", type: "TEXT" },
   { key: "timekeeper", label: "Timekeeper", type: "TEXT" },
   { key: "new_matters_opened", label: "New matters opened", type: "NUMBER" },
   { key: "ep_matters_opened", label: "EP matters opened", type: "NUMBER" },

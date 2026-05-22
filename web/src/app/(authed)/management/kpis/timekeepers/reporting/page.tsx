@@ -11,10 +11,17 @@ export const dynamic = "force-dynamic";
 
 const SLUG = TIMEKEEPER_REPORT_SLUG;
 const DEFAULT_COLUMNS = TIMEKEEPER_REPORT_COLUMNS;
+const OBSOLETE_DEFAULT_COLUMN_KEYS = new Set(["month"]);
 
 async function ensureColumns(tableId: string) {
   const existing = await prisma.reportColumn.findMany({ where: { tableId } });
   const byKey = new Set(existing.map((c) => c.key));
+  for (const c of existing) {
+    if (OBSOLETE_DEFAULT_COLUMN_KEYS.has(c.key)) {
+      await prisma.reportColumn.delete({ where: { id: c.id } });
+      byKey.delete(c.key);
+    }
+  }
   const max = existing.reduce((m, c) => Math.max(m, c.sortOrder), -1);
   let next = max + 1;
   for (const c of DEFAULT_COLUMNS) {

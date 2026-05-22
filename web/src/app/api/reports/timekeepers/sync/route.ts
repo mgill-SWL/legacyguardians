@@ -33,6 +33,9 @@ export async function POST() {
       tableName: "Timekeeper KPIs",
       columns: TIMEKEEPER_REPORT_COLUMNS,
       rowKeyColumns: ["month", "timekeeper"],
+      sectionColumnKey: "month",
+      obsoleteColumnKeys: ["month"],
+      stopAtFirstColumnLabels: ["YEARLY KPIS"],
     });
     return NextResponse.json({ ok: true, ...out });
   } catch (e: unknown) {
