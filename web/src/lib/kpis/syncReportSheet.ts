@@ -217,8 +217,11 @@ export async function syncReportTableFromSheet({
 
   let created = 0;
   let updated = 0;
+  let deleted = 0;
   let totalSheetRows = 0;
   let currentSectionLabel: string | null = null;
+  let nextSortOrder = 0;
+  const seenRowKeys = new Set<string>();
 
   for (let r = headerRowIdx + 1; r < values.length; r++) {
     const row = values[r] || [];
@@ -249,6 +252,7 @@ export async function syncReportTableFromSheet({
 
     const label = rowKeyParts.join(" - ");
     const rowKey = slugify(label) || `sheet-row-${r + 1}`;
+    seenRowKeys.add(rowKey);
     const dataPatch = {
       ...data,
       _source: "google_sheet",
@@ -262,7 +266,7 @@ export async function syncReportTableFromSheet({
       const existingData = existing.data && typeof existing.data === "object" && !Array.isArray(existing.data) ? existing.data : {};
       await prisma.reportRow.update({
         where: { id: existing.id },
-        data: { label, data: { ...existingData, ...dataPatch } },
+        data: { label, sortOrder: nextSortOrder, data: { ...existingData, ...dataPatch } },
       });
       updated++;
     } else {
@@ -271,15 +275,31 @@ export async function syncReportTableFromSheet({
           tableId: table.id,
           rowKey,
           label,
-          sortOrder: existingRows.length + created,
+          sortOrder: nextSortOrder,
           data: dataPatch,
         },
       });
       byRowKey.set(rowKey, createdRow);
       created++;
     }
+    nextSortOrder++;
     totalSheetRows++;
   }
 
-  return { sheetName: resolvedSheetName, created, updated, totalSheetRows, mappedColumns: colIndexes.size };
+  if (seenRowKeys.size > 0) {
+    const staleSourceRowIds = existingRows
+      .filter((row) => {
+        if (seenRowKeys.has(row.rowKey)) return false;
+        const data = row.data && typeof row.data === "object" && !Array.isArray(row.data) ? row.data : {};
+        return data._source === "google_sheet" && data._source_spreadsheet_id === spreadsheetId;
+      })
+      .map((row) => row.id);
+
+    if (staleSourceRowIds.length > 0) {
+      const out = await prisma.reportRow.deleteMany({ where: { id: { in: staleSourceRowIds } } });
+      deleted = out.count;
+    }
+  }
+
+  return { sheetName: resolvedSheetName, created, updated, deleted, totalSheetRows, mappedColumns: colIndexes.size };
 }

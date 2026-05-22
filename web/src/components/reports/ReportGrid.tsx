@@ -15,7 +15,7 @@ type Row = {
   rowKey: string;
   label: string;
   sortOrder: number;
-  data: any;
+  data: unknown;
 };
 
 type Table = {
@@ -61,8 +61,27 @@ export function ReportGrid({
     return rr.filter((r) => r.label.toLowerCase().includes(qq));
   }, [table.rows, q]);
 
-  function formatCellValue(col: Column, v: any): string {
+  function getErrorMessage(e: unknown) {
+    return e instanceof Error ? e.message : "Failed";
+  }
+
+  function getCellData(row: Row, key: string) {
+    if (!row.data || typeof row.data !== "object" || Array.isArray(row.data)) return undefined;
+    return (row.data as Record<string, unknown>)[key];
+  }
+
+  function formatCellValue(col: Column, v: unknown): string {
     if (v == null) return "";
+    if (col.type === "CURRENCY") {
+      const n = typeof v === "number" ? v : Number(v);
+      if (!Number.isFinite(n)) return String(v);
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(n);
+    }
     if (col.type === "PERCENT") {
       const n = typeof v === "number" ? v : Number(v);
       if (!Number.isFinite(n)) return String(v);
@@ -81,10 +100,10 @@ export function ReportGrid({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ key, value }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(getErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -101,11 +120,11 @@ export function ReportGrid({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ label }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
       window.location.reload();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(getErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -120,11 +139,11 @@ export function ReportGrid({
         headers: { "content-type": "application/json" },
         body: JSON.stringify(newCol),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
       window.location.reload();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(getErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -136,11 +155,11 @@ export function ReportGrid({
     setError(null);
     try {
       const res = await fetch(`/api/reports/columns/${colId}`, { method: "DELETE" });
-      const data = await res.json().catch(() => ({}));
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
       window.location.reload();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(getErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -188,7 +207,7 @@ export function ReportGrid({
             <select
               className="sw-input"
               value={newCol.type}
-              onChange={(e) => setNewCol((c) => ({ ...c, type: e.target.value as any }))}
+              onChange={(e) => setNewCol((c) => ({ ...c, type: e.target.value as Column["type"] }))}
             >
               <option value="TEXT">Text</option>
               <option value="NUMBER">Number</option>
@@ -235,7 +254,7 @@ export function ReportGrid({
                   <td key={c.id} className="sw-td">
                     <input
                       className="sw-input"
-                      defaultValue={formatCellValue(c, r.data?.[c.key])}
+                      defaultValue={formatCellValue(c, getCellData(r, c.key))}
                       onBlur={(e) => patchCell(r.id, c.key, e.target.value)}
                       style={{ width: 120, ...(IMPORTANT_COL_KEYS.has(c.key) ? { fontWeight: 900 } : null) }}
                     />
