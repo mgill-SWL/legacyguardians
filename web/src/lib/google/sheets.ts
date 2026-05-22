@@ -2,8 +2,47 @@ import { getGoogleAccessToken } from "@/lib/google/google";
 
 export type GoogleSheetsValuesBatchGetResult = {
   spreadsheetId: string;
-  valueRanges: { range: string; majorDimension?: string; values?: any[][] }[];
+  valueRanges: { range: string; majorDimension?: string; values?: unknown[][] }[];
 };
+
+export type GoogleSpreadsheetMetadata = {
+  spreadsheetId: string;
+  properties?: { title?: string };
+  sheets?: {
+    properties?: {
+      sheetId?: number;
+      title?: string;
+      index?: number;
+      hidden?: boolean;
+    };
+  }[];
+};
+
+export async function googleSheetsGetMetadata({
+  googleEmail,
+  spreadsheetId,
+}: {
+  googleEmail: string;
+  spreadsheetId: string;
+}) {
+  const token = await getGoogleAccessToken(googleEmail);
+  const url = new URL(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}`);
+  url.searchParams.set("fields", "spreadsheetId,properties.title,sheets.properties(sheetId,title,index,hidden)");
+
+  const res = await fetch(url.toString(), {
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
+
+  const json = (await res.json().catch(() => null)) as GoogleSpreadsheetMetadata & { error?: { message?: string } };
+  if (!res.ok) {
+    const msg = json?.error?.message || "Sheets metadata fetch failed";
+    throw new Error(msg);
+  }
+
+  return json as GoogleSpreadsheetMetadata;
+}
 
 export async function googleSheetsValuesBatchGet({
   googleEmail,
@@ -29,7 +68,7 @@ export async function googleSheetsValuesBatchGet({
     },
   });
 
-  const json = (await res.json().catch(() => null)) as GoogleSheetsValuesBatchGetResult | any;
+  const json = (await res.json().catch(() => null)) as GoogleSheetsValuesBatchGetResult & { error?: { message?: string } };
   if (!res.ok) {
     const msg = json?.error?.message || "Sheets batchGet failed";
     throw new Error(msg);
@@ -37,4 +76,3 @@ export async function googleSheetsValuesBatchGet({
 
   return json as GoogleSheetsValuesBatchGetResult;
 }
-

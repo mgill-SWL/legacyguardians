@@ -4,27 +4,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/authOptions";
 import { prisma } from "@/lib/prisma";
 import { ReportGrid } from "@/components/reports/ReportGrid";
+import { SyncReportSheetButton } from "@/components/reports/SyncReportSheetButton";
+import { L10_REPORT_COLUMNS, L10_REPORT_SLUG } from "@/lib/kpis/reportTables";
 
 export const dynamic = "force-dynamic";
 
-const SLUG = "exec-team-kpis";
-
-const DEFAULT_COLUMNS = [
-  { key: "month", label: "Month", type: "TEXT" },
-  { key: "ep_new_onboarded", label: "# EP new onboarded", type: "NUMBER" },
-  { key: "other_cases_onboarded", label: "# Other cases onboarded", type: "NUMBER" },
-  { key: "total_onboarded", label: "Total", type: "NUMBER" },
-  { key: "ep_pre_design", label: "EP Cases Pre-Design Meeting", type: "NUMBER" },
-  { key: "ep_pre_doc_tour", label: "EP Cases Pre-Doc Tour", type: "NUMBER" },
-  { key: "ep_concluded", label: "EP Cases Concluded", type: "NUMBER" },
-  { key: "monthly_collections", label: "Monthly Collections", type: "CURRENCY" },
-  { key: "ep_case_revenue", label: "EP Case Revenue", type: "CURRENCY" },
-  { key: "other_case_revenue", label: "Other case revenue", type: "CURRENCY" },
-  { key: "avg_ep_case_value", label: "Average EP Case Value", type: "CURRENCY" },
-  { key: "avg_other_case_value", label: "Average Other Case Value", type: "CURRENCY" },
-  { key: "lawpay_trailing_30_volume", label: "Lawpay trailing 30 day volume", type: "CURRENCY" },
-  { key: "lawpay_past_30_avg_tx", label: "Lawpay past 30 days avg trx value", type: "CURRENCY" },
-] as const;
+const SLUG = L10_REPORT_SLUG;
+const DEFAULT_COLUMNS = L10_REPORT_COLUMNS;
 
 async function ensureColumns(tableId: string) {
   const existing = await prisma.reportColumn.findMany({ where: { tableId } });
@@ -34,7 +20,7 @@ async function ensureColumns(tableId: string) {
   for (const c of DEFAULT_COLUMNS) {
     if (byKey.has(c.key)) continue;
     await prisma.reportColumn.create({
-      data: { tableId, key: c.key, label: c.label, type: c.type as any, sortOrder: next++ },
+      data: { tableId, key: c.key, label: c.label, type: c.type, sortOrder: next++ },
     });
   }
 }
@@ -57,9 +43,7 @@ export default async function L10ReportingPage() {
         data: {
           slug: SLUG,
           name: "L10 Reporting",
-          columns: {
-            create: DEFAULT_COLUMNS.map((c, idx) => ({ key: c.key, label: c.label, type: c.type as any, sortOrder: idx })),
-          },
+          columns: { create: DEFAULT_COLUMNS.map((c, idx) => ({ ...c, sortOrder: idx })) },
           rows: { create: [] },
         },
         include: { columns: { orderBy: { sortOrder: "asc" } }, rows: { orderBy: { sortOrder: "asc" } } },
@@ -80,8 +64,17 @@ export default async function L10ReportingPage() {
           Summary →
         </a>
       </div>
-      <p className="sw-muted" style={{ marginTop: 8 }}>Executive-level reporting (admin-only for now).</p>
-      <ReportGrid table={(refreshed || ensured) as any} canAdmin={true} />
+      <p className="sw-muted" style={{ marginTop: 8 }}>
+        {process.env.LG_L10_KPI_SPREADSHEET_ID
+          ? "Executive-level reporting synced from Google Sheets. You can still add extra manual columns as needed."
+          : "Executive-level reporting (admin-only for now)."}
+      </p>
+      {process.env.LG_L10_KPI_SPREADSHEET_ID ? (
+        <div style={{ marginTop: 10 }}>
+          <SyncReportSheetButton endpoint="/api/reports/l10/sync" />
+        </div>
+      ) : null}
+      <ReportGrid table={refreshed || ensured} canAdmin={true} />
     </div>
   );
 }

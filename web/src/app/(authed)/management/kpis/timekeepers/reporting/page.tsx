@@ -4,27 +4,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/authOptions";
 import { prisma } from "@/lib/prisma";
 import { ReportGrid } from "@/components/reports/ReportGrid";
+import { SyncReportSheetButton } from "@/components/reports/SyncReportSheetButton";
+import { TIMEKEEPER_REPORT_COLUMNS, TIMEKEEPER_REPORT_SLUG } from "@/lib/kpis/reportTables";
 
 export const dynamic = "force-dynamic";
 
-const SLUG = "timekeeper-kpis";
-
-const DEFAULT_COLUMNS = [
-  { key: "month", label: "Month", type: "TEXT" },
-  { key: "timekeeper", label: "Timekeeper", type: "TEXT" },
-  { key: "new_matters_opened", label: "New matters opened", type: "NUMBER" },
-  { key: "ep_matters_opened", label: "EP matters opened", type: "NUMBER" },
-  { key: "fees_billed", label: "Fees billed", type: "CURRENCY" },
-  { key: "fees_collected", label: "Fees collected", type: "CURRENCY" },
-  { key: "five_star_reviews", label: "5 Star Reviews", type: "NUMBER" },
-  { key: "welcome_calls_held", label: "Welcome Calls Held", type: "NUMBER" },
-  { key: "design_meetings_booked", label: "Design Meetings Booked", type: "NUMBER" },
-  { key: "welcome_call_conversion", label: "Welcome Call Conversion", type: "PERCENT" },
-  { key: "avg_case_value", label: "Avg Case Value", type: "CURRENCY" },
-  { key: "clx_matter_timeliness", label: "CLX Matter Timeliness (1-3)", type: "NUMBER" },
-  { key: "clx_task_timeliness", label: "CLX Task Timeliness (1-3)", type: "NUMBER" },
-  { key: "lm_pipeline_timeliness", label: "LM Pipeline Timeliness (1-3)", type: "NUMBER" },
-] as const;
+const SLUG = TIMEKEEPER_REPORT_SLUG;
+const DEFAULT_COLUMNS = TIMEKEEPER_REPORT_COLUMNS;
 
 async function ensureColumns(tableId: string) {
   const existing = await prisma.reportColumn.findMany({ where: { tableId } });
@@ -34,7 +20,7 @@ async function ensureColumns(tableId: string) {
   for (const c of DEFAULT_COLUMNS) {
     if (byKey.has(c.key)) continue;
     await prisma.reportColumn.create({
-      data: { tableId, key: c.key, label: c.label, type: c.type as any, sortOrder: next++ },
+      data: { tableId, key: c.key, label: c.label, type: c.type, sortOrder: next++ },
     });
   }
 }
@@ -57,9 +43,7 @@ export default async function TimekeepersReportingPage() {
         data: {
           slug: SLUG,
           name: "Timekeeper KPIs",
-          columns: {
-            create: DEFAULT_COLUMNS.map((c, idx) => ({ key: c.key, label: c.label, type: c.type as any, sortOrder: idx })),
-          },
+          columns: { create: DEFAULT_COLUMNS.map((c, idx) => ({ ...c, sortOrder: idx })) },
           rows: { create: [] },
         },
         include: { columns: { orderBy: { sortOrder: "asc" } }, rows: { orderBy: { sortOrder: "asc" } } },
@@ -80,8 +64,17 @@ export default async function TimekeepersReportingPage() {
           Summary →
         </a>
       </div>
-      <p className="sw-muted" style={{ marginTop: 8 }}>Manual entry table.</p>
-      <ReportGrid table={(refreshed || ensured) as any} canAdmin={!!canAdmin} />
+      <p className="sw-muted" style={{ marginTop: 8 }}>
+        {process.env.LG_TIMEKEEPER_KPI_SPREADSHEET_ID
+          ? "Timekeeper KPIs synced from Google Sheets. You can still add extra manual columns as needed."
+          : "Manual entry table. (We can enable Google Sheet sync by setting LG_TIMEKEEPER_KPI_SPREADSHEET_ID.)"}
+      </p>
+      {process.env.LG_TIMEKEEPER_KPI_SPREADSHEET_ID && canAdmin ? (
+        <div style={{ marginTop: 10 }}>
+          <SyncReportSheetButton endpoint="/api/reports/timekeepers/sync" />
+        </div>
+      ) : null}
+      <ReportGrid table={refreshed || ensured} canAdmin={!!canAdmin} />
     </div>
   );
 }
