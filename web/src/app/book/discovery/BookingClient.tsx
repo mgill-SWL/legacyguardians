@@ -55,22 +55,47 @@ function addMinutes(iso: string, minutes: number) {
   return new Date(new Date(iso).getTime() + minutes * 60_000);
 }
 
-function formatTimeRange(iso: string) {
+function formatTimeRange(iso: string, timeZone: string) {
   const start = new Date(iso);
   const end = addMinutes(iso, 15);
-  const opts: Intl.DateTimeFormatOptions = { hour: "numeric", minute: "2-digit", timeZoneName: "short" };
+  const opts: Intl.DateTimeFormatOptions = { hour: "numeric", minute: "2-digit", timeZone };
   const startText = start.toLocaleTimeString([], opts).replace(" ", "").toLowerCase();
   const endText = end.toLocaleTimeString([], opts).replace(" ", "").toLowerCase();
   return `${startText} - ${endText}`;
 }
 
-function formatDateLabel(date: string) {
+function formatDateLabel(date: string, timeZone: string) {
   const [y, m, d] = date.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString([], {
+  return new Date(Date.UTC(y, m - 1, d, 12, 0, 0)).toLocaleDateString([], {
     weekday: "long",
     month: "long",
     day: "numeric",
+    timeZone,
   });
+}
+
+const TIME_ZONE_NAMES: Record<string, string> = {
+  "America/New_York": "Eastern Time (US & Canada)",
+  "America/Chicago": "Central Time (US & Canada)",
+  "America/Denver": "Mountain Time (US & Canada)",
+  "America/Phoenix": "Mountain Time (Arizona)",
+  "America/Los_Angeles": "Pacific Time (US & Canada)",
+  "America/Anchorage": "Alaska Time",
+  "Pacific/Honolulu": "Hawaii Time",
+};
+
+function formatTimeZoneLabel(timeZone: string, date: string) {
+  const [y, m, d] = date.split("-").map(Number);
+  const anchor = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  const abbreviation = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    timeZoneName: "short",
+  })
+    .formatToParts(anchor)
+    .find((part) => part.type === "timeZoneName")?.value;
+  const name = TIME_ZONE_NAMES[timeZone] || timeZone;
+
+  return abbreviation ? `${abbreviation} - ${name}` : name;
 }
 
 function errorMessage(e: unknown, fallback: string) {
@@ -415,12 +440,12 @@ function ScheduleStep({
             <input style={inputStyle()} type="date" value={date} min={toDateInputValue(new Date())} onChange={(e) => setDate(e.target.value)} />
           </Field>
           <div style={{ border: "1px solid #e1e7f2", borderRadius: 12, padding: 14, background: "#f8faff" }}>
-            <div style={{ fontWeight: 800, color: "#2E4A7F" }}>{formatDateLabel(date)}</div>
+            <div style={{ fontWeight: 800, color: "#2E4A7F" }}>{formatDateLabel(date, tz)}</div>
             <div style={{ marginTop: 6, fontSize: 13, color: "#66728a" }}>Available dates/times are generated from the intake team’s round-robin calendar availability.</div>
           </div>
           <Field label="Timezone">
             <select style={inputStyle()} value={tz} disabled>
-              <option>{tz === "America/New_York" ? "(-05:00) - Eastern Time (US & Canada)" : tz}</option>
+              <option value={tz}>{formatTimeZoneLabel(tz, date)}</option>
             </select>
           </Field>
           <Field label="Location">
@@ -460,7 +485,7 @@ function ScheduleStep({
                     textAlign: "center",
                   }}
                 >
-                  {formatTimeRange(s.start)}
+                  {formatTimeRange(s.start, tz)}
                 </button>
               );
             })}
