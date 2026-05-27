@@ -20,28 +20,34 @@ function errorMessage(e: unknown) {
   return e instanceof Error ? e.message : "Failed";
 }
 
+function emptyDraft(): Draft {
+  return { key: "", channel: "EMAIL", name: "", subject: "", body: "", attachmentUrl: "", isHtml: true };
+}
+
+function draftFromTemplate(template: Tpl): Draft {
+  return {
+    key: template.key,
+    channel: template.channel,
+    name: template.name,
+    subject: template.subject || "",
+    body: template.body,
+    attachmentUrl: template.attachmentUrl || "",
+    isHtml: !!template.isHtml,
+  };
+}
+
 export function TemplatesClient({ initialTemplates, canEdit }: { initialTemplates: Tpl[]; canEdit: boolean }) {
-  const templates: (Tpl & { updatedAt: string })[] = (initialTemplates || []).map((t) => ({
-    ...t,
-    updatedAt: typeof t.updatedAt === "string" ? t.updatedAt : new Date(t.updatedAt).toISOString(),
-  }));
+  const [templates, setTemplates] = useState<(Tpl & { updatedAt: string })[]>(() =>
+    (initialTemplates || []).map((t) => ({
+      ...t,
+      updatedAt: typeof t.updatedAt === "string" ? t.updatedAt : new Date(t.updatedAt).toISOString(),
+    }))
+  );
 
   const [selectedId, setSelectedId] = useState<string | null>(templates[0]?.id || null);
   const selected = useMemo(() => templates.find((t) => t.id === selectedId) || null, [templates, selectedId]);
 
-  const [draft, setDraft] = useState<Draft>(
-    selected
-      ? {
-          key: selected.key,
-          channel: selected.channel,
-          name: selected.name,
-          subject: selected.subject || "",
-          body: selected.body,
-          attachmentUrl: selected.attachmentUrl || "",
-          isHtml: !!selected.isHtml,
-        }
-      : { key: "", channel: "EMAIL", name: "", subject: "", body: "", attachmentUrl: "", isHtml: true }
-  );
+  const [draft, setDraft] = useState<Draft>(selected ? draftFromTemplate(selected) : emptyDraft());
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +72,24 @@ export function TemplatesClient({ initialTemplates, canEdit }: { initialTemplate
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
-      window.location.reload();
+      const updatedAt = new Date().toISOString();
+      setTemplates((items) =>
+        items.map((item) =>
+          item.id === selected.id
+            ? {
+                ...item,
+                key: draft.key.trim(),
+                channel: draft.channel,
+                name: draft.name.trim(),
+                subject: draft.subject || null,
+                body: draft.body,
+                attachmentUrl: draft.attachmentUrl || null,
+                isHtml: draft.isHtml,
+                updatedAt,
+              }
+            : item
+        )
+      );
     } catch (e: unknown) {
       setError(errorMessage(e));
     } finally {
@@ -92,8 +115,21 @@ export function TemplatesClient({ initialTemplates, canEdit }: { initialTemplate
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-      window.location.reload();
+      if (!res.ok || data.ok === false || !data.id) throw new Error(data.error || `HTTP ${res.status}`);
+      const updatedAt = new Date().toISOString();
+      const created: Tpl & { updatedAt: string } = {
+        id: data.id,
+        key: draft.key.trim(),
+        channel: draft.channel,
+        name: draft.name.trim(),
+        subject: draft.subject || null,
+        body: draft.body,
+        attachmentUrl: draft.attachmentUrl || null,
+        isHtml: draft.isHtml,
+        updatedAt,
+      };
+      setTemplates((items) => [created, ...items]);
+      setSelectedId(created.id);
     } catch (e: unknown) {
       setError(errorMessage(e));
     } finally {
@@ -104,7 +140,22 @@ export function TemplatesClient({ initialTemplates, canEdit }: { initialTemplate
   return (
     <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "320px 1fr", gap: 12 }}>
       <div className="sw-card sw-card-pad" style={{ display: "grid", gap: 10, alignContent: "start" }}>
-        <div style={{ fontWeight: 900 }}>All templates</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+          <div style={{ fontWeight: 900 }}>All templates</div>
+          {canEdit ? (
+            <button
+              className="sw-btn"
+              type="button"
+              onClick={() => {
+                setSelectedId(null);
+                setDraft(emptyDraft());
+                setError(null);
+              }}
+            >
+              New
+            </button>
+          ) : null}
+        </div>
         <div style={{ display: "grid", gap: 8 }}>
           {templates.map((t) => (
             <button
@@ -112,15 +163,8 @@ export function TemplatesClient({ initialTemplates, canEdit }: { initialTemplate
               className={`sw-navBtn ${t.id === selectedId ? "sw-navBtnActive" : ""}`}
               onClick={() => {
                 setSelectedId(t.id);
-                setDraft({
-                  key: t.key,
-                  channel: t.channel,
-                  name: t.name,
-                  subject: t.subject || "",
-                  body: t.body,
-                  attachmentUrl: t.attachmentUrl || "",
-                  isHtml: !!t.isHtml,
-                });
+                setDraft(draftFromTemplate(t));
+                setError(null);
               }}
             >
               <span className="sw-navIcon">{t.channel === "SMS" ? "S" : "E"}</span>
