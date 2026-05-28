@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { bookAppointment } from "@/lib/booking/booking";
 import { prisma } from "@/lib/prisma";
+import { sendDiscoveryAppointmentNotification } from "@/lib/automation/discoveryNotifications";
 
 export const dynamic = "force-dynamic";
 
@@ -202,21 +203,24 @@ export async function POST(req: Request) {
 
       const now = Date.now();
       const jobs = [
-        { runAt: new Date(now + 60_000), type: "SEND_SMS" as const, payload: { kind: "BOOKED", apptId: booked.appointmentId, matterId } },
-        { runAt: new Date(now + 60_000), type: "SEND_EMAIL" as const, payload: { kind: "BOOKED", apptId: booked.appointmentId, matterId } },
         { runAt: new Date(appt.startsAt.getTime() - 24 * 60 * 60_000), type: "SEND_EMAIL" as const, payload: { kind: "REMINDER_24H", apptId: booked.appointmentId, matterId } },
         { runAt: new Date(appt.startsAt.getTime() - 2 * 60 * 60_000), type: "SEND_EMAIL" as const, payload: { kind: "REMINDER_2H", apptId: booked.appointmentId, matterId } },
         { runAt: new Date(appt.startsAt.getTime() - 60 * 60_000), type: "SEND_EMAIL" as const, payload: { kind: "REMINDER_1H", apptId: booked.appointmentId, matterId } },
         { runAt: new Date(appt.startsAt.getTime() - 24 * 60 * 60_000), type: "SEND_SMS" as const, payload: { kind: "REMINDER_24H", apptId: booked.appointmentId, matterId } },
         { runAt: new Date(appt.startsAt.getTime() - 2 * 60_000), type: "SEND_SMS" as const, payload: { kind: "REMINDER_2M", apptId: booked.appointmentId, matterId } },
       ];
-      const dueJobs = jobs.filter((j) => j.payload.kind === "BOOKED" || j.runAt.getTime() > now);
+      const dueJobs = jobs.filter((j) => j.runAt.getTime() > now);
 
       if (dueJobs.length) {
         await prisma.scheduledJob.createMany({
           data: dueJobs.map((j) => ({ firmId, runAt: j.runAt, type: j.type, payload: j.payload as Prisma.InputJsonValue })),
         });
       }
+
+      await Promise.allSettled([
+        sendDiscoveryAppointmentNotification({ firmId, appointmentId: booked.appointmentId, kind: "BOOKED", channel: "SMS" }),
+        sendDiscoveryAppointmentNotification({ firmId, appointmentId: booked.appointmentId, kind: "BOOKED", channel: "EMAIL" }),
+      ]);
     }
 
     return NextResponse.json({ ok: true, ...booked, matterId });

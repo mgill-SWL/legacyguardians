@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { renderTemplate } from "@/lib/automation/templateRender";
-import { sendAutomationSms } from "@/lib/ringcentralAutomation";
-import { sendAutomationEmail } from "@/lib/automation/sendAutomationEmail";
+import { sendDiscoveryAppointmentNotification } from "@/lib/automation/discoveryNotifications";
 
 export const dynamic = "force-dynamic";
 
@@ -15,12 +13,6 @@ function authOk(req: Request) {
   if (!secret) return false;
   const auth = req.headers.get("authorization") || "";
   return auth === `Bearer ${secret}`;
-}
-
-function templateKeyFor(kind: string, channel: "SMS" | "EMAIL") {
-  const k = String(kind || "").toLowerCase();
-  if (channel === "SMS") return `discovery_${k}_sms`;
-  return `discovery_${k}_email`;
 }
 
 function isReminderKind(kind: unknown) {
@@ -74,32 +66,10 @@ export async function GET(req: Request) {
           continue;
         }
 
-        const vars = {
-          client_name: appt.clientName || "",
-          start_time: appt.startsAt.toISOString(),
-          phone: appt.clientPhone || "",
-          email: appt.clientEmail || "",
-        };
-
         if (job.type === "SEND_SMS") {
-          if (!appt.clientPhone) throw new Error("Missing client phone");
-          const tplKey = templateKeyFor(payload.kind, "SMS");
-          const tpl = await prisma.messageTemplate.findUnique({
-            where: { firmId_key: { firmId: job.firmId, key: tplKey } },
-          });
-          if (!tpl) throw new Error(`Missing SMS template: ${tplKey}`);
-          const text = renderTemplate(tpl.body, vars);
-          await sendAutomationSms(appt.clientPhone, text);
+          await sendDiscoveryAppointmentNotification({ firmId: job.firmId, appointmentId: payload.apptId, kind: payload.kind, channel: "SMS" });
         } else if (job.type === "SEND_EMAIL") {
-          if (!appt.clientEmail) throw new Error("Missing client email");
-          const tplKey = templateKeyFor(payload.kind, "EMAIL");
-          const tpl = await prisma.messageTemplate.findUnique({
-            where: { firmId_key: { firmId: job.firmId, key: tplKey } },
-          });
-          if (!tpl) throw new Error(`Missing email template: ${tplKey}`);
-          const subject = renderTemplate(tpl.subject || tpl.name || "(no subject)", vars);
-          const text = renderTemplate(tpl.body, vars);
-          await sendAutomationEmail({ to: appt.clientEmail, subject, text, html: tpl.isHtml ? text : null });
+          await sendDiscoveryAppointmentNotification({ firmId: job.firmId, appointmentId: payload.apptId, kind: payload.kind, channel: "EMAIL" });
         } else {
           throw new Error(`Unknown job type: ${job.type}`);
         }

@@ -5,6 +5,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { googleCreateEvent, googleFreeBusy } from "@/lib/google/google";
 import { authOptions } from "@/authOptions";
+import { sendDiscoveryAppointmentNotification } from "@/lib/automation/discoveryNotifications";
 
 export const dynamic = "force-dynamic";
 
@@ -132,15 +133,13 @@ export async function POST(req: Request) {
   // Schedule jobs (placeholders; actual senders wired next).
   const now = Date.now();
   const jobs = [
-    { runAt: new Date(now + 60_000), type: "SEND_SMS" as const, payload: { kind: "BOOKED", apptId: appt.id } },
-    { runAt: new Date(now + 60_000), type: "SEND_EMAIL" as const, payload: { kind: "BOOKED", apptId: appt.id } },
     { runAt: new Date(startsAt.getTime() - 24 * 60 * 60_000), type: "SEND_EMAIL" as const, payload: { kind: "REMINDER_24H", apptId: appt.id } },
     { runAt: new Date(startsAt.getTime() - 2 * 60 * 60_000), type: "SEND_EMAIL" as const, payload: { kind: "REMINDER_2H", apptId: appt.id } },
     { runAt: new Date(startsAt.getTime() - 60 * 60_000), type: "SEND_EMAIL" as const, payload: { kind: "REMINDER_1H", apptId: appt.id } },
     { runAt: new Date(startsAt.getTime() - 24 * 60 * 60_000), type: "SEND_SMS" as const, payload: { kind: "REMINDER_24H", apptId: appt.id } },
     { runAt: new Date(startsAt.getTime() - 2 * 60_000), type: "SEND_SMS" as const, payload: { kind: "REMINDER_2M", apptId: appt.id } },
   ];
-  const dueJobs = jobs.filter((j) => j.payload.kind === "BOOKED" || j.runAt.getTime() > now);
+  const dueJobs = jobs.filter((j) => j.runAt.getTime() > now);
 
   if (dueJobs.length) {
     await prisma.scheduledJob.createMany({
@@ -152,6 +151,11 @@ export async function POST(req: Request) {
       })),
     });
   }
+
+  await Promise.allSettled([
+    sendDiscoveryAppointmentNotification({ firmId: actor.activeFirmId, appointmentId: appt.id, kind: "BOOKED", channel: "SMS" }),
+    sendDiscoveryAppointmentNotification({ firmId: actor.activeFirmId, appointmentId: appt.id, kind: "BOOKED", channel: "EMAIL" }),
+  ]);
 
   return NextResponse.json({ ok: true, appointmentId: appt.id, assignedTo: chosen, eventId: ev.id, tz: TZ });
 }
