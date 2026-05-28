@@ -23,6 +23,19 @@ function templateKeyFor(kind: string, channel: "SMS" | "EMAIL") {
   return `discovery_${k}_email`;
 }
 
+function isReminderKind(kind: unknown) {
+  return String(kind || "").startsWith("REMINDER_");
+}
+
+function scheduledJobPayload(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  const kind = typeof record.kind === "string" ? record.kind : "";
+  const apptId = typeof record.apptId === "string" ? record.apptId : "";
+  if (!kind || !apptId) return null;
+  return { kind, apptId };
+}
+
 export async function GET(req: Request) {
   if (!authOk(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
@@ -49,11 +62,17 @@ export async function GET(req: Request) {
 
     processed += 1;
     try {
-      const payload: any = job.payload || {};
+      const payload = scheduledJobPayload(job.payload);
 
-      if (payload.kind && payload.apptId) {
+      if (payload) {
         const appt = await prisma.appointment.findUnique({ where: { id: payload.apptId } });
         if (!appt) throw new Error("Appointment not found");
+
+        if (appt.startsAt.getTime() <= now.getTime() || (isReminderKind(payload.kind) && job.runAt.getTime() <= job.createdAt.getTime())) {
+          await prisma.scheduledJob.update({ where: { id: job.id }, data: { status: "DONE", lastError: null } });
+          done += 1;
+          continue;
+        }
 
         const vars = {
           client_name: appt.clientName || "",
@@ -91,8 +110,8 @@ export async function GET(req: Request) {
       }
 
       throw new Error("Unsupported job payload");
-    } catch (e: any) {
-      const msg = e?.message || "Failed";
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed";
       errors.push({ id: job.id, error: msg });
       failed += 1;
 
@@ -108,4 +127,3 @@ export async function GET(req: Request) {
 
   return NextResponse.json({ ok: true, processed, done, failed, errors });
 }
-

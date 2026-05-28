@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { bookAppointment } from "@/lib/booking/booking";
@@ -51,6 +52,7 @@ export async function POST(req: Request) {
       clientName,
       clientEmail: body.clientEmail || null,
       clientPhone: body.clientPhone || null,
+      attendeeEmails: body.clientEmail ? [body.clientEmail] : [],
     });
 
     // Schedule follow-ups/reminders.
@@ -70,14 +72,16 @@ export async function POST(req: Request) {
       { runAt: new Date(appt.startsAt.getTime() - 24 * 60 * 60_000), type: "SEND_SMS" as const, payload: { kind: "REMINDER_24H", apptId: booked.appointmentId } },
       { runAt: new Date(appt.startsAt.getTime() - 2 * 60_000), type: "SEND_SMS" as const, payload: { kind: "REMINDER_2M", apptId: booked.appointmentId } },
     ];
+    const dueJobs = jobs.filter((j) => j.payload.kind === "BOOKED" || j.runAt.getTime() > now);
 
-    await prisma.scheduledJob.createMany({
-      data: jobs.map((j) => ({ firmId, runAt: j.runAt, type: j.type, payload: j.payload as any })),
-    });
+    if (dueJobs.length) {
+      await prisma.scheduledJob.createMany({
+        data: dueJobs.map((j) => ({ firmId, runAt: j.runAt, type: j.type, payload: j.payload as Prisma.InputJsonValue })),
+      });
+    }
 
     return NextResponse.json({ ok: true, ...booked });
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message || "failed" }, { status: 500 });
+  } catch (e: unknown) {
+    return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "failed" }, { status: 500 });
   }
 }
-

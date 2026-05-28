@@ -1,5 +1,23 @@
 import { prisma } from "@/lib/prisma";
 
+type GoogleTokenResponse = {
+  access_token?: string;
+  expires_in?: number;
+};
+
+type GoogleFreeBusyResponse = {
+  calendars?: {
+    primary?: {
+      busy?: { start: string; end: string }[];
+    };
+  };
+};
+
+type GoogleEventResponse = {
+  id?: string;
+  htmlLink?: string;
+};
+
 export async function getGoogleAccessToken(googleEmail: string) {
   const conn = await prisma.googleConnection.findUnique({ where: { googleEmail } });
   if (!conn) throw new Error(`No Google connection for ${googleEmail}`);
@@ -25,13 +43,14 @@ export async function getGoogleAccessToken(googleEmail: string) {
     }),
   });
 
-  const json = (await res.json().catch(() => null)) as any;
+  const json = (await res.json().catch(() => null)) as GoogleTokenResponse | null;
   if (!res.ok) {
     throw new Error(`Google refresh failed for ${googleEmail}`);
   }
 
-  const accessToken = json.access_token as string;
-  const expiresIn = json.expires_in as number;
+  const accessToken = json?.access_token;
+  const expiresIn = json?.expires_in;
+  if (!accessToken || !expiresIn) throw new Error(`Google refresh returned an invalid token payload for ${googleEmail}`);
 
   await prisma.googleConnection.update({
     where: { googleEmail },
@@ -67,31 +86,37 @@ export async function googleFreeBusy({
     }),
   });
 
-  const json = (await res.json().catch(() => null)) as any;
+  const json = (await res.json().catch(() => null)) as GoogleFreeBusyResponse | null;
   if (!res.ok) throw new Error(`Freebusy failed for ${googleEmail}`);
 
   const busy = json?.calendars?.primary?.busy || [];
-  return busy as { start: string; end: string }[];
+  return busy;
 }
 
 export async function googleCreateEvent({
   googleEmail,
   summary,
   description,
+  location,
   start,
   end,
-  attendeeEmail,
+  attendeeEmails,
 }: {
   googleEmail: string;
   summary: string;
   description?: string;
+  location?: string;
   start: string;
   end: string;
-  attendeeEmail?: string;
+  attendeeEmails?: string[];
 }) {
   const token = await getGoogleAccessToken(googleEmail);
+  const url = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
+  url.searchParams.set("sendUpdates", "all");
 
-  const res = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
+  const attendees = Array.from(new Set((attendeeEmails || []).map((email) => email.trim()).filter(Boolean)));
+
+  const res = await fetch(url.toString(), {
     method: "POST",
     headers: {
       authorization: `Bearer ${token}`,
@@ -100,14 +125,16 @@ export async function googleCreateEvent({
     body: JSON.stringify({
       summary,
       description,
+      location,
       start: { dateTime: start },
       end: { dateTime: end },
-      attendees: attendeeEmail ? [{ email: attendeeEmail }] : undefined,
+      attendees: attendees.length ? attendees.map((email) => ({ email })) : undefined,
     }),
   });
 
-  const json = (await res.json().catch(() => null)) as any;
+  const json = (await res.json().catch(() => null)) as GoogleEventResponse | null;
   if (!res.ok) throw new Error(`Create event failed for ${googleEmail}`);
+  if (!json?.id) throw new Error(`Create event returned an invalid payload for ${googleEmail}`);
 
-  return { id: json.id as string, htmlLink: json.htmlLink as string | undefined };
+  return { id: json.id, htmlLink: json.htmlLink };
 }

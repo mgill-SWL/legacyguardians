@@ -33,6 +33,16 @@ function utcFromLocal(dateStr: string, minutesSinceMidnight: number, timeZone: s
   return new Date(utcMidnight.getTime() - offsetMin * 60_000 + minutesSinceMidnight * 60_000);
 }
 
+function minStartForNoticeHours(minNoticeHours: number) {
+  const now = new Date();
+  if (minNoticeHours > 0) return new Date(now.getTime() + minNoticeHours * 60 * 60_000);
+
+  const nextHour = new Date(now);
+  nextHour.setMinutes(0, 0, 0);
+  if (nextHour.getTime() < now.getTime()) nextHour.setHours(nextHour.getHours() + 1);
+  return nextHour;
+}
+
 export async function getAppointmentTypeOrThrow(slug: string) {
   const type = await prisma.appointmentType.findUnique({
     where: { slug },
@@ -94,7 +104,7 @@ export async function getBookingSlots({
   const countBy = new Map<string, number>();
   for (const a of appts) countBy.set(a.assignedGoogleEmail, (countBy.get(a.assignedGoogleEmail) || 0) + 1);
 
-  const minStartUtc = new Date(Date.now() + type.minNoticeHours * 60 * 60_000);
+  const minStartUtc = minStartForNoticeHours(type.minNoticeHours);
   const slots: BookingSlot[] = [];
 
   for (let min = 0; min < 24 * 60; min += type.startIntervalMin) {
@@ -132,16 +142,19 @@ export async function bookAppointment({
   clientName,
   clientEmail,
   clientPhone,
+  attendeeEmails = [],
 }: {
   typeSlug: string;
   startsAtIso: string;
   clientName: string;
   clientEmail?: string | null;
   clientPhone?: string | null;
+  attendeeEmails?: string[];
 }) {
   const type = await getAppointmentTypeOrThrow(typeSlug);
   const startsAt = new Date(startsAtIso);
   if (Number.isNaN(startsAt.getTime())) throw new Error("invalid startsAtIso");
+  if (startsAt.getTime() < minStartForNoticeHours(type.minNoticeHours).getTime()) throw new Error("no availability");
   const endsAt = new Date(startsAt.getTime() + type.durationMin * 60_000);
 
   const candidates = type.assignees.filter((a) => a.enabled);
@@ -203,15 +216,28 @@ export async function bookAppointment({
   }
 
   const summary = `${type.name}${clientName ? ` — ${clientName}` : ""}`;
-  const description = `Appointment type: ${type.slug}\n\nClient phone: ${clientPhone || ""}\nClient email: ${clientEmail || ""}`;
+  const isDiscoveryCall = type.slug === "discovery-call";
+  const description = isDiscoveryCall
+    ? [
+        "This Discovery Call will take place by phone.",
+        clientPhone ? `Speedwell Law will call the client at ${clientPhone}.` : "Speedwell Law will call the client at the phone number on file.",
+        "No Zoom link is needed for this appointment.",
+        "",
+        `Client phone: ${clientPhone || ""}`,
+        `Client email: ${clientEmail || ""}`,
+      ].join("\n")
+    : `Appointment type: ${type.slug}\n\nClient phone: ${clientPhone || ""}\nClient email: ${clientEmail || ""}`;
+
+  const eventAttendees = Array.from(new Set([clientEmail || "", ...attendeeEmails].map((email) => email.trim()).filter(Boolean)));
 
   const ev = await googleCreateEvent({
     googleEmail: chosen,
     summary,
     description,
+    location: isDiscoveryCall ? "Phone" : undefined,
     start: startsAt.toISOString(),
     end: endsAt.toISOString(),
-    attendeeEmail: clientEmail || undefined,
+    attendeeEmails: eventAttendees,
   });
 
   const appt = await prisma.appointment.create({
@@ -230,4 +256,3 @@ export async function bookAppointment({
 
   return { appointmentId: appt.id, assignedTo: chosen, eventId: ev.id };
 }
-

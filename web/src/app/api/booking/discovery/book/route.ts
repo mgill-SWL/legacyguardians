@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { googleCreateEvent, googleFreeBusy } from "@/lib/google/google";
@@ -95,15 +96,23 @@ export async function POST(req: Request) {
   }
 
   const summary = `Speedwell Law Discovery Call${body.clientName ? ` — ${body.clientName}` : ""}`;
-  const description = `Discovery call.\n\nClient phone: ${body.clientPhone || ""}\nClient email: ${body.clientEmail || ""}`;
+  const description = [
+    "This Discovery Call will take place by phone.",
+    body.clientPhone ? `Speedwell Law will call the client at ${body.clientPhone}.` : "Speedwell Law will call the client at the phone number on file.",
+    "No Zoom link is needed for this appointment.",
+    "",
+    `Client phone: ${body.clientPhone || ""}`,
+    `Client email: ${body.clientEmail || ""}`,
+  ].join("\n");
 
   const ev = await googleCreateEvent({
     googleEmail: chosen,
     summary,
     description,
+    location: "Phone",
     start: startsAt.toISOString(),
     end: endsAt.toISOString(),
-    attendeeEmail: body.clientEmail,
+    attendeeEmails: body.clientEmail ? [body.clientEmail] : [],
   });
 
   const appt = await prisma.appointment.create({
@@ -131,15 +140,18 @@ export async function POST(req: Request) {
     { runAt: new Date(startsAt.getTime() - 24 * 60 * 60_000), type: "SEND_SMS" as const, payload: { kind: "REMINDER_24H", apptId: appt.id } },
     { runAt: new Date(startsAt.getTime() - 2 * 60_000), type: "SEND_SMS" as const, payload: { kind: "REMINDER_2M", apptId: appt.id } },
   ];
+  const dueJobs = jobs.filter((j) => j.payload.kind === "BOOKED" || j.runAt.getTime() > now);
 
-  await prisma.scheduledJob.createMany({
-    data: jobs.map((j) => ({
-      firmId: actor.activeFirmId!,
-      runAt: j.runAt,
-      type: j.type,
-      payload: j.payload as any,
-    })),
-  });
+  if (dueJobs.length) {
+    await prisma.scheduledJob.createMany({
+      data: dueJobs.map((j) => ({
+        firmId: actor.activeFirmId!,
+        runAt: j.runAt,
+        type: j.type,
+        payload: j.payload as Prisma.InputJsonValue,
+      })),
+    });
+  }
 
   return NextResponse.json({ ok: true, appointmentId: appt.id, assignedTo: chosen, eventId: ev.id, tz: TZ });
 }

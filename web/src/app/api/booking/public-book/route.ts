@@ -188,6 +188,7 @@ export async function POST(req: Request) {
       clientName,
       clientEmail: clientEmail || null,
       clientPhone: clientPhone || null,
+      attendeeEmails: Array.isArray(body.additionalAttendeeEmails) ? body.additionalAttendeeEmails : [],
     });
 
     // Schedule follow-ups/reminders (v1: only discovery-call has templates today).
@@ -209,10 +210,13 @@ export async function POST(req: Request) {
         { runAt: new Date(appt.startsAt.getTime() - 24 * 60 * 60_000), type: "SEND_SMS" as const, payload: { kind: "REMINDER_24H", apptId: booked.appointmentId, matterId } },
         { runAt: new Date(appt.startsAt.getTime() - 2 * 60_000), type: "SEND_SMS" as const, payload: { kind: "REMINDER_2M", apptId: booked.appointmentId, matterId } },
       ];
+      const dueJobs = jobs.filter((j) => j.payload.kind === "BOOKED" || j.runAt.getTime() > now);
 
-      await prisma.scheduledJob.createMany({
-        data: jobs.map((j) => ({ firmId, runAt: j.runAt, type: j.type, payload: j.payload as Prisma.InputJsonValue })),
-      });
+      if (dueJobs.length) {
+        await prisma.scheduledJob.createMany({
+          data: dueJobs.map((j) => ({ firmId, runAt: j.runAt, type: j.type, payload: j.payload as Prisma.InputJsonValue })),
+        });
+      }
     }
 
     return NextResponse.json({ ok: true, ...booked, matterId });
