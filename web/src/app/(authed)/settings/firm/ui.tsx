@@ -2,7 +2,16 @@
 
 import { FormEvent, useMemo, useState } from "react";
 
-type Firm = { id: string; name: string; slug: string } | null;
+type Firm = {
+  id: string;
+  name: string;
+  slug: string;
+  emailFromName: string | null;
+  emailFromAddress: string | null;
+  emailReplyToAddress: string | null;
+  emailSendingDomain: string | null;
+  emailSendingDomainVerifiedAt: Date | string | null;
+} | null;
 type Location = { id: string; name: string; slug: string; active: boolean };
 type UserRow = { id: string; email: string | null; name: string | null; locationId: string | null; kind: string };
 type MatterField = { id: string; key: string; label: string; type: string; helpText: string | null; required: boolean; active: boolean; sortOrder: number; options: string[]; lookupTarget: string | null };
@@ -47,6 +56,12 @@ export function FirmSettingsClient({
   const [newLocationSlug, setNewLocationSlug] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [communicationForm, setCommunicationForm] = useState({
+    emailFromName: firm?.emailFromName || "",
+    emailFromAddress: firm?.emailFromAddress || "",
+    emailReplyToAddress: firm?.emailReplyToAddress || "",
+    emailSendingDomain: firm?.emailSendingDomain || "",
+  });
   const [fieldForm, setFieldForm] = useState({ key: "", label: "", type: "TEXT", helpText: "", optionsText: "", lookupTarget: "", required: false });
   const [locEdits, setLocEdits] = useState<Record<string, { name: string; slug: string; active: boolean }>>(() => {
     const init: Record<string, { name: string; slug: string; active: boolean }> = {};
@@ -74,6 +89,27 @@ export function FirmSettingsClient({
       window.location.reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Create failed");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function saveCommunication(e: FormEvent) {
+    e.preventDefault();
+    if (!canAdmin) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/settings/firm/communication", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(communicationForm),
+      });
+      const json = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!response.ok || json.ok === false) throw new Error(json.error || "Update failed");
+      window.location.reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Update failed");
     } finally {
       setSubmitting(false);
     }
@@ -202,6 +238,64 @@ export function FirmSettingsClient({
       ) : null}
 
       <div style={{ marginTop: 16, display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))" }}>
+        <div className="sw-card sw-card-pad">
+          <div style={{ fontWeight: 900 }}>Email sender</div>
+          <div className="sw-muted" style={{ marginTop: 6, fontSize: 12 }}>
+            Used for client-facing firm automations. Platform account emails still use Legacy Guardians.
+          </div>
+
+          <form onSubmit={saveCommunication} style={{ marginTop: 12, display: "grid", gap: 10 }}>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span className="sw-muted" style={{ fontSize: 12 }}>From name</span>
+              <input
+                disabled={!canAdmin}
+                value={communicationForm.emailFromName}
+                onChange={(e) => setCommunicationForm((f) => ({ ...f, emailFromName: e.target.value }))}
+                placeholder="Speedwell Law"
+              />
+            </label>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span className="sw-muted" style={{ fontSize: 12 }}>From email</span>
+              <input
+                disabled={!canAdmin}
+                type="email"
+                value={communicationForm.emailFromAddress}
+                onChange={(e) => setCommunicationForm((f) => ({ ...f, emailFromAddress: e.target.value }))}
+                placeholder="no-reply@speedwelllaw.com"
+              />
+            </label>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span className="sw-muted" style={{ fontSize: 12 }}>Reply-to email</span>
+              <input
+                disabled={!canAdmin}
+                type="email"
+                value={communicationForm.emailReplyToAddress}
+                onChange={(e) => setCommunicationForm((f) => ({ ...f, emailReplyToAddress: e.target.value }))}
+                placeholder="Optional"
+              />
+            </label>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span className="sw-muted" style={{ fontSize: 12 }}>Sending domain</span>
+              <input
+                disabled={!canAdmin}
+                value={communicationForm.emailSendingDomain}
+                onChange={(e) => setCommunicationForm((f) => ({ ...f, emailSendingDomain: e.target.value }))}
+                placeholder="speedwelllaw.com"
+              />
+            </label>
+            <div className="sw-muted" style={{ fontSize: 12 }}>
+              Domain status: {firm?.emailSendingDomainVerifiedAt ? "verified" : "not tracked yet"}
+            </div>
+            {canAdmin ? (
+              <button className="sw-btn" disabled={submitting || !communicationForm.emailFromAddress.trim()}>
+                {submitting ? "Saving…" : "Save sender"}
+              </button>
+            ) : (
+              <div className="sw-muted" style={{ fontSize: 12 }}>Admin-only.</div>
+            )}
+          </form>
+        </div>
+
         <div className="sw-card sw-card-pad">
           <div style={{ fontWeight: 900 }}>Locations</div>
           <div className="sw-muted" style={{ marginTop: 6, fontSize: 12 }}>

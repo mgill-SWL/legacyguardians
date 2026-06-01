@@ -17,7 +17,19 @@ export default async function FirmSettingsPage() {
   const canAdmin = user.role === "ADMIN";
 
   const [firm, locations, users, firmMembers, locationMembers, matterFields] = await Promise.all([
-    prisma.firm.findUnique({ where: { id: user.activeFirmId }, select: { id: true, name: true, slug: true } }),
+    prisma.firm.findUnique({
+      where: { id: user.activeFirmId },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        emailFromName: true,
+        emailFromAddress: true,
+        emailReplyToAddress: true,
+        emailSendingDomain: true,
+        emailSendingDomainVerifiedAt: true,
+      },
+    }),
     prisma.firmLocation.findMany({
       where: { firmId: user.activeFirmId },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -54,7 +66,14 @@ export default async function FirmSettingsPage() {
 
   return (
     <FirmSettingsClient
-      firm={firm}
+      firm={
+        firm
+          ? {
+              ...firm,
+              emailSendingDomainVerifiedAt: firm.emailSendingDomainVerifiedAt?.toISOString() || null,
+            }
+          : null
+      }
       locations={locations}
       users={users.map((u) => ({
         id: u.id,

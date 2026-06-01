@@ -331,6 +331,12 @@ model Firm {
   slug     String @unique @db.VarChar(4)
   timeZone String @default("America/New_York")
 
+  emailFromName                  String?
+  emailFromAddress               String?
+  emailReplyToAddress            String?
+  emailSendingDomain             String?
+  emailSendingDomainVerifiedAt   DateTime?
+
   members     FirmMember[]
   activeUsers User[]       @relation("UserActiveFirm")
 
