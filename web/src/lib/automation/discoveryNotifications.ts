@@ -6,6 +6,7 @@ import { sendAutomationEmail } from "@/lib/automation/sendAutomationEmail";
 type NotificationChannel = "SMS" | "EMAIL";
 
 const DEFAULT_APPOINTMENT_TIME_ZONE = "America/New_York";
+const DISCOVERY_EMAIL_FROM = "Speedwell Law <no-reply@speedwelllaw.com>";
 
 function templateKeyFor(kind: string, channel: NotificationChannel) {
   const k = String(kind || "").toLowerCase();
@@ -67,5 +68,5 @@ export async function sendDiscoveryAppointmentNotification({
 
   if (!appt.clientEmail) throw new Error("Missing client email");
   const subject = renderTemplate(tpl.subject || tpl.name || "(no subject)", vars);
-  await sendAutomationEmail({ to: appt.clientEmail, subject, text, html: tpl.isHtml ? text : null });
+  await sendAutomationEmail({ to: appt.clientEmail, subject, text, html: tpl.isHtml ? text : null, from: DISCOVERY_EMAIL_FROM });
 }

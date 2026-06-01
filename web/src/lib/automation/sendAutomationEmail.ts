@@ -1,8 +1,8 @@
 import { getResend } from "../resend";
 
-export async function sendAutomationEmail(opts: { to: string; subject: string; text: string; html?: string | null }) {
+export async function sendAutomationEmail(opts: { to: string; subject: string; text: string; html?: string | null; from?: string | null }) {
   const resend = getResend();
-  const from = process.env.EMAIL_FROM;
+  const from = opts.from || process.env.EMAIL_FROM;
   if (!from) throw new Error("EMAIL_FROM is required");
 
   return await resend.emails.send({
