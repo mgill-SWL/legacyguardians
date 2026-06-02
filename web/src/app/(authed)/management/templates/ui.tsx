@@ -139,24 +139,23 @@ export function TemplatesClient({ initialTemplates, canEdit }: { initialTemplate
 
   return (
     <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "320px 1fr", gap: 12 }}>
-      <div className="sw-card sw-card-pad" style={{ display: "grid", gap: 10, alignContent: "start" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-          <div style={{ fontWeight: 900 }}>All templates</div>
-          {canEdit ? (
-            <button
-              className="sw-btn"
-              type="button"
-              onClick={() => {
-                setSelectedId(null);
-                setDraft(emptyDraft());
-                setError(null);
-              }}
-            >
-              New
-            </button>
-          ) : null}
-        </div>
-        <div style={{ display: "grid", gap: 8 }}>
+      <div className="sw-card sw-card-pad" style={{ display: "grid", gap: 10, alignContent: "start", minWidth: 0 }}>
+        <div style={{ fontWeight: 900 }}>All templates</div>
+        {canEdit ? (
+          <button
+            className="sw-btn sw-btnPrimary"
+            type="button"
+            style={{ width: "100%", justifyContent: "center" }}
+            onClick={() => {
+              setSelectedId(null);
+              setDraft(emptyDraft());
+              setError(null);
+            }}
+          >
+            New
+          </button>
+        ) : null}
+        <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
           {templates.map((t) => (
             <button
               key={t.id}
