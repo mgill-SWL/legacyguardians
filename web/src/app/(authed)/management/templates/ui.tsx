@@ -138,7 +138,7 @@ export function TemplatesClient({ initialTemplates, canEdit }: { initialTemplate
   }
 
   return (
-    <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "320px 1fr", gap: 12 }}>
+    <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "400px minmax(0, 1fr)", gap: 12 }}>
       <div className="sw-card sw-card-pad" style={{ display: "grid", gap: 10, alignContent: "start", minWidth: 0 }}>
         <div style={{ fontWeight: 900 }}>All templates</div>
         {canEdit ? (
@@ -160,14 +160,15 @@ export function TemplatesClient({ initialTemplates, canEdit }: { initialTemplate
             <button
               key={t.id}
               className={`sw-navBtn ${t.id === selectedId ? "sw-navBtnActive" : ""}`}
+              style={{ minWidth: 0 }}
               onClick={() => {
                 setSelectedId(t.id);
                 setDraft(draftFromTemplate(t));
                 setError(null);
               }}
             >
-              <span className="sw-navIcon">{t.channel === "SMS" ? "S" : "E"}</span>
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
+              <span className="sw-navIcon" style={{ flexShrink: 0 }}>{t.channel === "SMS" ? "S" : "E"}</span>
+              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
             </button>
           ))}
           {templates.length === 0 ? <div className="sw-muted">No templates yet.</div> : null}
