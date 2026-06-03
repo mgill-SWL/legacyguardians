@@ -351,6 +351,35 @@
   border-top: 1px solid rgba(23, 32, 51, 0.08);
 }
 
+.chartLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: rgba(23, 32, 51, 0.56);
+  font-size: 11px;
+  padding-top: 2px;
+}
+
+.chartLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.chartLegend i {
+  width: 10px;
+  height: 10px;
+  display: inline-block;
+}
+
+.legendCollected {
+  background: #2e4a7f;
+}
+
+.legendRevenue {
+  background: rgba(168, 116, 68, 0.58);
+}
+
 .barGroup {
   flex: 1;
   min-width: 0;
@@ -373,12 +402,19 @@
 }
 
 .chartLabels {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  display: flex;
+  justify-content: space-between;
   gap: 8px;
   color: rgba(23, 32, 51, 0.48);
   font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 10px;
+}
+
+.emptyState {
+  border-bottom: 1px solid rgba(23, 32, 51, 0.08);
+  color: rgba(23, 32, 51, 0.55);
+  font-size: 13px;
+  padding: 12px 0;
 }
 
 .reportLibrary {
