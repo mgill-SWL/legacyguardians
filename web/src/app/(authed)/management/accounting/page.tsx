@@ -16,6 +16,14 @@ const reportLabel: Record<string, string> = {
   OPERATING_RETAINER_BY_MATTER: "Operating Retainer by Matter",
 };
 
+const rawImportLabel: Record<string, string> = {
+  BANK_CSV: "Bank CSV",
+  CARD_CSV: "Card CSV",
+  MANUAL: "Manual",
+  COSMOLEX: "CosmoLex",
+  OTHER: "Other",
+};
+
 function shortDate(d: Date) {
   return d.toISOString().slice(0, 10);
 }
@@ -32,6 +40,18 @@ export default async function AccountingHubPage() {
     orderBy: { createdAt: "desc" },
     take: 12,
   });
+
+  const recentRawBatches = firmId
+    ? await prisma.financialImportBatch.findMany({
+        where: { firmId },
+        orderBy: { createdAt: "desc" },
+        take: 12,
+        include: {
+          account: true,
+          _count: { select: { rawTransactions: true } },
+        },
+      })
+    : [];
 
   const batchCounts = recentBatches.reduce<Record<string, number>>((acc, b) => {
     acc[b.reportType] = (acc[b.reportType] || 0) + 1;
@@ -102,7 +122,41 @@ export default async function AccountingHubPage() {
         </div>
 
         <div className="sw-card sw-card-pad" style={{ gridColumn: "1 / -1" }}>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900 }}>Recent import batches</h2>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900 }}>Recent bank/card imports</h2>
+          {recentRawBatches.length ? (
+            <div style={{ marginTop: 10, overflowX: "auto" }}>
+              <table className="sw-table" style={{ minWidth: 780 }}>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Source</th>
+                    <th>Account</th>
+                    <th>Filename</th>
+                    <th style={{ textAlign: "right" }}>Transactions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentRawBatches.map((b) => (
+                    <tr key={b.id}>
+                      <td>{shortDate(b.createdAt)}</td>
+                      <td>{rawImportLabel[b.source] ?? b.source}</td>
+                      <td>{b.account?.name || (b.source === "CARD_CSV" ? "CHASE CARD" : "—")}</td>
+                      <td style={{ maxWidth: 420, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.sourceFilename ?? "—"}</td>
+                      <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{b._count.rawTransactions}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="sw-muted" style={{ marginTop: 10 }}>
+              No bank/card CSV import batches yet.
+            </div>
+          )}
+        </div>
+
+        <div className="sw-card sw-card-pad" style={{ gridColumn: "1 / -1" }}>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900 }}>Recent KPI/CosmoLex import batches</h2>
           {recentBatches.length ? (
             <div style={{ marginTop: 10, overflowX: "auto" }}>
               <table className="sw-table" style={{ minWidth: 720 }}>

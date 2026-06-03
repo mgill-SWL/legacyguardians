@@ -129,7 +129,8 @@ async function loadCoaMap() {
     const m = new Map<string, string>();
     for (const r of coa?.rows || []) {
       const num = String(r.label || r.rowKey || "").trim();
-      const name = String((r.data as any)?.account || "").trim();
+      const data = jsonRecord(r.data);
+      const name = String(data.account || "").trim();
       if (num) m.set(num, name);
     }
     return m;
@@ -140,12 +141,20 @@ async function loadCoaMap() {
 
 type PayeeRule = { matchType: "CONTAINS" | "EXACT"; pattern: string; appliesTo: "CARD" | "OPERATING" | "IOLTA" | "ANY"; coaNumber: string; classification: string };
 
+function jsonRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+function payeeRuleAppliesTo(value: string): PayeeRule["appliesTo"] {
+  return value === "CARD" || value === "OPERATING" || value === "IOLTA" ? value : "ANY";
+}
+
 async function loadPayeeRules(): Promise<PayeeRule[]> {
   try {
     const t = await prisma.reportTable.findUnique({ where: { slug: "payee-rules" }, include: { rows: { orderBy: { sortOrder: "asc" } } } });
     return (t?.rows || [])
       .map((r) => {
-        const d: any = r.data || {};
+        const d = jsonRecord(r.data);
         const matchType = String(d.match_type || "CONTAINS").toUpperCase();
         const appliesTo = String(d.applies_to || "ANY").toUpperCase();
         const pattern = String(d.pattern || r.label || "");
@@ -155,7 +164,7 @@ async function loadPayeeRules(): Promise<PayeeRule[]> {
         return {
           matchType: matchType === "EXACT" ? "EXACT" : "CONTAINS",
           pattern: normPayee(pattern),
-          appliesTo: (appliesTo === "CARD" || appliesTo === "OPERATING" || appliesTo === "IOLTA" ? appliesTo : "ANY") as any,
+          appliesTo: payeeRuleAppliesTo(appliesTo),
           coaNumber,
           classification,
         } as PayeeRule;
@@ -237,10 +246,17 @@ export async function POST(request: Request) {
     });
   }
 
+  const account = await prisma.financialAccount.upsert({
+    where: { firmId_name: { firmId: user.activeFirmId, name: "CHASE CARD" } },
+    update: { kind: "CREDIT_CARD", active: true },
+    create: { firmId: user.activeFirmId, name: "CHASE CARD", kind: "CREDIT_CARD", active: true },
+  });
+
   const batch = await prisma.financialImportBatch.create({
     data: {
       firmId: user.activeFirmId,
       source: "CARD_CSV",
+      accountId: account.id,
       sourceFilename: file.name,
       importedByUserId: user.id,
     },
@@ -278,7 +294,7 @@ export async function POST(request: Request) {
 
     return {
       firmId: user.activeFirmId!,
-      accountId: null,
+      accountId: account.id,
       importBatchId: batch.id,
       source: "CARD_CSV" as const,
       transactionDate: tDate,

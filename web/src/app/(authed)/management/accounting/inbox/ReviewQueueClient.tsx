@@ -3,11 +3,14 @@
 import { useMemo, useState } from "react";
 
 type CoaOption = { number: string; name: string; type?: string };
+type AccountBucket = "CARD" | "OPERATING" | "IOLTA";
+type DirectionFilter = "ALL" | "INFLOW" | "OUTFLOW";
+type SaveResponse = { ok?: boolean; error?: string };
 type Item = {
   id: string;
   status: string;
   createdAt: string;
-  accountBucket: "CARD" | "OPERATING" | "IOLTA";
+  accountBucket: AccountBucket;
   raw: {
     id: string;
     transactionDate: string;
@@ -41,8 +44,21 @@ function shortDate(iso: string) {
   return iso.slice(0, 10);
 }
 
+function isAccountBucket(value: string): value is AccountBucket {
+  return value === "CARD" || value === "OPERATING" || value === "IOLTA";
+}
+
+function isDirectionFilter(value: string): value is DirectionFilter {
+  return value === "ALL" || value === "INFLOW" || value === "OUTFLOW";
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Save failed";
+}
+
 export function ReviewQueueClient({ items, coa }: { items: Item[]; coa: CoaOption[] }) {
-  const [bucket, setBucket] = useState<"ALL" | Item["accountBucket"]>("ALL");
+  const [bucket, setBucket] = useState<"ALL" | AccountBucket>("ALL");
+  const [direction, setDirection] = useState<DirectionFilter>("ALL");
   const [q, setQ] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -51,11 +67,12 @@ export function ReviewQueueClient({ items, coa }: { items: Item[]; coa: CoaOptio
     const qq = q.trim().toLowerCase();
     return items.filter((it) => {
       if (bucket !== "ALL" && it.accountBucket !== bucket) return false;
+      if (direction !== "ALL" && it.raw.direction !== direction) return false;
       if (!qq) return true;
       const hay = `${it.raw.payee || ""} ${it.raw.description || ""} ${it.raw.memo || ""}`.toLowerCase();
       return hay.includes(qq);
     });
-  }, [items, bucket, q]);
+  }, [items, bucket, direction, q]);
 
   async function save(it: Item, opts: { coaNumber: string; classificationType: string; rememberPayee: boolean }) {
     setBusyId(it.id);
@@ -66,12 +83,12 @@ export function ReviewQueueClient({ items, coa }: { items: Item[]; coa: CoaOptio
         headers: { "content-type": "application/json" },
         body: JSON.stringify(opts),
       });
-      const json = (await res.json().catch(() => ({}))) as any;
+      const json = (await res.json().catch(() => ({}))) as SaveResponse;
       if (!res.ok || json.ok === false) throw new Error(json.error || `HTTP ${res.status}`);
       setMsg(`Saved: ${it.raw.description}`);
       window.location.reload();
-    } catch (e: any) {
-      setMsg(e?.message || "Save failed");
+    } catch (e: unknown) {
+      setMsg(errorMessage(e));
     } finally {
       setBusyId(null);
     }
@@ -88,11 +105,24 @@ export function ReviewQueueClient({ items, coa }: { items: Item[]; coa: CoaOptio
         </div>
 
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <select className="sw-input" value={bucket} onChange={(e) => setBucket(e.target.value as any)}>
+          <select
+            className="sw-input"
+            value={bucket}
+            onChange={(e) => setBucket(isAccountBucket(e.target.value) ? e.target.value : "ALL")}
+          >
             <option value="ALL">All accounts</option>
             <option value="CARD">Card</option>
             <option value="OPERATING">Operating</option>
             <option value="IOLTA">IOLTA</option>
+          </select>
+          <select
+            className="sw-input"
+            value={direction}
+            onChange={(e) => setDirection(isDirectionFilter(e.target.value) ? e.target.value : "ALL")}
+          >
+            <option value="ALL">Inflows + outflows</option>
+            <option value="OUTFLOW">Outflows</option>
+            <option value="INFLOW">Inflows</option>
           </select>
           <input className="sw-input" placeholder="Search payee/description…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
@@ -110,6 +140,7 @@ export function ReviewQueueClient({ items, coa }: { items: Item[]; coa: CoaOptio
             <tr>
               <th>Date</th>
               <th>Account</th>
+              <th>Direction</th>
               <th>Payee / Description</th>
               <th style={{ textAlign: "right" }}>Amount</th>
               <th>Suggested COA</th>
@@ -123,7 +154,7 @@ export function ReviewQueueClient({ items, coa }: { items: Item[]; coa: CoaOptio
             ))}
             {filtered.length === 0 ? (
               <tr>
-                <td className="sw-muted" colSpan={7} style={{ padding: 14 }}>
+                <td className="sw-muted" colSpan={8} style={{ padding: 14 }}>
                   Nothing to review.
                 </td>
               </tr>
@@ -164,6 +195,9 @@ function Row({
       <td className="sw-td" style={{ whiteSpace: "nowrap" }}>
         {it.accountBucket}
         {it.raw.accountName ? <span className="sw-muted"> · {it.raw.accountName}</span> : null}
+      </td>
+      <td className="sw-td" style={{ whiteSpace: "nowrap" }}>
+        {it.raw.direction === "INFLOW" ? "Inflow" : "Outflow"}
       </td>
       <td className="sw-td" style={{ maxWidth: 520 }}>
         <div style={{ fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayPayee}</div>
@@ -241,4 +275,3 @@ function Row({
     </tr>
   );
 }
-
