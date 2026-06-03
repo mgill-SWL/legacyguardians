@@ -36,8 +36,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
   const templates = await prisma.messageTemplate.findMany({
     where: { firmId: access.firmId },
-    orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }],
-    select: { id: true, sortOrder: true },
+    orderBy: { updatedAt: "desc" },
+    select: { id: true, updatedAt: true },
   });
   const currentIndex = templates.findIndex((template) => template.id === id);
   if (currentIndex === -1) return NextResponse.json({ ok: false, error: "not found" }, { status: 404 });
@@ -47,16 +47,16 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const swap = templates[swapIndex];
   if (!swap) return NextResponse.json({ ok: true });
 
-  await prisma.$transaction([
-    prisma.messageTemplate.update({
-      where: { id: current.id },
-      data: { sortOrder: swap.sortOrder },
-    }),
-    prisma.messageTemplate.update({
-      where: { id: swap.id },
-      data: { sortOrder: current.sortOrder },
-    }),
-  ]);
+  await prisma.$executeRaw`
+    UPDATE "MessageTemplate"
+    SET "updatedAt" = CASE
+      WHEN "id" = ${current.id} THEN ${swap.updatedAt}
+      WHEN "id" = ${swap.id} THEN ${current.updatedAt}
+      ELSE "updatedAt"
+    END
+    WHERE "firmId" = ${access.firmId}
+      AND "id" IN (${current.id}, ${swap.id})
+  `;
 
   return NextResponse.json({ ok: true });
 }

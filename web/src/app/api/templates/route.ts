@@ -34,11 +34,6 @@ export async function POST(req: Request) {
   }
   if (!validChannel(body.channel)) return NextResponse.json({ ok: false, error: "channel must be EMAIL or SMS" }, { status: 400 });
 
-  const maxSortOrder = await prisma.messageTemplate.aggregate({
-    where: { firmId },
-    _max: { sortOrder: true },
-  });
-
   const tpl = await prisma.messageTemplate.create({
     data: {
       firmId,
@@ -49,10 +44,9 @@ export async function POST(req: Request) {
       body: body.body,
       attachmentUrl: body.attachmentUrl || null,
       isHtml: body.isHtml ?? false,
-      sortOrder: (maxSortOrder._max.sortOrder ?? -1) + 1,
     },
-    select: { id: true, sortOrder: true },
+    select: { id: true },
   });
 
-  return NextResponse.json({ ok: true, id: tpl.id, sortOrder: tpl.sortOrder });
+  return NextResponse.json({ ok: true, id: tpl.id });
 }

@@ -19,7 +19,18 @@ export default async function TemplatesPage() {
 
   const templates = await prisma.messageTemplate.findMany({
     where: firmId ? { firmId } : undefined,
-    orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }],
+    orderBy: { updatedAt: "desc" },
+    select: {
+      id: true,
+      key: true,
+      channel: true,
+      name: true,
+      subject: true,
+      body: true,
+      isHtml: true,
+      attachmentUrl: true,
+      updatedAt: true,
+    },
   });
 
   return (

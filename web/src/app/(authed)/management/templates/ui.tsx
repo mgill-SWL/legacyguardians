@@ -11,7 +11,6 @@ type Tpl = {
   body: string;
   isHtml: boolean;
   attachmentUrl: string | null;
-  sortOrder: number;
   updatedAt: string | Date;
 };
 
@@ -127,10 +126,9 @@ export function TemplatesClient({ initialTemplates, canEdit, canDelete }: { init
         body: draft.body,
         attachmentUrl: draft.attachmentUrl || null,
         isHtml: draft.isHtml,
-        sortOrder: typeof data.sortOrder === "number" ? data.sortOrder : templates.length,
         updatedAt,
       };
-      setTemplates((items) => [...items, created].sort((a, b) => a.sortOrder - b.sortOrder));
+      setTemplates((items) => [created, ...items]);
       setSelectedId(created.id);
     } catch (e: unknown) {
       setError(errorMessage(e));
@@ -159,8 +157,8 @@ export function TemplatesClient({ initialTemplates, canEdit, canDelete }: { init
         const next = [...items];
         const current = next[index];
         const swap = next[swapIndex];
-        next[index] = { ...swap, sortOrder: current.sortOrder };
-        next[swapIndex] = { ...current, sortOrder: swap.sortOrder };
+        next[index] = swap;
+        next[swapIndex] = current;
         return next;
       });
     } catch (e: unknown) {
