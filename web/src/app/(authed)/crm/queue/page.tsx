@@ -17,13 +17,20 @@ function formatDate(value: Date | null | undefined) {
   }).format(value);
 }
 
-function contactName(contact: { firstName: string; lastName: string; phoneE164: string }) {
+function contactName(contact: {
+  firstName: string;
+  lastName: string;
+  phoneE164: string;
+}) {
   const name = `${contact.firstName} ${contact.lastName}`.trim();
   return name || contact.phoneE164;
 }
 
 function taskLabel(value: string) {
-  return value.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
+  return value
+    .replaceAll("_", " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 export default async function CrmQueuePage() {
@@ -33,7 +40,7 @@ export default async function CrmQueuePage() {
       status: { in: ["OPEN", "IN_PROGRESS"] },
       dueAt: { lte: now },
     },
-    orderBy: [{ priority: "asc" }, { dueAt: "asc" }],
+    orderBy: [{ dueAt: "asc" }],
     take: 50,
     include: {
       contact: true,
@@ -43,20 +50,26 @@ export default async function CrmQueuePage() {
   });
 
   const hotCount = tasks.filter((task) => task.priority === "HOT").length;
-  const inProgressCount = tasks.filter((task) => task.status === "IN_PROGRESS").length;
-  const overdueCount = tasks.filter((task) => task.dueAt.getTime() < now.getTime()).length;
+  const inProgressCount = tasks.filter(
+    (task) => task.status === "IN_PROGRESS",
+  ).length;
+  const overdueCount = tasks.filter(
+    (task) => task.dueAt.getTime() < now.getTime(),
+  ).length;
 
   return (
     <div className={styles.page}>
       <div className={styles.topbar}>
         <div>
           <div className={styles.eyebrow}>CRM / Queue</div>
-          <h1 className={styles.title}>Due work</h1>
-          <p className={styles.subcopy}>Open touches that need action now, grouped for fast staff review.</p>
+          <h1 className={styles.title}>CRM Queue</h1>
+          <p className={styles.subcopy}>
+            Open and in-progress CRM tasks due now.
+          </p>
         </div>
         <div className={styles.actions}>
           <Link className={styles.button} href="/crm">
-            Command center
+            CRM home
           </Link>
           <Link className={styles.button} href="/crm/inbox">
             Inbox
@@ -71,27 +84,41 @@ export default async function CrmQueuePage() {
         <div className={styles.statusCell}>
           <div className={styles.metricLabel}>Due tasks</div>
           <div className={styles.metricValue}>{tasks.length}</div>
-          <div className={styles.metricNote}>Visible in this work queue.</div>
+          <div className={styles.metricNote}>
+            Rows matching the queue filter.
+          </div>
         </div>
         <div className={styles.statusCell}>
           <div className={styles.metricLabel}>Hot</div>
-          <div className={`${styles.metricValue} ${hotCount ? styles.warning : ""}`}>{hotCount}</div>
-          <div className={styles.metricNote}>Highest priority touches.</div>
+          <div
+            className={`${styles.metricValue} ${hotCount ? styles.warning : ""}`}
+          >
+            {hotCount}
+          </div>
+          <div className={styles.metricNote}>Tasks with HOT priority.</div>
         </div>
         <div className={styles.statusCell}>
           <div className={styles.metricLabel}>In progress</div>
           <div className={styles.metricValue}>{inProgressCount}</div>
-          <div className={styles.metricNote}>Already picked up.</div>
+          <div className={styles.metricNote}>
+            Tasks with IN_PROGRESS status.
+          </div>
         </div>
         <div className={styles.statusCell}>
           <div className={styles.metricLabel}>Overdue</div>
-          <div className={`${styles.metricValue} ${overdueCount ? styles.warning : ""}`}>{overdueCount}</div>
-          <div className={styles.metricNote}>Past due timestamp.</div>
+          <div
+            className={`${styles.metricValue} ${overdueCount ? styles.warning : ""}`}
+          >
+            {overdueCount}
+          </div>
+          <div className={styles.metricNote}>Due timestamp before now.</div>
         </div>
         <div className={styles.statusCell}>
           <div className={styles.metricLabel}>Owner teams</div>
-          <div className={styles.metricValue}>{new Set(tasks.map((task) => task.ownerTeam)).size}</div>
-          <div className={styles.metricNote}>PH / US assignment spread.</div>
+          <div className={styles.metricValue}>
+            {new Set(tasks.map((task) => task.ownerTeam)).size}
+          </div>
+          <div className={styles.metricNote}>Distinct ownerTeam values.</div>
         </div>
       </section>
 
@@ -99,7 +126,9 @@ export default async function CrmQueuePage() {
         <div className={styles.panelHeader}>
           <div>
             <div className={styles.panelTitle}>Task queue</div>
-            <div className={styles.panelMeta}>Call, reply, rescue, and follow-up tasks due now.</div>
+            <div className={styles.panelMeta}>
+              Direct view of CRM task rows due now.
+            </div>
           </div>
         </div>
 
@@ -121,17 +150,25 @@ export default async function CrmQueuePage() {
               {tasks.map((task) => (
                 <tr key={task.id}>
                   <td>
-                    <div className={styles.rowTitle}>{contactName(task.contact)}</div>
-                    <div className={styles.rowMeta}>{task.contact.phoneE164}</div>
+                    <div className={styles.rowTitle}>
+                      {contactName(task.contact)}
+                    </div>
+                    <div className={styles.rowMeta}>
+                      {task.contact.phoneE164}
+                    </div>
                   </td>
                   <td>
-                    <span className={`${styles.badge} ${task.priority === "HOT" ? styles.badgeWarn : styles.badgeNeutral}`}>
+                    <span
+                      className={`${styles.badge} ${task.priority === "HOT" ? styles.badgeWarn : styles.badgeNeutral}`}
+                    >
                       {task.priority}
                     </span>{" "}
                     {taskLabel(task.type)}
                   </td>
                   <td>{task.campaign.slug}</td>
-                  <td>{task.showing ? formatDate(task.showing.startsAt) : "None"}</td>
+                  <td>
+                    {task.showing ? formatDate(task.showing.startsAt) : "None"}
+                  </td>
                   <td>{task.ownerTeam}</td>
                   <td>{taskLabel(task.status)}</td>
                   <td>{formatDate(task.lastTouchAt)}</td>
@@ -147,10 +184,14 @@ export default async function CrmQueuePage() {
             <div className={queueStyles.mobileCard} key={task.id}>
               <div className={queueStyles.mobileTop}>
                 <div>
-                  <div className={styles.rowTitle}>{contactName(task.contact)}</div>
+                  <div className={styles.rowTitle}>
+                    {contactName(task.contact)}
+                  </div>
                   <div className={styles.rowMeta}>{task.contact.phoneE164}</div>
                 </div>
-                <span className={`${styles.badge} ${task.priority === "HOT" ? styles.badgeWarn : styles.badgeNeutral}`}>
+                <span
+                  className={`${styles.badge} ${task.priority === "HOT" ? styles.badgeWarn : styles.badgeNeutral}`}
+                >
                   {task.priority}
                 </span>
               </div>
@@ -176,7 +217,9 @@ export default async function CrmQueuePage() {
           ))}
         </div>
 
-        {tasks.length === 0 ? <div className={styles.emptyState}>Nothing is due right now.</div> : null}
+        {tasks.length === 0 ? (
+          <div className={styles.emptyState}>Nothing is due right now.</div>
+        ) : null}
       </section>
     </div>
   );

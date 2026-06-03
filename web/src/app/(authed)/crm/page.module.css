@@ -91,7 +91,7 @@
 
 .statusStrip {
   display: grid;
-  grid-template-columns: repeat(5, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   margin-top: 14px;
   border-top: 1px solid rgba(23, 32, 51, 0.1);
   border-bottom: 1px solid rgba(23, 32, 51, 0.1);
@@ -271,6 +271,46 @@
 
 .moduleGrid a:nth-child(2n) {
   border-right: 0;
+}
+
+.moduleList {
+  border-top: 1px solid rgba(23, 32, 51, 0.08);
+}
+
+.moduleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid rgba(23, 32, 51, 0.08);
+  padding: 12px 0;
+  color: #172033;
+  text-decoration: none;
+}
+
+.moduleRow:hover {
+  color: #2e4a7f;
+}
+
+.moduleRow:focus-visible {
+  outline: 3px solid rgba(46, 74, 127, 0.28);
+  outline-offset: 2px;
+}
+
+.moduleRow strong,
+.moduleRow small {
+  display: block;
+}
+
+.moduleRow strong {
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.moduleRow small {
+  margin-top: 3px;
+  color: rgba(23, 32, 51, 0.55);
+  font-size: 12px;
 }
 
 .tableWrap {

@@ -24,6 +24,7 @@ const GROUPS: Group[] = [
     label: "Leads",
     defaultOpen: true,
     items: [
+      { href: "/crm", label: "CRM home", icon: "C" },
       { href: "/crm/inbox", label: "Inbox", icon: "I" },
       { href: "/crm/queue", label: "Queue", icon: "Q" },
       { href: "/crm/leads", label: "All leads", icon: "L" },
@@ -71,14 +72,12 @@ const GROUPS: Group[] = [
 ];
 
 function NavButton({
-  href,
   label,
   icon,
   collapsed,
   active,
   onClick,
 }: {
-  href: string;
   label: string;
   icon: string;
   collapsed: boolean;
@@ -93,10 +92,7 @@ function NavButton({
       style={{ padding: collapsed ? "10px 10px" : undefined }}
       aria-label={label}
     >
-      <span
-        aria-hidden
-        className="sw-navIcon"
-      >
+      <span aria-hidden className="sw-navIcon">
         {icon}
       </span>
       {collapsed ? null : <span>{label}</span>}
@@ -126,7 +122,9 @@ export function SidebarNav({ email }: { email: string | null | undefined }) {
 
   const activeLocation = useMemo(() => {
     if (!firmCtx?.activeLocationId) return null;
-    return firmCtx.locations.find((l) => l.id === firmCtx.activeLocationId) || null;
+    return (
+      firmCtx.locations.find((l) => l.id === firmCtx.activeLocationId) || null
+    );
   }, [firmCtx]);
 
   const [collapsed, setCollapsed] = useState(false);
@@ -154,7 +152,7 @@ export function SidebarNav({ email }: { email: string | null | undefined }) {
       try {
         const res = await fetch("/api/me/tenant");
         const data = (await res.json().catch(() => null)) as FirmCtx | null;
-        if (!cancelled && data && (data as any).ok) setFirmCtx(data);
+        if (!cancelled && data?.ok) setFirmCtx(data);
       } catch {
         // ignore
       }
@@ -237,17 +235,33 @@ export function SidebarNav({ email }: { email: string | null | undefined }) {
 
   return (
     <>
-      <aside
-        className="sw-navAside"
-        style={{ width: collapsed ? 84 : 280 }}
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+      <aside className="sw-navAside" style={{ width: collapsed ? 84 : 280 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+          }}
+        >
           <div style={{ padding: "6px 6px 2px", overflow: "hidden" }}>
             <div style={{ whiteSpace: "nowrap" }}>
-              {collapsed ? <LegacyGuardiansLogo kind="mark_simplified" height={30} /> : <LegacyGuardiansLogo kind="lockup" height={34} />}
+              {collapsed ? (
+                <LegacyGuardiansLogo kind="mark_simplified" height={30} />
+              ) : (
+                <LegacyGuardiansLogo kind="lockup" height={34} />
+              )}
             </div>
             {collapsed ? null : (
-              <div style={{ marginTop: 6, fontSize: 12, color: "var(--sw-muted, #aab4d4)", display: "grid", gap: 8 }}>
+              <div
+                style={{
+                  marginTop: 6,
+                  fontSize: 12,
+                  color: "var(--sw-muted, #aab4d4)",
+                  display: "grid",
+                  gap: 8,
+                }}
+              >
                 <div>Staff console</div>
 
                 {firmCtx?.firms?.length ? (
@@ -267,25 +281,29 @@ export function SidebarNav({ email }: { email: string | null | undefined }) {
                     </select>
 
                     {firmCtx.locations?.length ? (
-                    <select
-                      className="sw-input"
-                      value={firmCtx.activeLocationId || ""}
-                      onChange={(e) => setActiveLocationId(e.target.value || null)}
-                      title="Active location"
-                      style={{ fontSize: 12, padding: "8px 10px" }}
-                    >
-                      {firmCtx.locations.map((l) => (
-                        <option key={l.id} value={l.id}>
-                          {l.slug} — {l.name}
-                        </option>
-                      ))}
-                    </select>
+                      <select
+                        className="sw-input"
+                        value={firmCtx.activeLocationId || ""}
+                        onChange={(e) =>
+                          setActiveLocationId(e.target.value || null)
+                        }
+                        title="Active location"
+                        style={{ fontSize: 12, padding: "8px 10px" }}
+                      >
+                        {firmCtx.locations.map((l) => (
+                          <option key={l.id} value={l.id}>
+                            {l.slug} — {l.name}
+                          </option>
+                        ))}
+                      </select>
                     ) : null}
                   </div>
                 ) : (
                   <div style={{ fontSize: 12 }}>
                     {activeFirm?.name ? `Firm: ${activeFirm.name}` : null}
-                    {activeLocation?.name ? ` • Location: ${activeLocation.name}` : null}
+                    {activeLocation?.name
+                      ? ` • Location: ${activeLocation.name}`
+                      : null}
                   </div>
                 )}
               </div>
@@ -312,52 +330,73 @@ export function SidebarNav({ email }: { email: string | null | undefined }) {
         </div>
 
         <div style={{ display: "grid", gap: 10 }}>
-          {(collapsed ? [{ label: "", items: flatItems }] : GROUPS).map((g, idx) => {
-            const isOpen = g.label ? openGroups[g.label] : true;
-            return (
-              <div key={`${g.label}-${idx}`} style={{ display: "grid", gap: 8 }}>
-                {g.label && !collapsed ? (
-                  <button
-                    onClick={() =>
-                      setOpenGroups((prev) => ({ ...prev, [g.label]: !prev[g.label] }))
-                    }
-                    className="sw-navGroupLabel"
-                  >
-                    <span>{g.label}</span>
-                    <span style={{ opacity: 0.8 }}>{isOpen ? "▾" : "▸"}</span>
-                  </button>
-                ) : null}
+          {(collapsed ? [{ label: "", items: flatItems }] : GROUPS).map(
+            (g, idx) => {
+              const isOpen = g.label ? openGroups[g.label] : true;
+              return (
+                <div
+                  key={`${g.label}-${idx}`}
+                  style={{ display: "grid", gap: 8 }}
+                >
+                  {g.label && !collapsed ? (
+                    <button
+                      onClick={() =>
+                        setOpenGroups((prev) => ({
+                          ...prev,
+                          [g.label]: !prev[g.label],
+                        }))
+                      }
+                      className="sw-navGroupLabel"
+                    >
+                      <span>{g.label}</span>
+                      <span style={{ opacity: 0.8 }}>{isOpen ? "▾" : "▸"}</span>
+                    </button>
+                  ) : null}
 
-                {(!g.label || collapsed || isOpen) ? (
-                  <div style={{ display: "grid", gap: 10 }}>
-                    {g.items.map((n) => (
-                      <NavButton
-                        key={n.href}
-                        href={n.href}
-                        label={n.label}
-                        icon={n.icon}
-                        collapsed={collapsed}
-                        active={isActive(n.href)}
-                        onClick={() => requestNav(n.href)}
-                      />
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            );
-          })}
+                  {!g.label || collapsed || isOpen ? (
+                    <div style={{ display: "grid", gap: 10 }}>
+                      {g.items.map((n) => (
+                        <NavButton
+                          key={n.href}
+                          label={n.label}
+                          icon={n.icon}
+                          collapsed={collapsed}
+                          active={isActive(n.href)}
+                          onClick={() => requestNav(n.href)}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            },
+          )}
         </div>
 
         <div style={{ marginTop: "auto", padding: 6 }}>
-          <div style={{ fontSize: 12, color: "var(--sw-muted, #aab4d4)", marginBottom: 8 }}>
+          <div
+            style={{
+              fontSize: 12,
+              color: "var(--sw-muted, #aab4d4)",
+              marginBottom: 8,
+            }}
+          >
             Signed in as
-            <div style={{ color: "var(--sw-text, #eef2ff)", fontWeight: 800, wordBreak: "break-word" }}>
+            <div
+              style={{
+                color: "var(--sw-text, #eef2ff)",
+                fontWeight: 800,
+                wordBreak: "break-word",
+              }}
+            >
               {email}
             </div>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <button
-              onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
+              onClick={() =>
+                setTheme((t) => (t === "light" ? "dark" : "light"))
+              }
               style={{
                 padding: "10px 12px",
                 borderRadius: 10,
@@ -368,14 +407,30 @@ export function SidebarNav({ email }: { email: string | null | undefined }) {
                 cursor: "pointer",
                 width: collapsed ? 40 : undefined,
               }}
-              title={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+              title={
+                theme === "light"
+                  ? "Switch to dark mode"
+                  : "Switch to light mode"
+              }
               aria-label="Toggle theme"
             >
-              {collapsed ? (theme === "light" ? "☾" : "☀" ) : theme === "light" ? "Dark mode" : "Light mode"}
+              {collapsed
+                ? theme === "light"
+                  ? "☾"
+                  : "☀"
+                : theme === "light"
+                  ? "Dark mode"
+                  : "Light mode"}
             </button>
             <SignOutButton />
           </div>
-          <div style={{ marginTop: 10, fontSize: 12, color: "var(--sw-muted, #aab4d4)" }}>
+          <div
+            style={{
+              marginTop: 10,
+              fontSize: 12,
+              color: "var(--sw-muted, #aab4d4)",
+            }}
+          >
             {dirty ? "Unsaved changes" : ""}
           </div>
         </div>
@@ -404,48 +459,80 @@ export function SidebarNav({ email }: { email: string | null | undefined }) {
               padding: 16,
             }}
           >
-            <div style={{ fontWeight: 900, fontSize: 16 }}>Save progress before leaving?</div>
-            <div style={{ marginTop: 8, color: "var(--sw-muted, #aab4d4)", lineHeight: 1.35 }}>
+            <div style={{ fontWeight: 900, fontSize: 16 }}>
+              Save progress before leaving?
+            </div>
+            <div
+              style={{
+                marginTop: 8,
+                color: "var(--sw-muted, #aab4d4)",
+                lineHeight: 1.35,
+              }}
+            >
               You have unsaved changes on this page.
             </div>
 
-            <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button onClick={saveAndLeave} style={{
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: "1px solid rgba(110,231,255,0.45)",
-                background: "linear-gradient(135deg, rgba(110,231,255,0.14), rgba(167,139,250,0.10))",
-                fontWeight: 900,
-                color: "inherit",
-                cursor: "pointer",
-              }}>
+            <div
+              style={{
+                marginTop: 14,
+                display: "flex",
+                gap: 10,
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                onClick={saveAndLeave}
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: "1px solid rgba(110,231,255,0.45)",
+                  background:
+                    "linear-gradient(135deg, rgba(110,231,255,0.14), rgba(167,139,250,0.10))",
+                  fontWeight: 900,
+                  color: "inherit",
+                  cursor: "pointer",
+                }}
+              >
                 Save and leave
               </button>
-              <button onClick={leaveWithoutSaving} style={{
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: "1px solid rgba(255,255,255,0.18)",
-                background: "rgba(255,255,255,0.04)",
-                fontWeight: 800,
-                color: "inherit",
-                cursor: "pointer",
-              }}>
+              <button
+                onClick={leaveWithoutSaving}
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  background: "rgba(255,255,255,0.04)",
+                  fontWeight: 800,
+                  color: "inherit",
+                  cursor: "pointer",
+                }}
+              >
                 Leave without saving
               </button>
-              <button onClick={() => setPendingHref(null)} style={{
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: "1px solid rgba(255,255,255,0.18)",
-                background: "transparent",
-                fontWeight: 800,
-                color: "inherit",
-                cursor: "pointer",
-              }}>
+              <button
+                onClick={() => setPendingHref(null)}
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  background: "transparent",
+                  fontWeight: 800,
+                  color: "inherit",
+                  cursor: "pointer",
+                }}
+              >
                 Cancel
               </button>
             </div>
-            <div style={{ marginTop: 10, fontSize: 12, color: "var(--sw-muted, #aab4d4)" }}>
-              If you click “Save and leave”, we’ll save a draft and then navigate.
+            <div
+              style={{
+                marginTop: 10,
+                fontSize: 12,
+                color: "var(--sw-muted, #aab4d4)",
+              }}
+            >
+              If you click “Save and leave”, we’ll save a draft and then
+              navigate.
             </div>
           </div>
         </div>
