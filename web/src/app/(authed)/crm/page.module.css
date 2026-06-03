@@ -1,0 +1,373 @@
+.page {
+  min-height: 100vh;
+  padding: 18px 24px 32px;
+  background: #edf0f4;
+  color: #172033;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.page,
+.page * {
+  box-sizing: border-box;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  border-bottom: 1px solid rgba(23, 32, 51, 0.1);
+  padding-bottom: 14px;
+}
+
+.eyebrow {
+  color: rgba(23, 32, 51, 0.52);
+  font-size: 12px;
+  font-weight: 720;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 5px 0 0;
+  font-size: 26px;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+.subcopy {
+  margin: 6px 0 0;
+  color: rgba(23, 32, 51, 0.62);
+  font-size: 13px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.button,
+.primaryButton {
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid rgba(23, 32, 51, 0.12);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(248, 250, 252, 0.82);
+  padding: 0 12px;
+  color: #172033;
+  font-size: 13px;
+  font-weight: 720;
+  text-decoration: none;
+}
+
+.primaryButton {
+  border-color: #2e4a7f;
+  background: #2e4a7f;
+  color: #ffffff;
+}
+
+.button:hover,
+.primaryButton:hover,
+.textLink:hover,
+.queueRow:hover,
+.compactRow:hover,
+.moduleGrid a:hover {
+  border-color: rgba(46, 74, 127, 0.28);
+}
+
+.button:focus-visible,
+.primaryButton:focus-visible,
+.textLink:focus-visible,
+.queueRow:focus-visible,
+.compactRow:focus-visible,
+.moduleGrid a:focus-visible {
+  outline: 3px solid rgba(46, 74, 127, 0.28);
+  outline-offset: 2px;
+}
+
+.statusStrip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(140px, 1fr));
+  margin-top: 14px;
+  border-top: 1px solid rgba(23, 32, 51, 0.1);
+  border-bottom: 1px solid rgba(23, 32, 51, 0.1);
+  background: rgba(248, 250, 252, 0.58);
+}
+
+.statusCell {
+  padding: 13px 14px;
+  border-right: 1px solid rgba(23, 32, 51, 0.08);
+}
+
+.statusCell:last-child {
+  border-right: 0;
+}
+
+.metricLabel {
+  color: rgba(23, 32, 51, 0.52);
+  font-size: 11px;
+  font-weight: 740;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.metricValue {
+  margin-top: 5px;
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 22px;
+  font-weight: 760;
+}
+
+.metricNote {
+  margin-top: 4px;
+  color: rgba(23, 32, 51, 0.56);
+  font-size: 12px;
+}
+
+.warning {
+  color: #9a5d13;
+}
+
+.layoutGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 18px;
+  margin-top: 18px;
+  align-items: start;
+}
+
+.mainPanel,
+.sidePanel,
+.leadPanel {
+  border-top: 1px solid rgba(23, 32, 51, 0.14);
+  padding-top: 12px;
+}
+
+.leadPanel {
+  margin-top: 18px;
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding-bottom: 10px;
+}
+
+.panelTitle {
+  font-size: 14px;
+  font-weight: 780;
+}
+
+.panelMeta,
+.rowMeta,
+.rowTime {
+  color: rgba(23, 32, 51, 0.55);
+  font-size: 12px;
+}
+
+.textLink {
+  border: 1px solid rgba(23, 32, 51, 0.12);
+  border-radius: 8px;
+  padding: 7px 10px;
+  color: #172033;
+  font-size: 12px;
+  font-weight: 720;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.queueList,
+.compactList {
+  border-top: 1px solid rgba(23, 32, 51, 0.08);
+}
+
+.queueRow,
+.compactRow {
+  display: grid;
+  gap: 8px;
+  border-bottom: 1px solid rgba(23, 32, 51, 0.08);
+  color: #172033;
+  text-decoration: none;
+}
+
+.queueRow {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 58px;
+  padding: 10px 0;
+}
+
+.compactRow {
+  padding: 10px 0;
+}
+
+.rowTitle {
+  color: #172033;
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.rowContext {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: rgba(23, 32, 51, 0.58);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(23, 32, 51, 0.1);
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 720;
+}
+
+.badgeWarn {
+  background: rgba(154, 93, 19, 0.09);
+  color: #9a5d13;
+}
+
+.badgeNeutral {
+  background: rgba(46, 74, 127, 0.07);
+  color: #2e4a7f;
+}
+
+.sideStack {
+  display: grid;
+  gap: 18px;
+}
+
+.moduleGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  border-top: 1px solid rgba(23, 32, 51, 0.08);
+}
+
+.moduleGrid a {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  border-right: 1px solid rgba(23, 32, 51, 0.08);
+  border-bottom: 1px solid rgba(23, 32, 51, 0.08);
+  padding: 0 10px;
+  color: #172033;
+  font-size: 12px;
+  font-weight: 740;
+  text-decoration: none;
+}
+
+.moduleGrid a:nth-child(2n) {
+  border-right: 0;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  border-top: 1px solid rgba(23, 32, 51, 0.08);
+}
+
+.table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.table th,
+.table td {
+  border-bottom: 1px solid rgba(23, 32, 51, 0.08);
+  padding: 9px 8px;
+  text-align: left;
+  font-size: 12px;
+  vertical-align: top;
+}
+
+.table th {
+  background: #eef1f5;
+  color: rgba(23, 32, 51, 0.52);
+  font-weight: 780;
+}
+
+.table td {
+  background: rgba(248, 250, 252, 0.34);
+}
+
+.table tbody tr:hover td {
+  background: rgba(46, 74, 127, 0.045);
+}
+
+.numeric {
+  text-align: right !important;
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.emptyState {
+  border-bottom: 1px solid rgba(23, 32, 51, 0.08);
+  color: rgba(23, 32, 51, 0.55);
+  font-size: 13px;
+  padding: 12px 0;
+}
+
+@media (max-width: 1120px) {
+  .layoutGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .statusStrip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .statusCell {
+    border-bottom: 1px solid rgba(23, 32, 51, 0.08);
+  }
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: 16px;
+  }
+
+  .topbar,
+  .queueRow {
+    display: grid;
+  }
+
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-content: stretch;
+  }
+
+  .button,
+  .primaryButton {
+    width: 100%;
+  }
+
+  .statusStrip,
+  .moduleGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .statusCell,
+  .moduleGrid a {
+    border-right: 0;
+  }
+
+  .rowContext {
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+}

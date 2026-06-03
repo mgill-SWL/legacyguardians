@@ -1,0 +1,60 @@
+.desktopTable {
+  margin-top: 0;
+}
+
+.mobileCards {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .desktopTable {
+    display: none;
+  }
+
+  .mobileCards {
+    display: grid;
+    gap: 10px;
+  }
+
+  .mobileCard {
+    border-top: 1px solid rgba(23, 32, 51, 0.12);
+    background: rgba(248, 250, 252, 0.62);
+    padding: 10px 0;
+  }
+
+  .mobileTop {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .mobileFacts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .mobileFacts div {
+    border: 1px solid rgba(23, 32, 51, 0.09);
+    border-radius: 8px;
+    padding: 8px;
+    background: #f8fafc;
+  }
+
+  .mobileFacts span {
+    display: block;
+    color: rgba(23, 32, 51, 0.52);
+    font-size: 11px;
+    font-weight: 740;
+    letter-spacing: 0.055em;
+    text-transform: uppercase;
+  }
+
+  .mobileFacts strong {
+    display: block;
+    margin-top: 4px;
+    color: #172033;
+    font-size: 12px;
+  }
+}

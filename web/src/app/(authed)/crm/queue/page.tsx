@@ -1,67 +1,183 @@
-import { prisma } from '@/lib/prisma';
+import Link from "next/link";
 
-export const dynamic = 'force-dynamic';
+import { prisma } from "@/lib/prisma";
+
+import styles from "../page.module.css";
+import queueStyles from "./queue.module.css";
+
+export const dynamic = "force-dynamic";
+
+function formatDate(value: Date | null | undefined) {
+  if (!value) return "Not set";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(value);
+}
+
+function contactName(contact: { firstName: string; lastName: string; phoneE164: string }) {
+  const name = `${contact.firstName} ${contact.lastName}`.trim();
+  return name || contact.phoneE164;
+}
+
+function taskLabel(value: string) {
+  return value.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
+}
 
 export default async function CrmQueuePage() {
   const now = new Date();
+  const tasks = await prisma.crmTask.findMany({
+    where: {
+      status: { in: ["OPEN", "IN_PROGRESS"] },
+      dueAt: { lte: now },
+    },
+    orderBy: [{ priority: "asc" }, { dueAt: "asc" }],
+    take: 50,
+    include: {
+      contact: true,
+      campaign: true,
+      showing: true,
+    },
+  });
 
-  // Some build environments typecheck against a stale Prisma Client.
-  // Keep this page resilient so deploys don't fail if prisma generate ran out of order.
-  const anyPrisma = prisma as any;
-  const tasks = anyPrisma.crmTask
-    ? await anyPrisma.crmTask.findMany({
-        where: {
-          status: { in: ['OPEN', 'IN_PROGRESS'] },
-          dueAt: { lte: now },
-        },
-        orderBy: [{ dueAt: 'asc' }],
-        take: 50,
-        include: {
-          contact: true,
-          campaign: true,
-          showing: true,
-        },
-      })
-    : [];
+  const hotCount = tasks.filter((task) => task.priority === "HOT").length;
+  const inProgressCount = tasks.filter((task) => task.status === "IN_PROGRESS").length;
+  const overdueCount = tasks.filter((task) => task.dueAt.getTime() < now.getTime()).length;
 
   return (
-    <div style={{ padding: 24 }}>
-      <h1 style={{ fontSize: 22, fontWeight: 600 }}>CRM Queue</h1>
-      <p style={{ marginTop: 8, color: '#666' }}>Due now ({tasks.length}) — MVP view</p>
-
-      <div style={{ marginTop: 16, display: 'grid', gap: 12 }}>
-        {tasks.map((t: any) => (
-          <div
-            key={t.id}
-            style={{
-              border: '1px solid #ddd',
-              borderRadius: 10,
-              padding: 12,
-              display: 'grid',
-              gap: 6,
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-              <strong>
-                {t.contact.firstName} {t.contact.lastName}
-              </strong>
-              <span style={{ color: '#666', whiteSpace: 'nowrap' }}>
-                {t.priority} · {t.type} · {t.ownerTeam}
-              </span>
-            </div>
-            <div style={{ color: '#666' }}>{t.contact.phoneE164}</div>
-            <div style={{ color: '#666' }}>
-              Campaign: {t.campaign.slug}
-              {t.showing ? ` · Showing: ${t.showing.startsAt.toISOString()}` : ''}
-            </div>
-            <div style={{ color: '#666' }}>Due: {t.dueAt.toISOString()}</div>
-          </div>
-        ))}
-
-        {tasks.length === 0 ? (
-          <div style={{ marginTop: 12, color: '#666' }}>Nothing due right now.</div>
-        ) : null}
+    <div className={styles.page}>
+      <div className={styles.topbar}>
+        <div>
+          <div className={styles.eyebrow}>CRM / Queue</div>
+          <h1 className={styles.title}>Due work</h1>
+          <p className={styles.subcopy}>Open touches that need action now, grouped for fast staff review.</p>
+        </div>
+        <div className={styles.actions}>
+          <Link className={styles.button} href="/crm">
+            Command center
+          </Link>
+          <Link className={styles.button} href="/crm/inbox">
+            Inbox
+          </Link>
+          <Link className={styles.primaryButton} href="/crm/leads">
+            Lead table
+          </Link>
+        </div>
       </div>
+
+      <section className={styles.statusStrip} aria-label="Queue summary">
+        <div className={styles.statusCell}>
+          <div className={styles.metricLabel}>Due tasks</div>
+          <div className={styles.metricValue}>{tasks.length}</div>
+          <div className={styles.metricNote}>Visible in this work queue.</div>
+        </div>
+        <div className={styles.statusCell}>
+          <div className={styles.metricLabel}>Hot</div>
+          <div className={`${styles.metricValue} ${hotCount ? styles.warning : ""}`}>{hotCount}</div>
+          <div className={styles.metricNote}>Highest priority touches.</div>
+        </div>
+        <div className={styles.statusCell}>
+          <div className={styles.metricLabel}>In progress</div>
+          <div className={styles.metricValue}>{inProgressCount}</div>
+          <div className={styles.metricNote}>Already picked up.</div>
+        </div>
+        <div className={styles.statusCell}>
+          <div className={styles.metricLabel}>Overdue</div>
+          <div className={`${styles.metricValue} ${overdueCount ? styles.warning : ""}`}>{overdueCount}</div>
+          <div className={styles.metricNote}>Past due timestamp.</div>
+        </div>
+        <div className={styles.statusCell}>
+          <div className={styles.metricLabel}>Owner teams</div>
+          <div className={styles.metricValue}>{new Set(tasks.map((task) => task.ownerTeam)).size}</div>
+          <div className={styles.metricNote}>PH / US assignment spread.</div>
+        </div>
+      </section>
+
+      <section className={styles.leadPanel}>
+        <div className={styles.panelHeader}>
+          <div>
+            <div className={styles.panelTitle}>Task queue</div>
+            <div className={styles.panelMeta}>Call, reply, rescue, and follow-up tasks due now.</div>
+          </div>
+        </div>
+
+        <div className={`${styles.tableWrap} ${queueStyles.desktopTable}`}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Contact</th>
+                <th>Task</th>
+                <th>Campaign</th>
+                <th>Showing</th>
+                <th>Owner</th>
+                <th>Status</th>
+                <th>Last touch</th>
+                <th>Due</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tasks.map((task) => (
+                <tr key={task.id}>
+                  <td>
+                    <div className={styles.rowTitle}>{contactName(task.contact)}</div>
+                    <div className={styles.rowMeta}>{task.contact.phoneE164}</div>
+                  </td>
+                  <td>
+                    <span className={`${styles.badge} ${task.priority === "HOT" ? styles.badgeWarn : styles.badgeNeutral}`}>
+                      {task.priority}
+                    </span>{" "}
+                    {taskLabel(task.type)}
+                  </td>
+                  <td>{task.campaign.slug}</td>
+                  <td>{task.showing ? formatDate(task.showing.startsAt) : "None"}</td>
+                  <td>{task.ownerTeam}</td>
+                  <td>{taskLabel(task.status)}</td>
+                  <td>{formatDate(task.lastTouchAt)}</td>
+                  <td>{formatDate(task.dueAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className={queueStyles.mobileCards}>
+          {tasks.map((task) => (
+            <div className={queueStyles.mobileCard} key={task.id}>
+              <div className={queueStyles.mobileTop}>
+                <div>
+                  <div className={styles.rowTitle}>{contactName(task.contact)}</div>
+                  <div className={styles.rowMeta}>{task.contact.phoneE164}</div>
+                </div>
+                <span className={`${styles.badge} ${task.priority === "HOT" ? styles.badgeWarn : styles.badgeNeutral}`}>
+                  {task.priority}
+                </span>
+              </div>
+              <div className={queueStyles.mobileFacts}>
+                <div>
+                  <span>Task</span>
+                  <strong>{taskLabel(task.type)}</strong>
+                </div>
+                <div>
+                  <span>Owner</span>
+                  <strong>{task.ownerTeam}</strong>
+                </div>
+                <div>
+                  <span>Campaign</span>
+                  <strong>{task.campaign.slug}</strong>
+                </div>
+                <div>
+                  <span>Due</span>
+                  <strong>{formatDate(task.dueAt)}</strong>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {tasks.length === 0 ? <div className={styles.emptyState}>Nothing is due right now.</div> : null}
+      </section>
     </div>
   );
 }
