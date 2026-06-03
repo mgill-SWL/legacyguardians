@@ -1126,6 +1126,7 @@ model MessageTemplate {
   subject String?
   body    String
   isHtml  Boolean @default(false)
+  sortOrder Int @default(0)
 
   // Optional attachment URL (v1; later: stored files)
   attachmentUrl String?
@@ -1135,6 +1136,7 @@ model MessageTemplate {
 
   @@unique([firmId, key])
   @@index([firmId, channel])
+  @@index([firmId, sortOrder])
 }
 
 // --- Fee quote configurable price/features (v1) ---

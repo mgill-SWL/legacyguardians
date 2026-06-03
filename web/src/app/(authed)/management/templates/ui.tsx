@@ -11,6 +11,7 @@ type Tpl = {
   body: string;
   isHtml: boolean;
   attachmentUrl: string | null;
+  sortOrder: number;
   updatedAt: string | Date;
 };
 
@@ -36,7 +37,7 @@ function draftFromTemplate(template: Tpl): Draft {
   };
 }
 
-export function TemplatesClient({ initialTemplates, canEdit }: { initialTemplates: Tpl[]; canEdit: boolean }) {
+export function TemplatesClient({ initialTemplates, canEdit, canDelete }: { initialTemplates: Tpl[]; canEdit: boolean; canDelete: boolean }) {
   const [templates, setTemplates] = useState<(Tpl & { updatedAt: string })[]>(() =>
     (initialTemplates || []).map((t) => ({
       ...t,
@@ -126,10 +127,68 @@ export function TemplatesClient({ initialTemplates, canEdit }: { initialTemplate
         body: draft.body,
         attachmentUrl: draft.attachmentUrl || null,
         isHtml: draft.isHtml,
+        sortOrder: typeof data.sortOrder === "number" ? data.sortOrder : templates.length,
         updatedAt,
       };
-      setTemplates((items) => [created, ...items]);
+      setTemplates((items) => [...items, created].sort((a, b) => a.sortOrder - b.sortOrder));
       setSelectedId(created.id);
+    } catch (e: unknown) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function moveTemplate(id: string, direction: "up" | "down") {
+    const index = templates.findIndex((template) => template.id === id);
+    const swapIndex = direction === "up" ? index - 1 : index + 1;
+    if (index < 0 || !templates[swapIndex]) return;
+
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/templates/${id}/move`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ direction }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
+
+      setTemplates((items) => {
+        const next = [...items];
+        const current = next[index];
+        const swap = next[swapIndex];
+        next[index] = { ...swap, sortOrder: current.sortOrder };
+        next[swapIndex] = { ...current, sortOrder: swap.sortOrder };
+        return next;
+      });
+    } catch (e: unknown) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteTemplate(template: Tpl) {
+    if (!confirm(`Delete "${template.name}"? This cannot be undone.`)) return;
+
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/templates/${template.id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
+
+      setTemplates((items) => {
+        const next = items.filter((item) => item.id !== template.id);
+        if (selectedId === template.id) {
+          const replacement = next[0] || null;
+          setSelectedId(replacement?.id || null);
+          setDraft(replacement ? draftFromTemplate(replacement) : emptyDraft());
+        }
+        return next;
+      });
     } catch (e: unknown) {
       setError(errorMessage(e));
     } finally {
@@ -156,20 +215,55 @@ export function TemplatesClient({ initialTemplates, canEdit }: { initialTemplate
           </button>
         ) : null}
         <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
-          {templates.map((t) => (
-            <button
+          {templates.map((t, index) => (
+            <div
               key={t.id}
-              className={`sw-navBtn ${t.id === selectedId ? "sw-navBtnActive" : ""}`}
-              style={{ minWidth: 0 }}
-              onClick={() => {
-                setSelectedId(t.id);
-                setDraft(draftFromTemplate(t));
-                setError(null);
+              style={{
+                display: "grid",
+                gridTemplateColumns: canEdit || canDelete ? "minmax(0, 1fr) auto" : "1fr",
+                gap: 6,
+                alignItems: "center",
+                minWidth: 0,
               }}
             >
-              <span className="sw-navIcon" style={{ flexShrink: 0 }}>{t.channel === "SMS" ? "S" : "E"}</span>
-              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
-            </button>
+              <button
+                className={`sw-navBtn ${t.id === selectedId ? "sw-navBtnActive" : ""}`}
+                style={{ minWidth: 0 }}
+                onClick={() => {
+                  setSelectedId(t.id);
+                  setDraft(draftFromTemplate(t));
+                  setError(null);
+                }}
+              >
+                <span className="sw-navIcon" style={{ flexShrink: 0 }}>{t.channel === "SMS" ? "S" : "E"}</span>
+                <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
+              </button>
+              {canEdit || canDelete ? (
+                <span style={{ display: "inline-flex", gap: 4 }}>
+                  {canEdit ? (
+                    <>
+                      <button className="sw-btn sw-btnSm" type="button" disabled={busy || index === 0} onClick={() => moveTemplate(t.id, "up")} aria-label={`Move ${t.name} up`}>
+                        ↑
+                      </button>
+                      <button
+                        className="sw-btn sw-btnSm"
+                        type="button"
+                        disabled={busy || index === templates.length - 1}
+                        onClick={() => moveTemplate(t.id, "down")}
+                        aria-label={`Move ${t.name} down`}
+                      >
+                        ↓
+                      </button>
+                    </>
+                  ) : null}
+                  {canDelete ? (
+                    <button className="sw-btn sw-btnSm" type="button" disabled={busy} onClick={() => deleteTemplate(t)} aria-label={`Delete ${t.name}`} style={{ color: "var(--sw-danger)" }}>
+                      Delete
+                    </button>
+                  ) : null}
+                </span>
+              ) : null}
+            </div>
           ))}
           {templates.length === 0 ? <div className="sw-muted">No templates yet.</div> : null}
         </div>

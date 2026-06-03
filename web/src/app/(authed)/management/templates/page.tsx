@@ -11,14 +11,15 @@ export default async function TemplatesPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) redirect("/login");
 
-  const user = await prisma.user.findUnique({ where: { email: session.user.email }, select: { activeFirmId: true } });
+  const user = await prisma.user.findUnique({ where: { email: session.user.email }, select: { activeFirmId: true, role: true } });
   const canEdit = !!user?.activeFirmId;
+  const canDelete = !!user?.activeFirmId && user.role === "ADMIN";
 
   const firmId = user?.activeFirmId || undefined;
 
   const templates = await prisma.messageTemplate.findMany({
     where: firmId ? { firmId } : undefined,
-    orderBy: { updatedAt: "desc" },
+    orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }],
   });
 
   return (
@@ -30,7 +31,7 @@ export default async function TemplatesPage() {
         Central library for SMS + email templates used by automations.
       </p>
 
-      <TemplatesClient initialTemplates={templates} canEdit={!!canEdit} />
+      <TemplatesClient initialTemplates={templates} canEdit={!!canEdit} canDelete={canDelete} />
     </div>
   );
 }
