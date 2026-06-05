@@ -28,6 +28,11 @@ const modules = [
     description: "Intake reporting table and sheet sync.",
   },
   {
+    href: "/crm/fee-quote",
+    label: "Fee quote builder",
+    description: "Estate planning proposal workflow and quote calculator.",
+  },
+  {
     href: "/crm/spend",
     label: "Spend",
     description: "Daily campaign spend entry.",
