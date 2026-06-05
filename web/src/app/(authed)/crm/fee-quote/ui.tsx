@@ -793,6 +793,27 @@ export function FeeQuoteBuilder() {
               {notes.trim() ? <p>Internal notes: {notes.trim()}</p> : null}
             </div>
 
+            <div className={styles.packetBlock}>
+              <div className={styles.generatedTitle}>Agreement packet</div>
+              <ol className={styles.packetSteps}>
+                <li>
+                  <strong>Proposal table</strong>
+                  <span>Quote lines flow into the front-page customized estate planning proposal.</span>
+                </li>
+                <li>
+                  <strong>Representation agreement</strong>
+                  <span>Client names, date, lead attorney, email, fee terms, and selected features populate the RA.</span>
+                </li>
+                <li>
+                  <strong>Documenso placeholders</strong>
+                  <span>
+                    Use <code>{"{{signature, r1}}"}</code> / <code>{"{{date, r1}}"}</code> and{" "}
+                    <code>{"{{signature, r2}}"}</code> / <code>{"{{date, r2}}"}</code> before PDF upload.
+                  </span>
+                </li>
+              </ol>
+            </div>
+
             <div className={styles.actionRow}>
               <button type="button" className={styles.secondaryButton}>
                 Save draft

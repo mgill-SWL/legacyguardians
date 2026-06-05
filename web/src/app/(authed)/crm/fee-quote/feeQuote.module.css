@@ -410,7 +410,8 @@
   white-space: nowrap;
 }
 
-.generatedBlock {
+.generatedBlock,
+.packetBlock {
   margin-top: 13px;
   border-top: 1px solid rgba(23, 32, 51, 0.1);
   padding-top: 12px;
@@ -426,6 +427,40 @@
   color: rgba(23, 32, 51, 0.72);
   font-size: 12px;
   line-height: 1.45;
+}
+
+.packetSteps {
+  display: grid;
+  gap: 8px;
+  margin: 9px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.packetSteps li {
+  display: grid;
+  gap: 3px;
+  border: 1px solid rgba(23, 32, 51, 0.09);
+  border-radius: 8px;
+  background: rgba(46, 74, 127, 0.045);
+  padding: 8px 9px;
+}
+
+.packetSteps strong {
+  font-size: 12px;
+}
+
+.packetSteps span {
+  color: rgba(23, 32, 51, 0.64);
+  font-size: 11px;
+  line-height: 1.38;
+}
+
+.packetSteps code {
+  color: #2e4a7f;
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10.5px;
+  font-weight: 760;
 }
 
 .actionRow {

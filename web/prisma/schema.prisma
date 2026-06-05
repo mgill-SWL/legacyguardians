@@ -28,6 +28,26 @@ enum DocumentType {
   JOINT_TRUST_PORTFOLIO
 }
 
+enum DocumentTemplateKind {
+  REPRESENTATION_AGREEMENT
+  HR_DOCUMENT
+  CONSENT
+  AUTHORIZATION
+  ACKNOWLEDGEMENT
+}
+
+enum SigningProvider {
+  DOCUMENSO
+}
+
+enum SigningPacketStatus {
+  DRAFT
+  SENT
+  COMPLETED
+  REJECTED
+  ERROR
+}
+
 enum ContactState {
   VA
   DC
@@ -341,12 +361,14 @@ model Firm {
   activeUsers User[]       @relation("UserActiveFirm")
 
   // Firm-scoped records (nullable firmId for now; backfilled in migration step)
-  messageTemplates MessageTemplate[]
-  feeFeatures      FeeFeature[]
-  helpArticles     HelpArticle[]
-  helpTopics       HelpTopic[]
-  managementPages  ManagementPage[]
-  reportTables     ReportTable[]
+  messageTemplates  MessageTemplate[]
+  documentTemplates DocumentTemplate[]
+  signingPackets    SigningPacket[]
+  feeFeatures       FeeFeature[]
+  helpArticles      HelpArticle[]
+  helpTopics        HelpTopic[]
+  managementPages   ManagementPage[]
+  reportTables      ReportTable[]
 
   matters     Matter[]
   contacts    Contact[]
@@ -586,6 +608,9 @@ model User {
 
   invoicesCreated Invoice[] @relation("InvoicesCreatedBy")
   paymentsCreated Payment[] @relation("PaymentsCreatedBy")
+
+  documentTemplatesCreated DocumentTemplate[] @relation("DocumentTemplatesCreatedBy")
+  signingPacketsCreated    SigningPacket[]    @relation("SigningPacketsCreatedBy")
 
   firmMemberships FirmMember[]
 
@@ -1137,6 +1162,72 @@ model MessageTemplate {
   @@index([firmId, channel])
 }
 
+model DocumentTemplate {
+  id     String @id @default(cuid())
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  key         String
+  name        String
+  kind        DocumentTemplateKind
+  description String?
+
+  sourceFileName String
+  mimeType       String
+  sizeBytes      Int
+  content        Bytes
+
+  active Boolean @default(true)
+
+  createdByUserId String?
+  createdByUser   User?   @relation("DocumentTemplatesCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  signingPackets SigningPacket[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([firmId, key])
+  @@index([firmId, kind])
+  @@index([firmId, active])
+}
+
+model SigningPacket {
+  id     String @id @default(cuid())
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  matterId String?
+  matter   Matter? @relation(fields: [matterId], references: [id], onDelete: SetNull)
+
+  templateId String?
+  template   DocumentTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  provider SigningProvider     @default(DOCUMENSO)
+  status   SigningPacketStatus @default(DRAFT)
+
+  title              String
+  providerEnvelopeId String?
+  providerStatus     String?
+  sourceFileName     String?
+
+  recipientsJson       Json
+  signingUrlsJson      Json?
+  providerResponseJson Json?
+  errorMessage         String?
+
+  createdByUserId String?
+  createdByUser   User?   @relation("SigningPacketsCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([firmId, provider, status])
+  @@index([firmId, providerEnvelopeId])
+  @@index([matterId])
+  @@index([templateId])
+}
+
 // --- Fee quote configurable price/features (v1) ---
 
 enum FeeFeatureType {
@@ -1268,6 +1359,7 @@ model Matter {
 
   intake                   IntakeResponse?
   documents                GeneratedDocument[]
+  signingPackets           SigningPacket[]
   pipelineLinks            MatterPipeline[]
   financialEvents          MatterFinancialEvent[]
   timeEntries              TimeEntry[]
