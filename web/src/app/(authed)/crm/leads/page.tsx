@@ -43,7 +43,9 @@ export default async function LeadsPage() {
             {leads.map((l) => (
               <tr key={l.id} className="sw-tr">
                 <td className="sw-td" style={{ fontWeight: 900 }}>
-                  {l.contact.firstName} {l.contact.lastName}
+                  <Link href={`/crm/leads/${l.id}`} style={{ color: "inherit" }}>
+                    {l.contact.firstName} {l.contact.lastName}
+                  </Link>
                   <div style={{ fontSize: 12, color: "var(--sw-muted, #aab4d4)" }}>{l.contact.phoneE164}</div>
                 </td>
                 <td className="sw-td">{l.campaign.slug}</td>

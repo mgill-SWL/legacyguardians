@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-import styles from "./feeQuote.module.css";
+import styles from "./estatePlanningProposal.module.css";
 
 type AttorneyTier = "premium" | "senior" | "fresh";
 
@@ -228,10 +228,24 @@ function CoachingPanel({ feature }: { feature: ToggleKey }) {
   );
 }
 
-export function FeeQuoteBuilder() {
-  const [clientName, setClientName] = useState("");
-  const [source, setSource] = useState("Google PPC");
-  const [office, setOffice] = useState("Alexandria");
+type EstatePlanningProposalProps = {
+  embedded?: boolean;
+  initialClientName?: string;
+  initialOffice?: string;
+  initialSource?: string;
+  leadHref?: string;
+};
+
+export function EstatePlanningProposal({
+  embedded = false,
+  initialClientName = "",
+  initialOffice = "Alexandria",
+  initialSource = "Google PPC",
+  leadHref,
+}: EstatePlanningProposalProps = {}) {
+  const [clientName, setClientName] = useState(initialClientName);
+  const [source, setSource] = useState(initialSource);
+  const [office, setOffice] = useState(initialOffice);
   const [salesperson, setSalesperson] = useState("Christopher Heredia");
   const [tier, setTier] = useState<AttorneyTier>("senior");
   const [toggles, setToggles] = useState<Record<ToggleKey, boolean>>(INITIAL_TOGGLES);
@@ -514,14 +528,16 @@ export function FeeQuoteBuilder() {
   const requiredWarning = !clientName.trim() || !scrs;
 
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} ${embedded ? styles.embeddedPage : ""}`}>
       <header className={styles.topbar}>
         <div>
-          <div className={styles.eyebrow}>CRM / Sales</div>
-          <h1 className={styles.title}>Client fee quote builder</h1>
+          <div className={styles.eyebrow}>
+            {leadHref ? <a href={leadHref}>Lead record</a> : "CRM / Sales"}
+          </div>
+          <h1 className={styles.title}>Estate Planning Proposal</h1>
           <p className={styles.subcopy}>
-            Purpose-built estate planning quote workflow for discovery calls, proposal
-            math, and representation-agreement line items.
+            Purpose-built estate planning proposal workflow for discovery calls,
+            proposal math, and representation-agreement line items.
           </p>
         </div>
         <div className={styles.headerMeta}>

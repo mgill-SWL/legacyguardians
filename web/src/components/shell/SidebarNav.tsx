@@ -29,7 +29,6 @@ const GROUPS: Group[] = [
       { href: "/crm/queue", label: "Queue", icon: "Q" },
       { href: "/crm/leads", label: "All leads", icon: "L" },
       { href: "/crm/intake-reporting", label: "Intake reporting", icon: "R" },
-      { href: "/crm/fee-quote", label: "Fee quote builder", icon: "$" },
     ],
   },
   {

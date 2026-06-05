@@ -28,9 +28,9 @@ const modules = [
     description: "Intake reporting table and sheet sync.",
   },
   {
-    href: "/crm/fee-quote",
-    label: "Fee quote builder",
-    description: "Estate planning proposal workflow and quote calculator.",
+    href: "/crm/leads",
+    label: "Estate Planning Proposals",
+    description: "Open a lead record, then use its proposal tab.",
   },
   {
     href: "/crm/spend",
