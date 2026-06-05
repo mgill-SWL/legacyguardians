@@ -27,6 +27,13 @@ type TypeRow = {
   updatedAt: string;
 };
 
+const MIN_NOTICE_OPTIONS = [
+  { value: 0, label: "No advance notice - next top of the hour" },
+  { value: 1, label: "1 hour" },
+  { value: 6, label: "6 hours" },
+  { value: 24, label: "24 hours" },
+];
+
 function minutesToHHMM(min: number) {
   const h = Math.floor(min / 60);
   const m = min % 60;
@@ -76,7 +83,7 @@ export function BookingAdminClient({
           startIntervalMin: 15,
           bufferBeforeMin: 0,
           bufferAfterMin: 0,
-          minNoticeHours: 24,
+          minNoticeHours: 0,
           rollingWeeks: 6,
           maxPerDay: 6,
         }
@@ -300,7 +307,6 @@ export function BookingAdminClient({
                 ["Slot interval (min)", "startIntervalMin"],
                 ["Buffer before (min)", "bufferBeforeMin"],
                 ["Buffer after (min)", "bufferAfterMin"],
-                ["Min notice (hours)", "minNoticeHours"],
                 ["Rolling window (weeks)", "rollingWeeks"],
                 ["Max per assignee/day", "maxPerDay"],
               ] as const
@@ -318,6 +324,23 @@ export function BookingAdminClient({
                 />
               </label>
             ))}
+            <label style={{ display: "grid", gap: 6 }}>
+              <span className="sw-muted" style={{ fontSize: 12 }}>
+                Minimum notice
+              </span>
+              <select
+                className="sw-input"
+                value={draftType.minNoticeHours}
+                onChange={(e) => setDraftType((d) => ({ ...d, minNoticeHours: Number(e.target.value) }))}
+                disabled={!canEdit}
+              >
+                {MIN_NOTICE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
 
           {selected ? (
@@ -466,4 +489,3 @@ export function BookingAdminClient({
     </div>
   );
 }
-

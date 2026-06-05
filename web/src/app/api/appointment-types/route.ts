@@ -18,6 +18,8 @@ type Body = {
   maxPerDay?: number;
 };
 
+const MIN_NOTICE_OPTIONS = new Set([0, 1, 6, 24]);
+
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
@@ -42,6 +44,10 @@ export async function POST(req: Request) {
   if (!Number.isFinite(body.durationMin) || body.durationMin <= 0) {
     return NextResponse.json({ ok: false, error: "durationMin required" }, { status: 400 });
   }
+  const minNoticeHours = Number(body.minNoticeHours ?? 0);
+  if (!MIN_NOTICE_OPTIONS.has(minNoticeHours)) {
+    return NextResponse.json({ ok: false, error: "minNoticeHours must be 0, 1, 6, or 24" }, { status: 400 });
+  }
 
   const created = await prisma.appointmentType.create({
     data: {
@@ -53,7 +59,7 @@ export async function POST(req: Request) {
       startIntervalMin: Number(body.startIntervalMin ?? 15),
       bufferBeforeMin: Number(body.bufferBeforeMin ?? 0),
       bufferAfterMin: Number(body.bufferAfterMin ?? 0),
-      minNoticeHours: Number(body.minNoticeHours ?? 24),
+      minNoticeHours,
       rollingWeeks: Number(body.rollingWeeks ?? 6),
       maxPerDay: Number(body.maxPerDay ?? 6),
     },

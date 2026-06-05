@@ -1018,7 +1018,7 @@ model AppointmentType {
   startIntervalMin Int @default(15)
   bufferBeforeMin  Int @default(0)
   bufferAfterMin   Int @default(0)
-  minNoticeHours   Int @default(24)
+  minNoticeHours   Int @default(0)
   rollingWeeks     Int @default(8)
   maxPerDay        Int @default(6)
 

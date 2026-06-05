@@ -18,6 +18,8 @@ type Body = {
   maxPerDay?: number;
 };
 
+const MIN_NOTICE_OPTIONS = new Set([0, 1, 6, 24]);
+
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
@@ -32,6 +34,10 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   if (!canEdit) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
   const body = (await req.json().catch(() => null)) as Body | null;
   if (!body) return NextResponse.json({ ok: false, error: "body required" }, { status: 400 });
+  const minNoticeHours = body.minNoticeHours === undefined ? undefined : Number(body.minNoticeHours);
+  if (minNoticeHours !== undefined && !MIN_NOTICE_OPTIONS.has(minNoticeHours)) {
+    return NextResponse.json({ ok: false, error: "minNoticeHours must be 0, 1, 6, or 24" }, { status: 400 });
+  }
 
   const r = await prisma.appointmentType.updateMany({
     where: { id },
@@ -42,7 +48,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       startIntervalMin: body.startIntervalMin === undefined ? undefined : Number(body.startIntervalMin),
       bufferBeforeMin: body.bufferBeforeMin === undefined ? undefined : Number(body.bufferBeforeMin),
       bufferAfterMin: body.bufferAfterMin === undefined ? undefined : Number(body.bufferAfterMin),
-      minNoticeHours: body.minNoticeHours === undefined ? undefined : Number(body.minNoticeHours),
+      minNoticeHours,
       rollingWeeks: body.rollingWeeks === undefined ? undefined : Number(body.rollingWeeks),
       maxPerDay: body.maxPerDay === undefined ? undefined : Number(body.maxPerDay),
     },
