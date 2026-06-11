@@ -192,6 +192,15 @@ export function SidebarNav({ email }: { email: string | null | undefined }) {
     window.localStorage.setItem("lg.sidebar.collapsed", collapsed ? "1" : "0");
   }, [collapsed]);
 
+  useEffect(() => {
+    function toggleSidebar() {
+      setCollapsed((value) => !value);
+    }
+
+    window.addEventListener("lg:toggle-sidebar", toggleSidebar);
+    return () => window.removeEventListener("lg:toggle-sidebar", toggleSidebar);
+  }, []);
+
   const flatItems = useMemo(() => GROUPS.flatMap((g) => g.items), []);
 
   function isActive(href: string) {

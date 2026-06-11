@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/authOptions";
 import { SidebarNav } from "@/components/shell/SidebarNav";
+import { TopRibbon } from "@/components/shell/TopRibbon";
 import { HelpWidget } from "@/components/help/HelpWidget";
 import { UnsavedChangesProvider } from "@/components/unsaved/UnsavedChangesProvider";
 
@@ -27,7 +28,12 @@ export default async function AuthedLayout({
         }}
       >
         <SidebarNav email={session.user.email} />
-        <main style={{ flex: 1, minWidth: 0 }}>{children}</main>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <TopRibbon />
+          <main id="main-content" tabIndex={-1}>
+            {children}
+          </main>
+        </div>
         <HelpWidget />
       </div>
     </UnsavedChangesProvider>

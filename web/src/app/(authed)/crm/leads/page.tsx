@@ -4,6 +4,25 @@ import { ConvertLeadButton } from "./ConvertLeadButton";
 
 export const dynamic = "force-dynamic";
 
+function engagementStatus(lead: {
+  convertedMatterId: string | null;
+  proposalPreparedAt: Date | null;
+  raPreparedAt: Date | null;
+  raSentAt: Date | null;
+  raSignedAt: Date | null;
+}) {
+  if (lead.convertedMatterId) return "Converted";
+  if (lead.raSignedAt) return "Signed";
+  if (lead.raSentAt) return "Sent";
+  if (lead.raPreparedAt) return "Agreement prepared";
+  if (lead.proposalPreparedAt) return "Proposal prepared";
+  return "Open";
+}
+
+function labelStatus(value: string) {
+  return value.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 export default async function LeadsPage() {
   const leads = await prisma.crmLeadPipeline.findMany({
     orderBy: [{ dateAdded: "desc" }],
@@ -34,9 +53,11 @@ export default async function LeadsPage() {
               <th className="sw-th">Appt 1</th>
               <th className="sw-th">Show</th>
               <th className="sw-th">Quality</th>
+              <th className="sw-th">Duplicate</th>
+              <th className="sw-th">Conflict</th>
               <th className="sw-th">Appt 2</th>
-              <th className="sw-th">Closed</th>
-              <th className="sw-th">Convert</th>
+              <th className="sw-th">Engagement</th>
+              <th className="sw-th">Next</th>
             </tr>
           </thead>
           <tbody>
@@ -55,15 +76,21 @@ export default async function LeadsPage() {
                 <td className="sw-td">{l.appt1At ? l.appt1At.toISOString().slice(0, 10) : ""}</td>
                 <td className="sw-td">{l.appt1Status || ""}</td>
                 <td className="sw-td">{l.leadQualityScore ?? ""}</td>
+                <td className="sw-td">{labelStatus(l.duplicateReviewStatus)}</td>
+                <td className="sw-td">{labelStatus(l.conflictCheckStatus)}</td>
                 <td className="sw-td">{l.appt2At ? l.appt2At.toISOString().slice(0, 10) : ""}</td>
-                <td className="sw-td">{l.closed ? "Y" : "N"}</td>
+                <td className="sw-td">{engagementStatus(l)}</td>
                 <td className="sw-td">
                   {l.convertedMatterId ? (
                     <Link href={`/matters/${l.convertedMatterId}`} style={{ color: "inherit" }}>
                       Matter →
                     </Link>
-                  ) : (
+                  ) : l.raSignedAt ? (
                     <ConvertLeadButton leadId={l.id} />
+                  ) : (
+                    <Link href={`/crm/leads/${l.id}/proposal`} style={{ color: "inherit" }}>
+                      Proposal →
+                    </Link>
                   )}
                 </td>
               </tr>

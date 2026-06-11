@@ -101,7 +101,7 @@
 
 .statusStrip {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   margin-top: 14px;
   border-top: 1px solid rgba(23, 32, 51, 0.1);
   border-bottom: 1px solid rgba(23, 32, 51, 0.1);
@@ -111,7 +111,7 @@
 .statusStrip div {
   min-width: 0;
   border-right: 1px solid rgba(23, 32, 51, 0.08);
-  padding: 12px 14px;
+  padding: 12px;
 }
 
 .statusStrip div:last-child {
@@ -236,11 +236,39 @@
   font-size: 13px;
 }
 
+.activityHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.activityHeader em {
+  flex: 0 0 auto;
+  border: 1px solid rgba(46, 74, 127, 0.18);
+  border-radius: 999px;
+  background: rgba(46, 74, 127, 0.08);
+  color: #2e4a7f;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
 .activityRow span {
   display: block;
   margin-top: 3px;
   color: rgba(23, 32, 51, 0.58);
   font-size: 12px;
+}
+
+.activityRow p {
+  margin: 6px 0 0;
+  color: rgba(23, 32, 51, 0.7);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .recordLink {
@@ -255,6 +283,39 @@
   font-size: 12px;
   font-weight: 760;
   text-decoration: none;
+}
+
+.inlineLink {
+  display: inline-flex;
+  margin-top: 7px;
+  color: #2e4a7f;
+  font-size: 12px;
+  font-weight: 760;
+  text-decoration: none;
+}
+
+.inlineLink:hover {
+  text-decoration: underline;
+}
+
+.sourceLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.sourceLinks > span,
+.sourceLinks > p {
+  flex-basis: 100%;
+}
+
+.noteBlock {
+  margin-top: 14px;
+  border: 1px solid rgba(23, 32, 51, 0.1);
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.58);
+  padding: 10px;
 }
 
 .proposalPane {
@@ -296,4 +357,3 @@
     border-bottom: 0;
   }
 }
-

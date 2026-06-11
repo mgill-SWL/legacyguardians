@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/authOptions";
 import { prisma } from "@/lib/prisma";
+import { normalizeE164 } from "@/lib/ringcentral";
 
 export const dynamic = "force-dynamic";
 
@@ -27,13 +28,14 @@ export async function POST(req: Request) {
 
   const body = (await req.json().catch(() => null)) as Body | null;
   if (!body?.displayName?.trim()) return NextResponse.json({ error: "displayName required" }, { status: 400 });
+  const phone = normalizeE164(body.phone) || body.phone || null;
 
   const c = await prisma.contact.create({
     data: {
       firmId: user.activeFirmId,
       displayName: body.displayName.trim(),
       email: body.email || null,
-      phone: body.phone || null,
+      phone,
       organization: body.organization || null,
       categories: (body.categories || ["CLIENT"]) as any,
       professionalType: body.professionalType || null,

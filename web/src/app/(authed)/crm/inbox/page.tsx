@@ -10,6 +10,11 @@ export default async function CrmInboxPage() {
     take: 50,
     include: {
       contact: true,
+      lead: {
+        include: {
+          campaign: true,
+        },
+      },
       messages: {
         orderBy: { createdAt: 'desc' },
         take: 1,
@@ -47,6 +52,12 @@ export default async function CrmInboxPage() {
               </div>
               <div style={{ marginTop: 6, color: '#666' }}>
                 {last ? `${last.direction}: ${last.body.slice(0, 100)}` : 'No messages yet'}
+              </div>
+              <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 12, color: '#666' }}>
+                <span>{t.intakeResolutionStatus.replaceAll('_', ' ')}</span>
+                <span>Match: {t.matchConfidence.toLowerCase()}</span>
+                {t.needsConflictCheck ? <span>Conflict review needed</span> : null}
+                {t.lead ? <span>Lead: {t.lead.campaign.name}</span> : null}
               </div>
             </Link>
           );

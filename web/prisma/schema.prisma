@@ -122,6 +122,45 @@ enum CrmProvider {
   RINGCENTRAL
 }
 
+enum IntakeSourceType {
+  MANUAL
+  INBOUND_TEXT
+  INBOUND_CALL
+  FORM_FILL
+  WEBINAR
+  REGISTRATION
+  IMPORT
+}
+
+enum IntakeMatchConfidence {
+  NONE
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum IntakeResolutionStatus {
+  UNREVIEWED
+  AUTO_ATTACHED
+  REVIEW_REQUIRED
+  RESOLVED
+}
+
+enum DuplicateReviewStatus {
+  NONE
+  POSSIBLE_DUPLICATE
+  DUPLICATE_CONFIRMED
+  NOT_DUPLICATE
+}
+
+enum ConflictCheckStatus {
+  NOT_STARTED
+  REVIEW_REQUIRED
+  CLEARED
+  CONFLICT_IDENTIFIED
+  WAIVED
+}
+
 enum FinancialSourceSystem {
   COSMOLEX
   MANUAL
@@ -1948,6 +1987,9 @@ model CrmPrequalSubmission {
   campaignId String
   campaign   CrmCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
+  leadId String?
+  lead   CrmLeadPipeline? @relation("LeadPrequalSubmissions", fields: [leadId], references: [id], onDelete: SetNull)
+
   registrationId String?
   registration   CrmRegistration? @relation("CrmRegistrationPrequal", fields: [registrationId], references: [id], onDelete: SetNull)
 
@@ -1969,6 +2011,7 @@ model CrmPrequalSubmission {
 
   @@index([campaignId, createdAt])
   @@index([contactId, createdAt])
+  @@index([leadId, createdAt])
 }
 
 model CrmLeadPipeline {
@@ -2001,8 +2044,21 @@ model CrmLeadPipeline {
   cashCollectedCents Int     @default(0)
   revenueCents       Int     @default(0)
 
-  // Lead → client conversion (RA signed)
+  // Lead → engagement workflow
+  proposalPreparedAt DateTime?
+  raPreparedAt       DateTime?
+  raSentAt           DateTime?
   raSignedAt         DateTime?
+
+  // Intake review / risk flags
+  sourceType             IntakeSourceType      @default(MANUAL)
+  duplicateReviewStatus  DuplicateReviewStatus @default(NONE)
+  duplicateReviewNotes   String?
+  conflictCheckStatus    ConflictCheckStatus   @default(REVIEW_REQUIRED)
+  conflictCheckNotes     String?
+  conflictCheckUpdatedAt DateTime?
+
+  // Lead → client conversion
   convertedAt        DateTime?
   convertedContactId String?
   convertedContact   Contact?  @relation("LeadConvertedContact", fields: [convertedContactId], references: [id], onDelete: SetNull)
@@ -2012,8 +2068,14 @@ model CrmLeadPipeline {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  messageThreads     CrmMessageThread[]     @relation("LeadMessageThreads")
+  prequalSubmissions CrmPrequalSubmission[] @relation("LeadPrequalSubmissions")
+
   @@unique([contactId, campaignId])
   @@index([campaignId, dateAdded])
+  @@index([sourceType, dateAdded])
+  @@index([duplicateReviewStatus])
+  @@index([conflictCheckStatus])
 }
 
 model CrmDailySpend {
@@ -2173,10 +2235,18 @@ model CrmMessageThread {
   contactId String
   contact   CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
+  leadId String?
+  lead   CrmLeadPipeline? @relation("LeadMessageThreads", fields: [leadId], references: [id], onDelete: SetNull)
+
   provider               CrmProvider
   providerConversationId String?
 
   lastMessageAt DateTime?
+
+  intakeResolutionStatus IntakeResolutionStatus @default(UNREVIEWED)
+  matchConfidence        IntakeMatchConfidence  @default(NONE)
+  matchSummary           String?
+  needsConflictCheck     Boolean                @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2184,6 +2254,8 @@ model CrmMessageThread {
   messages CrmMessage[]
 
   @@index([contactId])
+  @@index([leadId])
+  @@index([intakeResolutionStatus, lastMessageAt])
 }
 
 model CrmMessage {

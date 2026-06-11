@@ -41,13 +41,19 @@ export default async function LeadProposalPage({
         closed: lead.closed,
         convertedMatterId: lead.convertedMatterId,
         convertedMatterName: lead.convertedMatter?.displayName,
+        conflictCheckStatus: lead.conflictCheckStatus,
         dateAdded: lead.dateAdded,
+        duplicateReviewStatus: lead.duplicateReviewStatus,
         id: lead.id,
         intakeCallAttempted: lead.intakeCallAttempted,
         leadQualityScore: lead.leadQualityScore,
         name: leadName || "Unnamed lead",
         phone: lead.contact.phoneE164,
         revenueCents: lead.revenueCents,
+        proposalPreparedAt: lead.proposalPreparedAt,
+        raPreparedAt: lead.raPreparedAt,
+        raSentAt: lead.raSentAt,
+        raSignedAt: lead.raSignedAt,
       }}
     >
       <div className={styles.proposalPane}>
@@ -55,6 +61,7 @@ export default async function LeadProposalPage({
           embedded
           initialClientName={leadName}
           initialSource={lead.campaign.slug}
+          leadId={lead.id}
           leadHref={`/crm/leads/${lead.id}`}
         />
       </div>

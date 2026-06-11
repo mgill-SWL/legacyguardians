@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import styles from "./estatePlanningProposal.module.css";
@@ -233,6 +234,7 @@ type EstatePlanningProposalProps = {
   initialClientName?: string;
   initialOffice?: string;
   initialSource?: string;
+  leadId?: string;
   leadHref?: string;
 };
 
@@ -241,8 +243,10 @@ export function EstatePlanningProposal({
   initialClientName = "",
   initialOffice = "Alexandria",
   initialSource = "Google PPC",
+  leadId,
   leadHref,
 }: EstatePlanningProposalProps = {}) {
+  const router = useRouter();
   const [clientName, setClientName] = useState(initialClientName);
   const [source, setSource] = useState(initialSource);
   const [office, setOffice] = useState(initialOffice);
@@ -255,6 +259,8 @@ export function EstatePlanningProposal({
   const [manualAdjustment, setManualAdjustment] = useState(0);
   const [scrs, setScrs] = useState("5");
   const [notes, setNotes] = useState("");
+  const [preparing, setPreparing] = useState(false);
+  const [prepareError, setPrepareError] = useState<string | null>(null);
 
   function setToggle(key: ToggleKey, checked: boolean) {
     setToggles((prev) => {
@@ -283,6 +289,28 @@ export function EstatePlanningProposal({
       if (key === "paymentDueDesign" && checked) next.paymentPlan = false;
       return next;
     });
+  }
+
+  async function prepareAgreement() {
+    if (!leadId) return;
+    setPreparing(true);
+    setPrepareError(null);
+    try {
+      for (const action of ["proposal_prepared", "ra_prepared"]) {
+        const res = await fetch(`/api/crm/leads/${leadId}/engagement`, {
+          body: JSON.stringify({ action }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
+      }
+      router.refresh();
+    } catch (e: any) {
+      setPrepareError(e?.message || "Failed to prepare agreement");
+    } finally {
+      setPreparing(false);
+    }
   }
 
   const quote = useMemo(() => {
@@ -834,10 +862,16 @@ export function EstatePlanningProposal({
               <button type="button" className={styles.secondaryButton}>
                 Save draft
               </button>
-              <button type="button" className={styles.primaryButton} disabled={requiredWarning}>
-                Prepare agreement
+              <button
+                type="button"
+                className={styles.primaryButton}
+                disabled={requiredWarning || preparing || !leadId}
+                onClick={prepareAgreement}
+              >
+                {preparing ? "Preparing..." : "Prepare agreement"}
               </button>
             </div>
+            {prepareError ? <p style={{ color: "var(--sw-danger)", fontSize: 13 }}>{prepareError}</p> : null}
           </div>
         </aside>
       </div>

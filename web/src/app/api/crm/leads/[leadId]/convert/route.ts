@@ -21,6 +21,15 @@ export async function POST(_req: Request, ctx: { params: Promise<{ leadId: strin
   if (lead.convertedAt || lead.convertedMatterId || lead.convertedContactId) {
     return NextResponse.json({ ok: false, error: "already converted" }, { status: 409 });
   }
+  if (!lead.raSignedAt) {
+    return NextResponse.json({ ok: false, error: "representation agreement must be marked signed before conversion" }, { status: 409 });
+  }
+  if (lead.conflictCheckStatus !== "CLEARED" && lead.conflictCheckStatus !== "WAIVED") {
+    return NextResponse.json({ ok: false, error: "conflict check must be cleared or waived before conversion" }, { status: 409 });
+  }
+  if (lead.duplicateReviewStatus === "POSSIBLE_DUPLICATE" || lead.duplicateReviewStatus === "DUPLICATE_CONFIRMED") {
+    return NextResponse.json({ ok: false, error: "duplicate review must be resolved before conversion" }, { status: 409 });
+  }
 
   const displayName = `${lead.contact.firstName} ${lead.contact.lastName}`.trim();
 
@@ -71,7 +80,6 @@ export async function POST(_req: Request, ctx: { params: Promise<{ leadId: strin
   await prisma.crmLeadPipeline.update({
     where: { id: leadId },
     data: {
-      raSignedAt: new Date(),
       convertedAt: new Date(),
       convertedContactId: contact.id,
       convertedMatterId: matter.id,

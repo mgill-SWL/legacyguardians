@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { resolveInboundThreadToLead } from '@/lib/crm/intakeMatching';
 import { prisma } from '@/lib/prisma';
 import { normalizeE164 } from '@/lib/ringcentral';
 
@@ -122,6 +123,20 @@ export async function POST(req: Request) {
     where: { id: t.id },
     data: { lastMessageAt: createdAt },
   });
+
+  if (isInbound) {
+    await resolveInboundThreadToLead({
+      body,
+      contactId: contact.id,
+      email: contact.email,
+      firmId: contact.firmId,
+      firstName: contact.firstName,
+      lastName: contact.lastName,
+      phoneE164: contact.phoneE164,
+      sourceType: 'INBOUND_TEXT',
+      threadId: t.id,
+    });
+  }
 
   return okRes;
 }

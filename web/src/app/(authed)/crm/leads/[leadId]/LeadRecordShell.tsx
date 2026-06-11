@@ -20,6 +20,12 @@ type LeadShellData = {
   revenueCents: number;
   convertedMatterId?: string | null;
   convertedMatterName?: string | null;
+  conflictCheckStatus: string;
+  duplicateReviewStatus: string;
+  proposalPreparedAt?: Date | null;
+  raPreparedAt?: Date | null;
+  raSentAt?: Date | null;
+  raSignedAt?: Date | null;
 };
 
 type LeadRecordShellProps = {
@@ -28,19 +34,13 @@ type LeadRecordShellProps = {
   lead: LeadShellData;
 };
 
-const MONEY = new Intl.NumberFormat("en-US", {
-  currency: "USD",
-  maximumFractionDigits: 0,
-  style: "currency",
-});
-
 function formatDate(value?: Date | null) {
   if (!value) return "Not set";
   return value.toISOString().slice(0, 10);
 }
 
-function formatMoney(cents: number) {
-  return MONEY.format(cents / 100);
+function labelStatus(value: string) {
+  return value.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 export function LeadRecordShell({ activeTab, children, lead }: LeadRecordShellProps) {
@@ -106,9 +106,19 @@ export function LeadRecordShell({ activeTab, children, lead }: LeadRecordShellPr
           <small>{lead.intakeCallAttempted ? "Intake attempted" : "Intake not attempted"}</small>
         </div>
         <div>
-          <span>Collected</span>
-          <strong>{formatMoney(lead.cashCollectedCents)}</strong>
-          <small>{lead.closed ? "Closed" : "Open lead"}</small>
+          <span>Conflict check</span>
+          <strong>{labelStatus(lead.conflictCheckStatus)}</strong>
+          <small>Intake review flag</small>
+        </div>
+        <div>
+          <span>Duplicate review</span>
+          <strong>{labelStatus(lead.duplicateReviewStatus)}</strong>
+          <small>Matching policy</small>
+        </div>
+        <div>
+          <span>Engagement</span>
+          <strong>{lead.convertedMatterId ? "Converted" : lead.raSignedAt ? "Signed" : lead.raSentAt ? "Sent" : lead.raPreparedAt ? "Prepared" : lead.proposalPreparedAt ? "Proposal ready" : "Open"}</strong>
+          <small>{lead.convertedMatterId ? "Matter active" : "Representation agreement"}</small>
         </div>
       </section>
 
@@ -135,4 +145,3 @@ export function LeadRecordShell({ activeTab, children, lead }: LeadRecordShellPr
     </div>
   );
 }
-
