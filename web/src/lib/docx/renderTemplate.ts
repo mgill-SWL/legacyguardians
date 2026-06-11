@@ -358,6 +358,26 @@ export function renderDocxTemplate({
   data: Record<string, unknown>;
 }): RenderDocxResult {
   const content = fs.readFileSync(templateAbsPath, "binary");
+  return renderDocxTemplateContent({ content, data });
+}
+
+export function renderDocxTemplateBuffer({
+  buffer,
+  data,
+}: {
+  buffer: Buffer;
+  data: Record<string, unknown>;
+}): RenderDocxResult {
+  return renderDocxTemplateContent({ content: buffer, data });
+}
+
+function renderDocxTemplateContent({
+  content,
+  data,
+}: {
+  content: string | Buffer;
+  data: Record<string, unknown>;
+}): RenderDocxResult {
   const zip = new PizZip(content);
 
   // Sanitize Word XML parts in-place.

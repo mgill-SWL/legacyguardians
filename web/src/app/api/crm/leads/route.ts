@@ -59,21 +59,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "phone number is required" }, { status: 400 });
   }
 
-  const campaignName = String(body?.campaignName || "").trim() || "Manual lead";
-  const campaignSlug = slugify(String(body?.campaignSlug || "").trim() || campaignName) || "manual-lead";
+  const campaignNameInput = String(body?.campaignName || "").trim();
+  const campaignSlug = slugify(String(body?.campaignSlug || "").trim() || campaignNameInput || "Manual lead") || "manual-lead";
+  const campaignName = campaignNameInput || campaignSlug.replace(/-/g, " ");
 
-  const campaign = await prisma.crmCampaign.upsert({
+  const existingCampaign = await prisma.crmCampaign.findUnique({
     where: { slug: campaignSlug },
-    create: {
-      slug: campaignSlug,
-      name: campaignName,
-      defaultSenderName: session.user.name || "Staff",
-    },
-    update: {
-      name: campaignName,
-    },
     select: { id: true },
   });
+  const campaign =
+    existingCampaign ||
+    (await prisma.crmCampaign.create({
+      data: {
+        slug: campaignSlug,
+        name: campaignName,
+        defaultSenderName: session.user.name || "Staff",
+      },
+      select: { id: true },
+    }));
 
   const match = await findIntakeMatches({
     email,

@@ -37,6 +37,16 @@ type LineItem = {
   summary: string;
 };
 
+type AgreementDraft = {
+  id: string;
+  title: string;
+  fileName: string;
+  status: string;
+  missingTokens: string[];
+  createdAt: string;
+  downloadHref: string;
+};
+
 const MONEY = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
@@ -234,6 +244,7 @@ type EstatePlanningProposalProps = {
   initialClientName?: string;
   initialOffice?: string;
   initialSource?: string;
+  latestAgreementDraft?: AgreementDraft | null;
   leadId?: string;
   leadHref?: string;
 };
@@ -243,6 +254,7 @@ export function EstatePlanningProposal({
   initialClientName = "",
   initialOffice = "Alexandria",
   initialSource = "Google PPC",
+  latestAgreementDraft = null,
   leadId,
   leadHref,
 }: EstatePlanningProposalProps = {}) {
@@ -263,6 +275,7 @@ export function EstatePlanningProposal({
   const [preparing, setPreparing] = useState(false);
   const [prepareError, setPrepareError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [agreementDraft, setAgreementDraft] = useState<AgreementDraft | null>(latestAgreementDraft);
 
   function setToggle(key: ToggleKey, checked: boolean) {
     setToggles((prev) => {
@@ -328,12 +341,36 @@ export function EstatePlanningProposal({
     setPrepareError(null);
     setActionMessage(null);
     try {
-      for (const action of ["proposal_prepared", "ra_prepared"]) {
-        await markEngagement(action as "proposal_prepared" | "ra_prepared");
+      const paymentTerm = toggles.paymentPlan
+        ? "Three-month payment plan"
+        : toggles.paymentDueDesign
+          ? "Payment due at the Design Meeting"
+          : "Standard payment timing";
+      const res = await fetch(`/api/crm/leads/${leadId}/representation-agreements`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          salesperson,
+          office,
+          source,
+          totalCents: quote.totalCents,
+          paymentTerm,
+          attorneyTier: ATTORNEY_TIERS[tier].label,
+          attorneyName: ATTORNEY_TIERS[tier].attorney,
+          notes,
+          quoteLines: quote.lines.map((line) => ({
+            label: line.label,
+            amountCents: line.amountCents,
+            summary: line.summary,
+          })),
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; draft?: AgreementDraft; error?: string };
+      if (!res.ok || data.ok === false || !data.draft) {
+        throw new Error(data.error || `HTTP ${res.status}`);
       }
-      setActionMessage(
-        "Agreement status marked prepared on this lead. No document file was generated yet; RA generation from the uploaded template is the next workflow step."
-      );
+      setAgreementDraft(data.draft);
+      setActionMessage("Representation agreement draft generated. Review the DOCX before sending it for signature.");
       router.refresh();
     } catch (e: unknown) {
       setPrepareError(e instanceof Error ? e.message : "Failed to prepare agreement");
@@ -867,11 +904,28 @@ export function EstatePlanningProposal({
             </div>
 
             <div className={styles.packetBlock}>
-              <div className={styles.generatedTitle}>Future agreement packet</div>
+              <div className={styles.generatedTitle}>Representation agreement draft</div>
               <p className={styles.workflowNotice}>
-                This form currently saves proposal status and marks the RA as prepared. It does not yet create a downloadable
-                agreement file or Documenso packet.
+                Generate a DOCX from the active representation agreement template, review it, then send the approved PDF through Documenso.
               </p>
+              {agreementDraft ? (
+                <div className={styles.draftCard}>
+                  <div>
+                    <strong>{agreementDraft.title}</strong>
+                    <span>{agreementDraft.fileName}</span>
+                    <span>Created {new Date(agreementDraft.createdAt).toLocaleString()}</span>
+                  </div>
+                  <a className={styles.secondaryButton} href={agreementDraft.downloadHref}>
+                    Download for review
+                  </a>
+                  {agreementDraft.missingTokens.length > 0 ? (
+                    <p className={styles.tokenWarning}>
+                      Missing merge fields: {agreementDraft.missingTokens.slice(0, 8).join(", ")}
+                      {agreementDraft.missingTokens.length > 8 ? `, +${agreementDraft.missingTokens.length - 8} more` : ""}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               <ol className={styles.packetSteps}>
                 <li>
                   <strong>Proposal table</strong>
@@ -884,8 +938,7 @@ export function EstatePlanningProposal({
                 <li>
                   <strong>Documenso placeholders</strong>
                   <span>
-                    Use <code>{"{{signature, r1}}"}</code> / <code>{"{{date, r1}}"}</code> and{" "}
-                    <code>{"{{signature, r2}}"}</code> / <code>{"{{date, r2}}"}</code> before PDF upload.
+                    Add signature/date fields after review, when the agreement is converted into the signing packet.
                   </span>
                 </li>
               </ol>
@@ -906,7 +959,7 @@ export function EstatePlanningProposal({
                 disabled={requiredWarning || savingDraft || preparing || !leadId}
                 onClick={prepareAgreement}
               >
-                {preparing ? "Marking..." : "Mark RA prepared"}
+                {preparing ? "Generating..." : agreementDraft ? "Regenerate RA draft" : "Generate RA draft"}
               </button>
             </div>
             {actionMessage ? <p className={styles.actionNotice}>{actionMessage}</p> : null}

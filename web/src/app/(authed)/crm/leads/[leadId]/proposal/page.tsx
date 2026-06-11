@@ -20,6 +20,18 @@ export default async function LeadProposalPage({
       campaign: true,
       contact: true,
       convertedMatter: { select: { displayName: true, id: true } },
+      representationAgreementDrafts: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          id: true,
+          title: true,
+          fileName: true,
+          status: true,
+          missingTokens: true,
+          createdAt: true,
+        },
+      },
     },
   });
 
@@ -61,6 +73,15 @@ export default async function LeadProposalPage({
           embedded
           initialClientName={leadName}
           initialSource={lead.campaign.slug}
+          latestAgreementDraft={
+            lead.representationAgreementDrafts[0]
+              ? {
+                  ...lead.representationAgreementDrafts[0],
+                  createdAt: lead.representationAgreementDrafts[0].createdAt.toISOString(),
+                  downloadHref: `/api/crm/representation-agreements/${lead.representationAgreementDrafts[0].id}/download`,
+                }
+              : null
+          }
           leadId={lead.id}
           leadHref={`/crm/leads/${lead.id}`}
         />

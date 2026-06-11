@@ -16,6 +16,12 @@ type SearchResult = {
   type: "Lead" | "Contact" | "Matter";
 };
 
+type CampaignOption = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
 const CREATE_OPTIONS: Array<{ type: CreateType; label: string; description: string; icon: string }> = [
   { type: "lead", label: "Lead", description: "Prospect record for intake and proposal work.", icon: "L" },
   { type: "contact", label: "Contact", description: "Client, referral source, advisor, or general contact.", icon: "C" },
@@ -48,7 +54,7 @@ function blankForm(type: CreateType): Record<string, string> {
       name: "",
       email: "",
       phone: "",
-      campaignName: "Manual lead",
+      campaignSlug: "manual-lead",
       additionalNotes: "",
     };
   }
@@ -86,6 +92,7 @@ export function TopRibbon() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [campaigns, setCampaigns] = useState<CampaignOption[]>([]);
   const searchRef = useRef<HTMLDivElement>(null);
   const createRef = useRef<HTMLDivElement>(null);
   const firstFieldRef = useRef<HTMLInputElement>(null);
@@ -99,6 +106,21 @@ export function TopRibbon() {
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function loadCampaigns() {
+      try {
+        const res = await fetch("/api/crm/campaigns", { cache: "no-store", signal: controller.signal });
+        const data = (await res.json().catch(() => ({}))) as { ok?: boolean; campaigns?: CampaignOption[] };
+        if (data.ok) setCampaigns(data.campaigns || []);
+      } catch {
+        if (!controller.signal.aborted) setCampaigns([]);
+      }
+    }
+    loadCampaigns();
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
@@ -202,7 +224,7 @@ export function TopRibbon() {
             lastName,
             email: form.email,
             phone: form.phone,
-            campaignName: form.campaignName,
+            campaignSlug: form.campaignSlug || "manual-lead",
             additionalNotes: form.additionalNotes,
           }),
         });
@@ -263,7 +285,7 @@ export function TopRibbon() {
             {error ? <div className={styles.error}>{error}</div> : null}
             {message ? <div className={styles.success}>{message}</div> : null}
             {createType === "lead" ? (
-              <LeadFields form={form} firstFieldRef={firstFieldRef} updateField={updateField} />
+              <LeadFields campaigns={campaigns} form={form} firstFieldRef={firstFieldRef} updateField={updateField} />
             ) : createType === "contact" ? (
               <ContactFields form={form} firstFieldRef={firstFieldRef} updateField={updateField} />
             ) : (
@@ -368,14 +390,17 @@ export function TopRibbon() {
 }
 
 function LeadFields({
+  campaigns,
   form,
   firstFieldRef,
   updateField,
 }: {
+  campaigns: CampaignOption[];
   form: Record<string, string>;
   firstFieldRef: RefObject<HTMLInputElement | null>;
   updateField: (key: string, value: string) => void;
 }) {
+  const hasManualLead = campaigns.some((campaign) => campaign.slug === "manual-lead");
   return (
     <div className={styles.fieldGrid}>
       <label className={styles.field}>
@@ -392,7 +417,14 @@ function LeadFields({
       </label>
       <label className={styles.field}>
         <span>Source / campaign</span>
-        <input className="sw-input" value={form.campaignName || ""} onChange={(e) => updateField("campaignName", e.target.value)} />
+        <select className="sw-input" value={form.campaignSlug || "manual-lead"} onChange={(e) => updateField("campaignSlug", e.target.value)}>
+          {!hasManualLead ? <option value="manual-lead">Manual lead</option> : null}
+          {campaigns.map((campaign) => (
+            <option key={campaign.id} value={campaign.slug}>
+              {campaign.name || campaign.slug}
+            </option>
+          ))}
+        </select>
       </label>
       <label className={`${styles.field} ${styles.fullWidth}`}>
         <span>Notes</span>

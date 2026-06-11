@@ -402,6 +402,7 @@ model Firm {
   // Firm-scoped records (nullable firmId for now; backfilled in migration step)
   messageTemplates  MessageTemplate[]
   documentTemplates DocumentTemplate[]
+  representationAgreementDrafts RepresentationAgreementDraft[]
   signingPackets    SigningPacket[]
   feeFeatures       FeeFeature[]
   helpArticles      HelpArticle[]
@@ -649,6 +650,7 @@ model User {
   paymentsCreated Payment[] @relation("PaymentsCreatedBy")
 
   documentTemplatesCreated DocumentTemplate[] @relation("DocumentTemplatesCreatedBy")
+  representationAgreementDraftsCreated RepresentationAgreementDraft[] @relation("RepresentationAgreementDraftsCreatedBy")
   signingPacketsCreated    SigningPacket[]    @relation("SigningPacketsCreatedBy")
 
   firmMemberships FirmMember[]
@@ -1222,6 +1224,7 @@ model DocumentTemplate {
   createdByUser   User?   @relation("DocumentTemplatesCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   signingPackets SigningPacket[]
+  representationAgreementDrafts RepresentationAgreementDraft[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1229,6 +1232,43 @@ model DocumentTemplate {
   @@unique([firmId, key])
   @@index([firmId, kind])
   @@index([firmId, active])
+}
+
+model RepresentationAgreementDraft {
+  id     String @id @default(cuid())
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  leadId String
+  lead   CrmLeadPipeline @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  templateId String?
+  template   DocumentTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  title          String
+  status         String @default("DRAFT")
+  sourceFileName String
+  fileName       String
+  mimeType       String
+  sizeBytes      Int
+  content        Bytes
+
+  mergeData     Json
+  missingTokens String[]
+
+  reviewedAt DateTime?
+  sentAt     DateTime?
+
+  createdByUserId String?
+  createdByUser   User?   @relation("RepresentationAgreementDraftsCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([firmId, createdAt])
+  @@index([leadId, createdAt])
+  @@index([templateId])
+  @@index([status])
 }
 
 model SigningPacket {
@@ -2070,6 +2110,7 @@ model CrmLeadPipeline {
 
   messageThreads     CrmMessageThread[]     @relation("LeadMessageThreads")
   prequalSubmissions CrmPrequalSubmission[] @relation("LeadPrequalSubmissions")
+  representationAgreementDrafts RepresentationAgreementDraft[]
 
   @@unique([contactId, campaignId])
   @@index([campaignId, dateAdded])
