@@ -331,7 +331,9 @@ export function EstatePlanningProposal({
       for (const action of ["proposal_prepared", "ra_prepared"]) {
         await markEngagement(action as "proposal_prepared" | "ra_prepared");
       }
-      setActionMessage("Agreement marked prepared. The next build should generate the RA packet from the uploaded template.");
+      setActionMessage(
+        "Agreement status marked prepared on this lead. No document file was generated yet; RA generation from the uploaded template is the next workflow step."
+      );
       router.refresh();
     } catch (e: unknown) {
       setPrepareError(e instanceof Error ? e.message : "Failed to prepare agreement");
@@ -865,15 +867,19 @@ export function EstatePlanningProposal({
             </div>
 
             <div className={styles.packetBlock}>
-              <div className={styles.generatedTitle}>Agreement packet</div>
+              <div className={styles.generatedTitle}>Future agreement packet</div>
+              <p className={styles.workflowNotice}>
+                This form currently saves proposal status and marks the RA as prepared. It does not yet create a downloadable
+                agreement file or Documenso packet.
+              </p>
               <ol className={styles.packetSteps}>
                 <li>
                   <strong>Proposal table</strong>
-                  <span>Quote lines flow into the front-page customized estate planning proposal.</span>
+                  <span>Quote lines should flow into the front-page customized estate planning proposal.</span>
                 </li>
                 <li>
                   <strong>Representation agreement</strong>
-                  <span>Client names, date, lead attorney, email, fee terms, and selected features populate the RA.</span>
+                  <span>Client names, date, lead attorney, email, fee terms, and selected features should populate the RA.</span>
                 </li>
                 <li>
                   <strong>Documenso placeholders</strong>
@@ -900,11 +906,11 @@ export function EstatePlanningProposal({
                 disabled={requiredWarning || savingDraft || preparing || !leadId}
                 onClick={prepareAgreement}
               >
-                {preparing ? "Preparing..." : "Prepare agreement"}
+                {preparing ? "Marking..." : "Mark RA prepared"}
               </button>
             </div>
-            {actionMessage ? <p style={{ color: "#166534", fontSize: 13 }}>{actionMessage}</p> : null}
-            {prepareError ? <p style={{ color: "var(--sw-danger)", fontSize: 13 }}>{prepareError}</p> : null}
+            {actionMessage ? <p className={styles.actionNotice}>{actionMessage}</p> : null}
+            {prepareError ? <p className={styles.actionError}>{prepareError}</p> : null}
           </div>
         </aside>
       </div>
