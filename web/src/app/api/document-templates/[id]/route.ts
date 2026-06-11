@@ -30,12 +30,17 @@ async function requireActiveFirm() {
 
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
-    select: { activeFirmId: true, role: true },
+    select: { id: true, activeFirmId: true, role: true },
   });
   if (!user) return { ok: false as const, status: 401, error: "unauthorized" };
   if (!user.activeFirmId) return { ok: false as const, status: 400, error: "no active firm" };
 
-  return { ok: true as const, firmId: user.activeFirmId, isAdmin: user.role === "ADMIN" };
+  const member = await prisma.firmMember.findUnique({
+    where: { firmId_userId: { firmId: user.activeFirmId, userId: user.id } },
+    select: { role: true },
+  });
+
+  return { ok: true as const, firmId: user.activeFirmId, canDelete: user.role === "ADMIN" || member?.role === "ADMIN" };
 }
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -65,7 +70,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const access = await requireActiveFirm();
   if (!access.ok) return NextResponse.json({ ok: false, error: access.error }, { status: access.status });
-  if (!access.isAdmin) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+  if (!access.canDelete) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
 
   const { id } = await ctx.params;
   const r = await prisma.documentTemplate.deleteMany({ where: { id, firmId: access.firmId } });

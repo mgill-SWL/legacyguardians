@@ -259,8 +259,10 @@ export function EstatePlanningProposal({
   const [manualAdjustment, setManualAdjustment] = useState(0);
   const [scrs, setScrs] = useState("5");
   const [notes, setNotes] = useState("");
+  const [savingDraft, setSavingDraft] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const [prepareError, setPrepareError] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   function setToggle(key: ToggleKey, checked: boolean) {
     setToggles((prev) => {
@@ -291,23 +293,48 @@ export function EstatePlanningProposal({
     });
   }
 
+  async function markEngagement(action: "proposal_prepared" | "ra_prepared") {
+    if (!leadId) throw new Error("Lead record is required.");
+    const res = await fetch(`/api/crm/leads/${leadId}/engagement`, {
+      body: JSON.stringify({ action }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.ok === false) {
+      throw new Error(data.error || `HTTP ${res.status}`);
+    }
+  }
+
+  async function saveDraft() {
+    if (!leadId) return;
+    setSavingDraft(true);
+    setPrepareError(null);
+    setActionMessage(null);
+    try {
+      await markEngagement("proposal_prepared");
+      setActionMessage("Proposal draft saved to this lead.");
+      router.refresh();
+    } catch (e: unknown) {
+      setPrepareError(e instanceof Error ? e.message : "Failed to save proposal draft");
+    } finally {
+      setSavingDraft(false);
+    }
+  }
+
   async function prepareAgreement() {
     if (!leadId) return;
     setPreparing(true);
     setPrepareError(null);
+    setActionMessage(null);
     try {
       for (const action of ["proposal_prepared", "ra_prepared"]) {
-        const res = await fetch(`/api/crm/leads/${leadId}/engagement`, {
-          body: JSON.stringify({ action }),
-          headers: { "Content-Type": "application/json" },
-          method: "POST",
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
+        await markEngagement(action as "proposal_prepared" | "ra_prepared");
       }
+      setActionMessage("Agreement marked prepared. The next build should generate the RA packet from the uploaded template.");
       router.refresh();
-    } catch (e: any) {
-      setPrepareError(e?.message || "Failed to prepare agreement");
+    } catch (e: unknown) {
+      setPrepareError(e instanceof Error ? e.message : "Failed to prepare agreement");
     } finally {
       setPreparing(false);
     }
@@ -859,18 +886,24 @@ export function EstatePlanningProposal({
             </div>
 
             <div className={styles.actionRow}>
-              <button type="button" className={styles.secondaryButton}>
-                Save draft
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                disabled={savingDraft || preparing || !leadId}
+                onClick={saveDraft}
+              >
+                {savingDraft ? "Saving..." : "Save draft"}
               </button>
               <button
                 type="button"
                 className={styles.primaryButton}
-                disabled={requiredWarning || preparing || !leadId}
+                disabled={requiredWarning || savingDraft || preparing || !leadId}
                 onClick={prepareAgreement}
               >
                 {preparing ? "Preparing..." : "Prepare agreement"}
               </button>
             </div>
+            {actionMessage ? <p style={{ color: "#166534", fontSize: 13 }}>{actionMessage}</p> : null}
             {prepareError ? <p style={{ color: "var(--sw-danger)", fontSize: 13 }}>{prepareError}</p> : null}
           </div>
         </aside>

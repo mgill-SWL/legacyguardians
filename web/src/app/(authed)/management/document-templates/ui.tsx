@@ -132,6 +132,27 @@ export function DocumentTemplatesClient({
     }
   }
 
+  async function deleteTemplate(template: Template) {
+    if (!canEdit) return;
+    const confirmed = window.confirm(`Delete "${template.name}"? This removes the uploaded file from the template library.`);
+    if (!confirmed) return;
+
+    setBusy(true);
+    setMessage(null);
+    setError(null);
+    try {
+      const res = await fetch(`/api/document-templates/${template.id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
+      setTemplates((items) => items.filter((item) => item.id !== template.id));
+      setMessage("Template deleted.");
+    } catch (e: unknown) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function checkDocumenso() {
     setCheckingDocumenso(true);
     setMessage(null);
@@ -199,7 +220,7 @@ export function DocumentTemplatesClient({
             <li>Create or log in to the Documenso workspace that will own Speedwell signature packets.</li>
             <li>Create an API token from Documenso Settings and copy it immediately.</li>
             <li>Add <span style={{ fontFamily: "var(--sw-mono)" }}>DOCUMENSO_API_TOKEN</span> in Vercel and local env. Leave the base URL alone unless self-hosting.</li>
-            <li>Upload the representation agreement source template here, then generate a PDF packet with Documenso placeholders before sending.</li>
+            <li>Use Legacy Guardians merge placeholders in source templates. Add Documenso signature/date fields only to the PDF/signing packet before sending.</li>
           </ol>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -217,7 +238,7 @@ export function DocumentTemplatesClient({
           <div>
             <div style={{ fontWeight: 950 }}>Upload template</div>
             <div className="sw-muted" style={{ marginTop: 4, fontSize: 12 }}>
-              Import the Lawmatics source file here. DOCX/PDF are preferred; HTML/text are accepted for migration capture.
+              Upload the editable source template here. Use Legacy Guardians merge placeholders for document data; Documenso signature fields belong in the signing packet/PDF step.
             </div>
           </div>
 
@@ -306,6 +327,11 @@ export function DocumentTemplatesClient({
                     {canEdit ? (
                       <button className="sw-btn sw-btnSm" type="button" disabled={busy} onClick={() => setActive(template, !template.active)}>
                         {template.active ? "Deactivate" : "Activate"}
+                      </button>
+                    ) : null}
+                    {canEdit ? (
+                      <button className="sw-btn sw-btnSm" type="button" disabled={busy} onClick={() => deleteTemplate(template)}>
+                        Delete
                       </button>
                     ) : null}
                   </div>
