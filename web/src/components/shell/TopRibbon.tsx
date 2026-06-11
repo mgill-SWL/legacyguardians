@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, RefObject, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 
 import styles from "./TopRibbon.module.css";
@@ -84,6 +85,7 @@ export function TopRibbon() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const createRef = useRef<HTMLDivElement>(null);
   const firstFieldRef = useRef<HTMLInputElement>(null);
@@ -94,6 +96,10 @@ export function TopRibbon() {
     if (createType === "matter") return "Create matter";
     return "";
   }, [createType]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (query.trim().length < 2) {
@@ -241,8 +247,45 @@ export function TopRibbon() {
     }
   }
 
+  const createDialog = createType ? (
+    <div className={styles.scrim} onMouseDown={(event) => event.currentTarget === event.target && closeDialog()}>
+      <section className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="create-dialog-title">
+        <div className={styles.dialogHeader}>
+          <h2 className={styles.dialogTitle} id="create-dialog-title">
+            {createTitle}
+          </h2>
+          <button aria-label="Close dialog" className={styles.closeButton} onClick={closeDialog} type="button">
+            x
+          </button>
+        </div>
+        <form onSubmit={submit}>
+          <div className={styles.form}>
+            {error ? <div className={styles.error}>{error}</div> : null}
+            {message ? <div className={styles.success}>{message}</div> : null}
+            {createType === "lead" ? (
+              <LeadFields form={form} firstFieldRef={firstFieldRef} updateField={updateField} />
+            ) : createType === "contact" ? (
+              <ContactFields form={form} firstFieldRef={firstFieldRef} updateField={updateField} />
+            ) : (
+              <MatterFields form={form} firstFieldRef={firstFieldRef} updateField={updateField} />
+            )}
+          </div>
+          <div className={styles.dialogFooter}>
+            <button className="sw-btn" disabled={busy} onClick={closeDialog} type="button">
+              Cancel
+            </button>
+            <button className="sw-btn sw-btnPrimary" disabled={busy} type="submit">
+              {busy ? "Creating..." : createTitle}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  ) : null;
+
   return (
-    <header className={styles.ribbon}>
+    <>
+      <header className={styles.ribbon}>
       <div className={styles.leftCluster}>
         <button
           aria-label="Toggle navigation"
@@ -318,42 +361,9 @@ export function TopRibbon() {
         </div>
       </div>
 
-      {createType ? (
-        <div className={styles.scrim} onMouseDown={(event) => event.currentTarget === event.target && closeDialog()}>
-          <section className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="create-dialog-title">
-            <div className={styles.dialogHeader}>
-              <h2 className={styles.dialogTitle} id="create-dialog-title">
-                {createTitle}
-              </h2>
-              <button aria-label="Close dialog" className={styles.closeButton} onClick={closeDialog} type="button">
-                x
-              </button>
-            </div>
-            <form onSubmit={submit}>
-              <div className={styles.form}>
-                {error ? <div className={styles.error}>{error}</div> : null}
-                {message ? <div className={styles.success}>{message}</div> : null}
-                {createType === "lead" ? (
-                  <LeadFields form={form} firstFieldRef={firstFieldRef} updateField={updateField} />
-                ) : createType === "contact" ? (
-                  <ContactFields form={form} firstFieldRef={firstFieldRef} updateField={updateField} />
-                ) : (
-                  <MatterFields form={form} firstFieldRef={firstFieldRef} updateField={updateField} />
-                )}
-              </div>
-              <div className={styles.dialogFooter}>
-                <button className="sw-btn" disabled={busy} onClick={closeDialog} type="button">
-                  Cancel
-                </button>
-                <button className="sw-btn sw-btnPrimary" disabled={busy} type="submit">
-                  {busy ? "Creating..." : createTitle}
-                </button>
-              </div>
-            </form>
-          </section>
-        </div>
-      ) : null}
-    </header>
+      </header>
+      {mounted && createDialog ? createPortal(createDialog, document.body) : null}
+    </>
   );
 }
 
