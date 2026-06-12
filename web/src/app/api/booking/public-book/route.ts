@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { bookAppointment } from "@/lib/booking/booking";
 import { prisma } from "@/lib/prisma";
+import { clientIpFrom, consumeRateLimit, phoneKey, publicEndpointRules } from "@/lib/rateLimit";
 import { sendDiscoveryAppointmentNotification } from "@/lib/automation/discoveryNotifications";
 
 export const dynamic = "force-dynamic";
@@ -180,6 +181,22 @@ export async function POST(req: Request) {
     if (!body.smsConsent) return NextResponse.json({ ok: false, error: "smsConsent required" }, { status: 400 });
   } else if (!clientEmail && !clientPhone) {
     return NextResponse.json({ ok: false, error: "clientEmail or clientPhone required" }, { status: 400 });
+  }
+
+  // Unauthenticated endpoint that creates records and sends SMS/calendar
+  // invites — rate limit per contact, per IP, and globally.
+  const allowed = await consumeRateLimit(
+    publicEndpointRules("public-book", {
+      contactKey: clientPhone ? phoneKey(clientPhone) : clientEmail.toLowerCase(),
+      ip: clientIpFrom(req),
+      globalPerHour: 30,
+    })
+  );
+  if (!allowed) {
+    return NextResponse.json(
+      { ok: false, error: "Too many booking attempts. Please try again later or call the office." },
+      { status: 429 }
+    );
   }
 
   try {

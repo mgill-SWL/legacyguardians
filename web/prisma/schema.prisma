@@ -1276,6 +1276,16 @@ model RepresentationAgreementDraft {
   @@index([status])
 }
 
+// DB-backed rate limiting for public, unauthenticated endpoints (booking,
+// webinar). In-memory counters do not work across serverless instances.
+model RateLimitHit {
+  id        String   @id @default(cuid())
+  key       String
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+}
+
 model SigningPacket {
   id     String @id @default(cuid())
   firmId String

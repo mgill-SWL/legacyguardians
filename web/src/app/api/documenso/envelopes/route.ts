@@ -93,62 +93,16 @@ export async function POST(req: Request) {
 
   const pdf = Buffer.from(await file.arrayBuffer());
 
+  let created;
   try {
-    const created = await createDocumensoEnvelope({
+    created = await createDocumensoEnvelope({
       title,
       externalId: matterId ? `lg:matter:${matterId}` : undefined,
       pdf,
       filename: file.name || `${title}.pdf`,
       recipients,
     });
-    const envelopeId = created.id;
-    if (!envelopeId) throw new Error("Documenso did not return an envelope id.");
-
-    const distributed = send
-      ? await distributeDocumensoEnvelope({
-          envelopeId,
-          subject: `Signature requested: ${title}`,
-          message: "Please review and sign this representation agreement.",
-        })
-      : null;
-
-    const providerResponse = distributed || created;
-    const signingUrls =
-      providerResponse.recipients
-        ?.map((recipient) => ({
-          name: recipient.name,
-          email: recipient.email,
-          role: recipient.role,
-          signingUrl: recipient.signingUrl,
-        }))
-        .filter((recipient) => recipient.signingUrl) || undefined;
-    const providerResponseJson = JSON.parse(JSON.stringify(providerResponse)) as Prisma.InputJsonValue;
-
-    const packet = await prisma.signingPacket.create({
-      data: {
-        firmId: access.firmId,
-        matterId,
-        templateId,
-        title,
-        status: send ? "SENT" : "DRAFT",
-        providerEnvelopeId: envelopeId,
-        providerStatus: providerResponse.status || (send ? "PENDING" : "DRAFT"),
-        sourceFileName: file.name,
-        recipientsJson: recipients as Prisma.InputJsonValue,
-        signingUrlsJson: signingUrls as Prisma.InputJsonValue | undefined,
-        providerResponseJson,
-        createdByUserId: access.userId,
-      },
-      select: {
-        id: true,
-        status: true,
-        providerEnvelopeId: true,
-        providerStatus: true,
-        signingUrlsJson: true,
-      },
-    });
-
-    return NextResponse.json({ ok: true, packet });
+    if (!created.id) throw new Error("Documenso did not return an envelope id.");
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not create Documenso envelope.";
     await prisma.signingPacket.create({
@@ -166,4 +120,78 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ ok: false, error: message }, { status: 502 });
   }
+
+  const envelopeId = created.id!;
+
+  const packetSelect = {
+    id: true,
+    status: true,
+    providerEnvelopeId: true,
+    providerStatus: true,
+    signingUrlsJson: true,
+  } as const;
+
+  const signingUrlsFrom = (response: typeof created) =>
+    response.recipients
+      ?.map((recipient) => ({
+        name: recipient.name,
+        email: recipient.email,
+        role: recipient.role,
+        signingUrl: recipient.signingUrl,
+      }))
+      .filter((recipient) => recipient.signingUrl) || undefined;
+
+  // Persist the packet (with the envelope id) BEFORE attempting distribution,
+  // so a distribution failure cannot orphan the remote envelope — a retry
+  // would otherwise create a duplicate in Documenso.
+  let packet = await prisma.signingPacket.create({
+    data: {
+      firmId: access.firmId,
+      matterId,
+      templateId,
+      title,
+      status: "DRAFT",
+      providerEnvelopeId: envelopeId,
+      providerStatus: created.status || "DRAFT",
+      sourceFileName: file.name,
+      recipientsJson: recipients as Prisma.InputJsonValue,
+      signingUrlsJson: signingUrlsFrom(created) as Prisma.InputJsonValue | undefined,
+      providerResponseJson: JSON.parse(JSON.stringify(created)) as Prisma.InputJsonValue,
+      createdByUserId: access.userId,
+    },
+    select: packetSelect,
+  });
+
+  if (send) {
+    try {
+      const distributed = await distributeDocumensoEnvelope({
+        envelopeId,
+        subject: `Signature requested: ${title}`,
+        message: "Please review and sign this representation agreement.",
+      });
+      packet = await prisma.signingPacket.update({
+        where: { id: packet.id },
+        data: {
+          status: "SENT",
+          providerStatus: distributed.status || "PENDING",
+          signingUrlsJson: signingUrlsFrom(distributed) as Prisma.InputJsonValue | undefined,
+          providerResponseJson: JSON.parse(JSON.stringify(distributed)) as Prisma.InputJsonValue,
+        },
+        select: packetSelect,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not send Documenso envelope.";
+      packet = await prisma.signingPacket.update({
+        where: { id: packet.id },
+        data: { status: "ERROR", errorMessage: message },
+        select: packetSelect,
+      });
+      return NextResponse.json(
+        { ok: false, error: `Envelope was created but sending failed: ${message}`, packet },
+        { status: 502 }
+      );
+    }
+  }
+
+  return NextResponse.json({ ok: true, packet });
 }

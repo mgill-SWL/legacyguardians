@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { bookAppointment } from "@/lib/booking/booking";
+import { clientIpFrom, consumeRateLimit, phoneKey, publicEndpointRules } from "@/lib/rateLimit";
 import { sendDiscoveryAppointmentNotification } from "@/lib/automation/discoveryNotifications";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +45,23 @@ export async function POST(req: Request) {
   if (!clientName) return NextResponse.json({ ok: false, error: "clientName required" }, { status: 400 });
   if (!String(body.clientEmail || "").trim() && !String(body.clientPhone || "").trim()) {
     return NextResponse.json({ ok: false, error: "clientEmail or clientPhone required" }, { status: 400 });
+  }
+
+  // Unauthenticated endpoint that creates records and sends SMS/calendar
+  // invites — rate limit per contact, per IP, and globally.
+  const phone = String(body.clientPhone || "").trim();
+  const allowed = await consumeRateLimit(
+    publicEndpointRules("public-book", {
+      contactKey: phone ? phoneKey(phone) : String(body.clientEmail || "").trim().toLowerCase(),
+      ip: clientIpFrom(req),
+      globalPerHour: 30,
+    })
+  );
+  if (!allowed) {
+    return NextResponse.json(
+      { ok: false, error: "Too many booking attempts. Please try again later or call the office." },
+      { status: 429 }
+    );
   }
 
   try {

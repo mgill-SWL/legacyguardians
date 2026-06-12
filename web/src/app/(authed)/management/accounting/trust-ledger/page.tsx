@@ -33,13 +33,6 @@ export default async function TrustLedgerIndexPage() {
     );
   }
 
-  const matters = await prisma.matter.findMany({
-    where: { firmId },
-    select: { id: true, displayName: true, updatedAt: true },
-    orderBy: { updatedAt: "desc" },
-    take: 200,
-  });
-
   const trustEvents = await prisma.matterFinancialEvent.findMany({
     where: {
       firmId,
@@ -59,7 +52,7 @@ export default async function TrustLedgerIndexPage() {
   const accounts = accountIds.length
     ? await prisma.billingAccount.findMany({ where: { id: { in: accountIds } }, select: { id: true, accountType: true } })
     : [];
-  const accountTypeById = accounts.reduce<Record<string, any>>((acc, a) => {
+  const accountTypeById = accounts.reduce<Record<string, (typeof accounts)[number]["accountType"]>>((acc, a) => {
     acc[a.id] = a.accountType;
     return acc;
   }, {});
@@ -77,6 +70,19 @@ export default async function TrustLedgerIndexPage() {
       });
     return acc;
   }, {});
+
+  // Build rows from every matter that has a non-zero balance — never from a
+  // capped/recency-ordered matter list, which would hide stale matters that
+  // still hold client funds.
+  const matterIdsWithBalance = Object.keys(balancesByMatterId).filter(
+    (id) => balancesByMatterId[id] !== 0
+  );
+  const matters = matterIdsWithBalance.length
+    ? await prisma.matter.findMany({
+        where: { firmId, id: { in: matterIdsWithBalance } },
+        select: { id: true, displayName: true },
+      })
+    : [];
 
   const rows = matters
     .map((m) => ({ id: m.id, displayName: m.displayName, balanceCents: balancesByMatterId[m.id] || 0 }))

@@ -308,9 +308,18 @@ function sanitizeWordXml(xml: string, data: Record<string, unknown>) {
   // These often contain dotted paths or function calls we don't support.
   out = out.replace(/\{\{[\s\S]*?\}\}/g, "");
 
-  // Some templates still have a hardcoded year.
+  // Some templates still have a hardcoded year on blank execution-date lines
+  // ("Executed on ________________, 2022"). Only rewrite 2022 in that context —
+  // visible text immediately before it must be underscores then a comma — so a
+  // genuine 2022 date elsewhere (statute edition, original trust date in an
+  // amendment) is never silently rewritten.
   const year = String(new Date().getFullYear());
-  out = out.replace(/2022/g, year);
+  out = out.replace(/2022/g, (match, offset: number, full: string) => {
+    const visibleBefore = full
+      .slice(Math.max(0, offset - 400), offset)
+      .replace(/<[^>]+>/g, "");
+    return /_+\s*,\s*$/.test(visibleBefore) ? year : match;
+  });
 
   return out;
 }
