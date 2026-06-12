@@ -114,6 +114,32 @@ export async function createDocumensoEnvelope(input: {
   })) as DocumensoEnvelopeResponse;
 }
 
+export type DocumensoFieldInput = {
+  recipientId: number;
+  type: "SIGNATURE" | "DATE" | "TEXT" | "NAME" | "EMAIL" | "INITIALS";
+  page: number;
+  positionX: number;
+  positionY: number;
+  width: number;
+  height: number;
+  envelopeItemId?: string;
+};
+
+/** Bulk-create signature/date fields on an envelope at percentage coordinates. */
+export async function createDocumensoEnvelopeFields(input: {
+  envelopeId: string;
+  fields: DocumensoFieldInput[];
+}) {
+  return await documensoFetch("/envelope/field/create-many", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      envelopeId: input.envelopeId,
+      data: input.fields,
+    }),
+  });
+}
+
 export async function distributeDocumensoEnvelope(input: {
   envelopeId: string;
   subject?: string;

@@ -1294,6 +1294,12 @@ model SigningPacket {
   matterId String?
   matter   Matter? @relation(fields: [matterId], references: [id], onDelete: SetNull)
 
+  // CRM lead this packet belongs to (e.g. representation agreements sent
+  // before a matter exists). Lets the Documenso webhook auto-stamp the
+  // lead's RA-signed milestone on completion.
+  leadId String?
+  lead   CrmLeadPipeline? @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
   templateId String?
   template   DocumentTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
 
@@ -1319,6 +1325,7 @@ model SigningPacket {
   @@index([firmId, provider, status])
   @@index([firmId, providerEnvelopeId])
   @@index([matterId])
+  @@index([leadId])
   @@index([templateId])
 }
 
@@ -2126,6 +2133,7 @@ model CrmLeadPipeline {
   messageThreads     CrmMessageThread[]     @relation("LeadMessageThreads")
   prequalSubmissions CrmPrequalSubmission[] @relation("LeadPrequalSubmissions")
   representationAgreementDrafts RepresentationAgreementDraft[]
+  signingPackets                SigningPacket[]
 
   @@unique([contactId, campaignId])
   @@index([campaignId, dateAdded])

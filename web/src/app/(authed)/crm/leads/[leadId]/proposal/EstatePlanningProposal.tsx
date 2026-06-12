@@ -277,6 +277,45 @@ export function EstatePlanningProposal({
   const [prepareError, setPrepareError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [agreementDraft, setAgreementDraft] = useState<AgreementDraft | null>(latestAgreementDraft);
+  const [sendPdf, setSendPdf] = useState<File | null>(null);
+  const [signer1Email, setSigner1Email] = useState("");
+  const [signer2Email, setSigner2Email] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
+
+  async function sendForSignature() {
+    if (!agreementDraft || !sendPdf) return;
+    setSending(true);
+    setSendError(null);
+    setSendResult(null);
+    try {
+      const form = new FormData();
+      form.append("file", sendPdf);
+      if (signer1Email.trim()) form.append("signer1Email", signer1Email.trim());
+      if (spouseName.trim()) form.append("signer2Name", spouseName.trim());
+      if (signer2Email.trim()) form.append("signer2Email", signer2Email.trim());
+      const res = await fetch(`/api/crm/representation-agreements/${agreementDraft.id}/send`, {
+        method: "POST",
+        body: form,
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+        fieldsPlaced?: number;
+        signers?: Array<{ name: string; email: string }>;
+      };
+      if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
+      setSendResult(
+        `Sent for signature: ${data.signers?.map((s) => `${s.name} <${s.email}>`).join(", ")} — ${data.fieldsPlaced} signature/date fields placed automatically. Signing status will update itself when complete.`
+      );
+      router.refresh();
+    } catch (e: unknown) {
+      setSendError(e instanceof Error ? e.message : "Failed to send for signature");
+    } finally {
+      setSending(false);
+    }
+  }
 
   function setToggle(key: ToggleKey, checked: boolean) {
     setToggles((prev) => {
@@ -930,6 +969,40 @@ export function EstatePlanningProposal({
                       {agreementDraft.missingTokens.length > 8 ? `, +${agreementDraft.missingTokens.length - 8} more` : ""}
                     </p>
                   ) : null}
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.12)", display: "grid", gap: 8 }}>
+                    <strong>Send for signature</strong>
+                    <span style={{ fontSize: 13, opacity: 0.8 }}>
+                      Review the DOCX in Word, export it as PDF, then upload the approved PDF. Signature and date
+                      fields are placed automatically at the signature lines and the agreement is emailed to the signers.
+                    </span>
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      onChange={(e) => setSendPdf(e.target.files?.[0] ?? null)}
+                    />
+                    <input
+                      type="email"
+                      placeholder="Signer 1 email (defaults to the lead's email)"
+                      value={signer1Email}
+                      onChange={(e) => setSigner1Email(e.target.value)}
+                    />
+                    <input
+                      type="email"
+                      placeholder="Signer 2 (spouse) email"
+                      value={signer2Email}
+                      onChange={(e) => setSigner2Email(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      disabled={sending || !sendPdf}
+                      onClick={sendForSignature}
+                    >
+                      {sending ? "Sending..." : "Upload approved PDF & send for signature"}
+                    </button>
+                    {sendResult ? <p style={{ color: "#4ade80", margin: 0 }}>{sendResult}</p> : null}
+                    {sendError ? <p className={styles.tokenWarning} style={{ margin: 0 }}>{sendError}</p> : null}
+                  </div>
                 </div>
               ) : null}
               <ol className={styles.packetSteps}>
