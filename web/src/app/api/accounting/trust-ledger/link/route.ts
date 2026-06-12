@@ -43,63 +43,80 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Event is already linked to a matter" }, { status: 400 });
   }
 
-  // Enforce no-negative-balance even during linking/cleanup.
-  const existing = await prisma.matterFinancialEvent.findMany({
-    where: {
-      firmId: user.activeFirmId,
-      matterId: matter.id,
-      OR: [{ eventType: "TRUST_DEPOSIT" }, { eventType: "TRUST_APPLIED" }, { eventType: "TRANSFER" }, { eventType: "REFUND" }],
-    },
-    select: { eventType: true, amountCents: true, fromAccountId: true, toAccountId: true },
-  });
+  // Enforce no-negative-balance even during linking/cleanup. Serializable
+  // transaction so a concurrent write cannot race past the balance check.
+  let blockedError: string | null = null;
+  try {
+    await prisma.$transaction(
+      async (tx) => {
+        const existing = await tx.matterFinancialEvent.findMany({
+          where: {
+            firmId: user.activeFirmId!,
+            matterId: matter.id,
+            OR: [{ eventType: "TRUST_DEPOSIT" }, { eventType: "TRUST_APPLIED" }, { eventType: "TRANSFER" }, { eventType: "REFUND" }],
+          },
+          select: { eventType: true, amountCents: true, fromAccountId: true, toAccountId: true },
+        });
 
-  const accountIds = Array.from(
-    new Set(
-      [...existing, event]
-        .flatMap((e) => [e.fromAccountId, e.toAccountId])
-        .filter((v): v is string => !!v)
-    )
-  );
-  const accounts = accountIds.length
-    ? await prisma.billingAccount.findMany({ where: { id: { in: accountIds } }, select: { id: true, accountType: true } })
-    : [];
-  const accountTypeById = accounts.reduce<Record<string, any>>((acc, a) => {
-    acc[a.id] = a.accountType;
-    return acc;
-  }, {});
+        const accountIds = Array.from(
+          new Set(
+            [...existing, event]
+              .flatMap((e) => [e.fromAccountId, e.toAccountId])
+              .filter((v): v is string => !!v)
+          )
+        );
+        const accounts = accountIds.length
+          ? await tx.billingAccount.findMany({ where: { id: { in: accountIds } }, select: { id: true, accountType: true } })
+          : [];
+        const accountTypeById = accounts.reduce<Record<string, (typeof accounts)[number]["accountType"]>>((acc, a) => {
+          acc[a.id] = a.accountType;
+          return acc;
+        }, {});
 
-  const currentBalanceCents = existing.reduce((sum, e) => {
-    return (
-      sum +
-      trustDeltaCents({
-        eventType: e.eventType,
-        amountCents: e.amountCents,
-        fromAccountType: e.fromAccountId ? accountTypeById[e.fromAccountId] : null,
-        toAccountType: e.toAccountId ? accountTypeById[e.toAccountId] : null,
-      })
-    );
-  }, 0);
+        const currentBalanceCents = existing.reduce((sum, e) => {
+          return (
+            sum +
+            trustDeltaCents({
+              eventType: e.eventType,
+              amountCents: e.amountCents,
+              fromAccountType: e.fromAccountId ? accountTypeById[e.fromAccountId] : null,
+              toAccountType: e.toAccountId ? accountTypeById[e.toAccountId] : null,
+            })
+          );
+        }, 0);
 
-  const delta = trustDeltaCents({
-    eventType: event.eventType,
-    amountCents: event.amountCents,
-    fromAccountType: event.fromAccountId ? accountTypeById[event.fromAccountId] : null,
-    toAccountType: event.toAccountId ? accountTypeById[event.toAccountId] : null,
-  });
+        const delta = trustDeltaCents({
+          eventType: event.eventType,
+          amountCents: event.amountCents,
+          fromAccountType: event.fromAccountId ? accountTypeById[event.fromAccountId] : null,
+          toAccountType: event.toAccountId ? accountTypeById[event.toAccountId] : null,
+        });
 
-  if (currentBalanceCents + delta < 0) {
-    return NextResponse.json(
-      {
-        error: `Blocked: linking would make trust balance negative (current ${(currentBalanceCents / 100).toFixed(2)}, delta ${(delta / 100).toFixed(2)}).`,
+        if (currentBalanceCents + delta < 0) {
+          blockedError = `Blocked: linking would make trust balance negative (current ${(currentBalanceCents / 100).toFixed(2)}, delta ${(delta / 100).toFixed(2)}).`;
+          return;
+        }
+
+        await tx.matterFinancialEvent.update({
+          where: { id: event.id },
+          data: { matterId: matter.id },
+        });
       },
-      { status: 400 }
+      { isolationLevel: "Serializable" }
     );
+  } catch (e) {
+    if ((e as { code?: string })?.code === "P2034") {
+      return NextResponse.json(
+        { error: "Another trust ledger update was in progress. Please retry." },
+        { status: 409 }
+      );
+    }
+    throw e;
   }
 
-  await prisma.matterFinancialEvent.update({
-    where: { id: event.id },
-    data: { matterId: matter.id },
-  });
+  if (blockedError) {
+    return NextResponse.json({ error: blockedError }, { status: 400 });
+  }
 
   return NextResponse.json({ ok: true });
 }

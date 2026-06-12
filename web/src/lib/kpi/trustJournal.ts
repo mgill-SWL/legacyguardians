@@ -65,9 +65,10 @@ function parseCsv(text: string): string[][] {
 function usd(value: string | undefined): number {
   const raw = (value ?? "").replaceAll(",", "").replaceAll(" ", "").trim();
   if (!raw) return 0;
-  const normalized = raw.replace(/[()]/g, "");
-  const parsed = Number.parseFloat(normalized);
-  return Number.isFinite(parsed) ? parsed : 0;
+  const negative = raw.includes("(") || raw.startsWith("-");
+  const parsed = Number.parseFloat(raw.replace(/[()]/g, ""));
+  if (!Number.isFinite(parsed)) return 0;
+  return negative ? -parsed : parsed;
 }
 
 function findHeaderRow(rows: string[][], firstCell: string): number {

@@ -23,6 +23,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ leadId: string
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
 
+  const user = await prisma.user.findUnique({ where: { email: session.user.email.toLowerCase() } });
+  if (!user?.activeFirmId) {
+    return NextResponse.json({ ok: false, error: "Signed-in user has no active firm" }, { status: 400 });
+  }
+
   const { leadId } = await ctx.params;
   const body = await req.json().catch(() => ({}));
   const action = body?.action;
@@ -31,8 +36,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ leadId: string
     return NextResponse.json({ ok: false, error: "invalid engagement action" }, { status: 400 });
   }
 
-  const lead = await prisma.crmLeadPipeline.findUnique({
-    where: { id: leadId },
+  const lead = await prisma.crmLeadPipeline.findFirst({
+    where: { id: leadId, contact: { firmId: user.activeFirmId } },
     select: { id: true, convertedAt: true },
   });
 
