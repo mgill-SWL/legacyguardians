@@ -119,6 +119,17 @@ export type IntakeV1 = {
     client2?: string;
   };
 
+  /**
+   * Reciprocal trusts: if a client's trust is a restatement of an existing trust,
+   * the original trust date (YYYY-MM-DD). When set, the spouse's residue clause
+   * cross-references the trust "under date of trust <date>" instead of
+   * "concurrently herewith".
+   */
+  trustOriginalDatesByClient?: {
+    client1?: string;
+    client2?: string;
+  };
+
   people: Person[];
 
   roles: {

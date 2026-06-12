@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
 import { authOptions } from "@/authOptions";
+import { dedupeHashesForRows } from "@/lib/kpi/importDedupe";
 import { parseTrustDisbursementsJournal } from "@/lib/kpi/trustJournal";
 import { prisma } from "@/lib/prisma";
 
@@ -42,6 +43,30 @@ export async function POST(request: Request) {
 
   const parsed = parseTrustDisbursementsJournal(await file.text());
 
+  // Skip rows already imported (e.g. the same journal re-uploaded), so a
+  // re-import cannot double-count trust disbursements.
+  const hashes = dedupeHashesForRows(
+    parsed.map((row) => [
+      "TRUST_DISBURSEMENTS_JOURNAL",
+      row.date,
+      row.amountUsd.toFixed(2),
+      row.paidTo,
+      row.clientMatter,
+      row.purposeOfPayment ?? "",
+      row.methodRef ?? "",
+    ])
+  );
+  const existing = hashes.length
+    ? await prisma.matterFinancialEvent.findMany({
+        where: { firmId: user.activeFirmId, dedupeHash: { in: hashes } },
+        select: { dedupeHash: true },
+      })
+    : [];
+  const existingHashes = new Set(existing.map((e) => e.dedupeHash));
+  const newRows = parsed
+    .map((row, i) => ({ row, dedupeHash: hashes[i] }))
+    .filter((x) => !existingHashes.has(x.dedupeHash));
+
   const [trustAccount, operatingAccount] = await Promise.all([
     prisma.billingAccount.upsert({
       where: { firmId_name: { firmId: user.activeFirmId, name: "Trust" } },
@@ -81,7 +106,7 @@ export async function POST(request: Request) {
   let transferCount = 0;
 
   await prisma.$transaction(async (tx) => {
-    for (const row of parsed) {
+    for (const { row, dedupeHash } of newRows) {
       const classification = classifyDisbursement(row);
       if (classification.kpiCollected) transferCount += 1;
 
@@ -99,6 +124,7 @@ export async function POST(request: Request) {
           sourceReference: file.name,
           sourceClientName: row.paidTo,
           sourceMatterName: row.clientMatter,
+          dedupeHash,
           fromAccountId: trustAccount.id,
           toAccountId: classification.eventType === "TRANSFER" ? operatingAccount.id : null,
           notes: [
@@ -116,8 +142,10 @@ export async function POST(request: Request) {
   return NextResponse.json({
     ok: true,
     importBatchId: batch.id,
-    importedRows: parsed.length,
-    amountTotalUsd: parsed.reduce((sum, row) => sum + row.amountUsd, 0),
+    parsedRows: parsed.length,
+    importedRows: newRows.length,
+    skippedDuplicateRows: parsed.length - newRows.length,
+    amountTotalUsd: newRows.reduce((sum, x) => sum + x.row.amountUsd, 0),
     transferRowsMarkedCollected: transferCount,
   });
 }

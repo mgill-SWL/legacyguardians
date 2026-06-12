@@ -10,6 +10,7 @@ import { MatterLocationForm } from "./MatterLocationForm";
 import { BillingCard } from "./BillingCard";
 import { TimelineCard } from "./TimelineCard";
 import { MatterFieldsCard } from "./MatterFieldsCard";
+import GeneratePacketButton from "./GeneratePacketButton";
 
 export default async function MatterDetailPage({
   params,
@@ -299,22 +300,7 @@ export default async function MatterDetailPage({
         }}
       >
         <div style={{ fontWeight: 800, marginBottom: 10 }}>Generate</div>
-        <form action={`/api/matters/${matter.id}/generate`} method="post">
-          <button
-            type="submit"
-            style={{
-              padding: "10px 12px",
-              borderRadius: "var(--sw-radius-sm)",
-              border: "1px solid rgba(110,231,255,0.45)",
-              background: "linear-gradient(135deg, rgba(110,231,255,0.14), rgba(167,139,250,0.10))",
-              fontWeight: 800,
-              color: "var(--sw-text)",
-              cursor: "pointer",
-            }}
-          >
-            Generate packet (ZIP, v0)
-          </button>
-        </form>
+        <GeneratePacketButton matterId={matter.id} />
         <p style={{ marginTop: 10, marginBottom: 0, color: "var(--sw-muted)" }}>
           Next: expand this into the full joint trust + pour-over wills/ancillaries packet.
         </p>
