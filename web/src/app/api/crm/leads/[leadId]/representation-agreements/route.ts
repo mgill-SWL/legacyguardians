@@ -18,6 +18,7 @@ type GenerateBody = {
   salesperson?: string;
   office?: string;
   source?: string;
+  spouseName?: string;
   totalCents?: number;
   paymentTerm?: string;
   attorneyTier?: string;
@@ -89,11 +90,17 @@ function buildMergeData(input: {
     : [];
   const quoteLinesText = quoteLines.map((line) => `${line.label}: ${line.amount}${line.summary ? ` - ${line.summary}` : ""}`).join("\n");
 
+  const spouseName = cleanText(input.body.spouseName);
+
   const data = {
     CLIENTNAME: clientName,
     ClientName: clientName,
     ClientFullName: clientName,
     CLIENTFULLNAME: clientName,
+    SpouseFullName: spouseName,
+    SPOUSEFULLNAME: spouseName,
+    SpouseName: spouseName,
+    SPOUSENAME: spouseName,
     CLIENTFIRSTNAME: input.lead.contact.firstName,
     ClientFirstName: input.lead.contact.firstName,
     CLIENTLASTNAME: input.lead.contact.lastName,
@@ -126,6 +133,9 @@ function buildMergeData(input: {
     PaymentTerm: cleanText(input.body.paymentTerm),
     QUOTELINES: quoteLinesText,
     QuoteLines: quoteLinesText,
+    // Array form for table-row loops in DOCX templates:
+    // [[#QuoteLineItems]] [[label]] [[amount]] [[summary]] [[/QuoteLineItems]]
+    QuoteLineItems: quoteLines,
     NOTES: cleanText(input.body.notes) || input.lead.additionalNotes || "",
     Notes: cleanText(input.body.notes) || input.lead.additionalNotes || "",
   };
