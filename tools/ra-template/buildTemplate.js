@@ -45,6 +45,7 @@ function body(text, opts = {}) {
 
 function centeredTitle(text, size = 28) {
   return new Paragraph({
+    keepNext: true,
     alignment: AlignmentType.CENTER,
     spacing: { before: 120, after: 240 },
     children: [run(text, { bold: true, size })],
@@ -53,21 +54,25 @@ function centeredTitle(text, size = 28) {
 
 function numberedHeading(text) {
   return new Paragraph({
+    keepNext: true,
     numbering: { reference: "ra-sections", level: 0 },
     spacing: { before: 200, after: 120 },
     children: [run(text, { bold: true })],
   });
 }
 
+// keepNext chains the paragraphs of a signature block together so a block
+// can never split across a page break (no orphaned lines or date rows).
 function sigLine() {
   return new Paragraph({
+    keepNext: true,
     spacing: { before: 480, after: 40 },
     children: [run("_________________________________")],
   });
 }
 
-function sigLabel(text) {
-  return new Paragraph({ spacing: { after: 40 }, children: [run(text)] });
+function sigLabel(text, { last = false } = {}) {
+  return new Paragraph({ keepNext: !last, spacing: { after: 40 }, children: [run(text)] });
 }
 
 function coupleSignatureBlock() {
@@ -77,7 +82,7 @@ function coupleSignatureBlock() {
     sigLabel("Date: _________________________"),
     sigLine(),
     sigLabel("CLIENT SPOUSE 2: [[SpouseFullName]]"),
-    sigLabel("Date: _________________________"),
+    sigLabel("Date: _________________________", { last: true }),
   ];
 }
 
@@ -224,15 +229,15 @@ const agreement = [
     { run: { bold: true } }
   ),
 
-  new Paragraph({ spacing: { before: 240, after: 40 }, children: [run("LAW FIRM:", { bold: true })] }),
+  new Paragraph({ keepNext: true, spacing: { before: 240, after: 40 }, children: [run("LAW FIRM:", { bold: true })] }),
   sigLine(),
   sigLabel("[[LeadAttorney]]"),
   sigLabel("Speedwell Law, PLLC"),
   sigLabel("2000 Duke Street, Suite 300"),
   sigLabel("Alexandria, VA 22314"),
-  sigLabel("Date: [[Date]]"),
+  sigLabel("Date: [[Date]]", { last: true }),
 
-  new Paragraph({ spacing: { before: 240, after: 40 }, children: [run("CLIENT:", { bold: true })] }),
+  new Paragraph({ keepNext: true, spacing: { before: 240, after: 40 }, children: [run("CLIENT:", { bold: true })] }),
   ...coupleSignatureBlock(),
   new Paragraph({ children: [new PageBreak()] }),
 ];
@@ -292,7 +297,13 @@ const exhibitB = [
   new Paragraph({ numbering: { reference: "exhibit-b", level: 0 }, alignment: AlignmentType.JUSTIFIED, children: [run("I understand that if I reschedule the Document Tour, half the fee will be collectible as of that date.")] }),
   new Paragraph({ numbering: { reference: "exhibit-b", level: 0 }, alignment: AlignmentType.JUSTIFIED, children: [run("I understand that if I reschedule the Document Tour a second time, the full fee will be collectible as of the date of the second scheduled Document Tour.")] }),
   new Paragraph({ numbering: { reference: "exhibit-b", level: 0 }, alignment: AlignmentType.JUSTIFIED, children: [run("I understand that the estate planning experience is designed and expected to last for 90 days. If my documents are not signed within 90 days, then a $50 per month administrative fee will apply, which will be charged to my credit card on file.")] }),
-  body("Speedwell Law is nevertheless understanding of the fact that the following circumstances can afflict anyone at any time and would understandably cause a delay or pause in the estate planning process:"),
+  // Aligned with the numbered items (0.5" indent) per Misha's formatting spec.
+  new Paragraph({
+    alignment: AlignmentType.JUSTIFIED,
+    indent: { left: 720 },
+    spacing: { before: 120, after: 120 },
+    children: [run("Speedwell Law is nevertheless understanding of the fact that the following circumstances can afflict anyone at any time and would understandably cause a delay or pause in the estate planning process:")],
+  }),
   new Paragraph({ numbering: { reference: "exhibit-b-bullets", level: 0 }, children: [run("Death in the immediate family")] }),
   new Paragraph({ numbering: { reference: "exhibit-b-bullets", level: 0 }, children: [run("Diagnosis of severe disease")] }),
   new Paragraph({ numbering: { reference: "exhibit-b-bullets", level: 0 }, children: [run("Divorce")] }),
