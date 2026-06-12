@@ -17,11 +17,16 @@ export async function POST(
   { params }: { params: Promise<{ matterId: string }> }
 ) {
   const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!session?.user?.email) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  const user = await prisma.user.findUnique({ where: { email: session.user.email.toLowerCase() } });
+  if (!user?.activeFirmId) {
+    return NextResponse.json({ error: "Signed-in user has no active firm" }, { status: 400 });
+  }
 
   const { matterId } = await params;
-  const matter = await prisma.matter.findUnique({
-    where: { id: matterId },
+  const matter = await prisma.matter.findFirst({
+    where: { id: matterId, firmId: user.activeFirmId },
     include: { intake: true },
   });
   if (!matter) return NextResponse.json({ error: "not found" }, { status: 404 });
@@ -29,6 +34,7 @@ export async function POST(
   const intake = (matter.intake?.data ?? {}) as unknown as import("@/lib/intakeTypes").IntakeV1;
   const offering = (intake?.offering ?? intake?.matterType ?? "JOINT_TRUST") as
     import("@/lib/intakeTypes").Offering;
+  const hasSecondClient = Boolean((intake.grantors?.[1] ?? "").trim());
 
   const { tokenDataFromIntakeWithOptions } = await import("@/lib/tokenMap");
 
@@ -119,7 +125,7 @@ export async function POST(
         bytes: fs.statSync(r.templateAbsPath).size,
       });
     }
-    {
+    if (hasSecondClient) {
       const r = renderOrThrow("templates/canonical/packet_split/will_client2.docx", baseData());
       zip.file(`03_Last_Will_Client2_${matterId}.docx`, r.buffer);
       rendered.push({
@@ -144,7 +150,7 @@ export async function POST(
         bytes: fs.statSync(r.templateAbsPath).size,
       });
     }
-    {
+    if (hasSecondClient) {
       const r = renderOrThrow(
         "templates/canonical/packet_split/advance_medical_directive_client2.docx",
         baseData()
@@ -172,7 +178,7 @@ export async function POST(
         bytes: fs.statSync(r.templateAbsPath).size,
       });
     }
-    {
+    if (hasSecondClient) {
       const r = renderOrThrow(
         "templates/canonical/packet_split/final_disposition_client2.docx",
         baseData()
@@ -260,7 +266,7 @@ export async function POST(
         bytes: fs.statSync(r.templateAbsPath).size,
       });
     }
-    {
+    if (hasSecondClient) {
       const r = renderOrThrow(
         "templates/canonical/packet_split/durable_poa_client2.docx",
         baseData()
