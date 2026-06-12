@@ -43,11 +43,11 @@ function body(text, opts = {}) {
   });
 }
 
-function centeredTitle(text, size = 28) {
+function centeredTitle(text, size = 28, { spaceBefore = 120 } = {}) {
   return new Paragraph({
     keepNext: true,
     alignment: AlignmentType.CENTER,
-    spacing: { before: 120, after: 240 },
+    spacing: { before: spaceBefore, after: 240 },
     children: [run(text, { bold: true, size })],
   });
 }
@@ -137,6 +137,9 @@ const proposalPage = [
   body(
     "The following proposal outlines your selected attorney tier, service features, and courtesy adjustments for [[ClientFullName]] and [[SpouseFullName]]. These selections form the basis of your flat-fee estate planning engagement with Speedwell Law. Only the services you selected appear below. You may ask your intake specialist to revise and resend according to your desires. If you have scheduled a design meeting, this Representation Agreement must be signed within 24 hours of the discovery call to keep your meeting on our calendar. In addition, please accept the meeting invitation to confirm the meeting. If we do not receive a signed Representation Agreement and are unable to reach you, the meeting may be canceled so the time can be released."
   ),
+  // Blank line between the intro and the fee table (mirrors the hard return
+  // used in the Lawmatics version to keep the table from crowding the text).
+  new Paragraph({ spacing: { after: 0 }, children: [] }),
   feeTable,
   new Paragraph({ spacing: { before: 200, after: 160 }, alignment: AlignmentType.JUSTIFIED, children: [
     run("For your convenience, and if payment was not made during the discovery call, you may use the following link to pay in full: "),
@@ -253,7 +256,8 @@ const waiverAndPoa = [
   ),
   ...coupleSignatureBlock(),
 
-  centeredTitle("LIMITED POWER OF ATTORNEY", 24),
+  // Extra space so this section reads as distinct from the waiver above it.
+  centeredTitle("LIMITED POWER OF ATTORNEY", 24, { spaceBefore: 720 }),
   body(
     "This representation may require the preparation and execution of Deeds and other conveyance instruments that must be recorded. I grant to Speedwell Law a limited power of attorney to correct typographic errors and amend formatting on conveyance instruments in order to facilitate recordation of the same."
   ),
