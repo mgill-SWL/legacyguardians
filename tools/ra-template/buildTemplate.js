@@ -61,13 +61,21 @@ function numberedHeading(text) {
   });
 }
 
+// Invisible signing anchor: tiny white text the app locates in the exported
+// PDF to auto-place Documenso signature/date fields (see web/src/lib/signing/
+// pdfAnchors.ts). Editing the document moves the anchors with the signature
+// blocks, so field placement always lands correctly.
+function anchorRun(anchor) {
+  return new TextRun({ text: anchor, font: FONT, size: 2, color: "FFFFFF" });
+}
+
 // keepNext chains the paragraphs of a signature block together so a block
 // can never split across a page break (no orphaned lines or date rows).
-function sigLine() {
+function sigLine(anchor) {
   return new Paragraph({
     keepNext: true,
     spacing: { before: 480, after: 40 },
-    children: [run("_________________________________")],
+    children: [...(anchor ? [anchorRun(anchor)] : []), run("_________________________________")],
   });
 }
 
@@ -75,14 +83,22 @@ function sigLabel(text, { last = false } = {}) {
   return new Paragraph({ keepNext: !last, spacing: { after: 40 }, children: [run(text)] });
 }
 
+function dateLabel(anchor, { last = false } = {}) {
+  return new Paragraph({
+    keepNext: !last,
+    spacing: { after: 40 },
+    children: [run("Date: "), ...(anchor ? [anchorRun(anchor)] : []), run("_________________________")],
+  });
+}
+
 function coupleSignatureBlock() {
   return [
-    sigLine(),
+    sigLine("@@SIG1@@"),
     sigLabel("CLIENT SPOUSE 1: [[ClientFullName]]"),
-    sigLabel("Date: _________________________"),
-    sigLine(),
+    dateLabel("@@DATE1@@"),
+    sigLine("@@SIG2@@"),
     sigLabel("CLIENT SPOUSE 2: [[SpouseFullName]]"),
-    sigLabel("Date: _________________________", { last: true }),
+    dateLabel("@@DATE2@@", { last: true }),
   ];
 }
 

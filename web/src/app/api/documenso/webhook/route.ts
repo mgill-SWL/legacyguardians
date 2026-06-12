@@ -62,7 +62,7 @@ export async function POST(req: Request) {
 
   const packet = await prisma.signingPacket.findFirst({
     where: { provider: "DOCUMENSO", providerEnvelopeId: { in: candidateIds } },
-    select: { id: true, status: true },
+    select: { id: true, status: true, leadId: true },
   });
 
   // Acknowledge unknown envelopes with 200 so Documenso does not retry forever.
@@ -85,6 +85,15 @@ export async function POST(req: Request) {
       ) as Prisma.InputJsonValue,
     },
   });
+
+  // A completed representation agreement auto-stamps the lead's RA-signed
+  // milestone (only once; never overwrite an earlier signature date).
+  if (mappedStatus === "COMPLETED" && packet.leadId) {
+    await prisma.crmLeadPipeline.updateMany({
+      where: { id: packet.leadId, raSignedAt: null },
+      data: { raSignedAt: new Date() },
+    });
+  }
 
   return NextResponse.json({ ok: true, matched: true, packetId: packet.id });
 }
