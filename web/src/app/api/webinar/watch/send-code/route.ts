@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { clientIpFrom, consumeRateLimit, phoneKey, publicEndpointRules } from "@/lib/rateLimit";
 import { sendAutomationSms } from "@/lib/ringcentralAutomation";
 import { corsOptionsResponse, withCors } from "@/lib/webinarCors";
 import { generate6DigitCode, hashCode } from "@/lib/webinarVerification";
@@ -34,6 +35,22 @@ export async function POST(req: Request) {
 
   if (!reg.contact.phoneVerifiedAt) {
     return withCors(NextResponse.json({ ok: false, error: "Phone not verified" }, { status: 403 }), origin);
+  }
+
+  // Unauthenticated endpoint that sends an SMS per request — rate limit per
+  // phone, per IP, and globally to prevent SMS-pumping abuse.
+  const allowed = await consumeRateLimit(
+    publicEndpointRules("webinar-send-code", {
+      contactKey: phoneKey(reg.contact.phoneE164),
+      ip: clientIpFrom(req),
+      perContactPerHour: 5,
+    })
+  );
+  if (!allowed) {
+    return withCors(
+      NextResponse.json({ ok: false, error: "Too many code requests. Please try again later." }, { status: 429 }),
+      origin
+    );
   }
 
   const code = generate6DigitCode();

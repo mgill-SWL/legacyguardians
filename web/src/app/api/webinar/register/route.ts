@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { clientIpFrom, consumeRateLimit, phoneKey, publicEndpointRules } from "@/lib/rateLimit";
 import { normalizeE164 } from "@/lib/ringcentral";
 import { sendAutomationSms } from "@/lib/ringcentralAutomation";
 import { corsOptionsResponse, withCors } from "@/lib/webinarCors";
@@ -33,6 +34,21 @@ export async function POST(req: Request) {
   const phoneE164 = normalizeE164(body.phone);
   if (!phoneE164) {
     return withCors(NextResponse.json({ ok: false, error: "Invalid phone" }, { status: 400 }), origin);
+  }
+
+  // Unauthenticated endpoint that sends an SMS per request — rate limit per
+  // phone, per IP, and globally to prevent SMS-pumping abuse.
+  const allowed = await consumeRateLimit(
+    publicEndpointRules("webinar-register", {
+      contactKey: phoneKey(phoneE164),
+      ip: clientIpFrom(req),
+    })
+  );
+  if (!allowed) {
+    return withCors(
+      NextResponse.json({ ok: false, error: "Too many attempts. Please try again later." }, { status: 429 }),
+      origin
+    );
   }
 
   const campaign = await prisma.crmCampaign.upsert({
