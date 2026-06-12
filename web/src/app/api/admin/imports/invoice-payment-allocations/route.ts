@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
 import { authOptions } from "@/authOptions";
+import { dedupeHashesForRows } from "@/lib/kpi/importDedupe";
 import { parseInvoicePaymentAllocations, type InvoicePaymentDetailRow } from "@/lib/kpi/invoicePaymentAllocations";
 import { prisma } from "@/lib/prisma";
 
@@ -50,10 +51,35 @@ export async function POST(request: Request) {
     },
   });
 
+  // Skip rows already imported (e.g. the same reports re-uploaded), so a
+  // re-import cannot double-count fee income.
+  const detailRows = parsed.detailRows as Array<InvoicePaymentDetailRow & { source?: string }>;
+  const hashes = dedupeHashesForRows(
+    detailRows.map((row) => [
+      "INVOICE_PAYMENT_ALLOCATIONS",
+      row.appliedDate,
+      row.feeIncomeUsd.toFixed(2),
+      row.invoiceNumber,
+      row.clientMatter,
+      row.matterOwner ?? "",
+      row.source ?? "",
+    ])
+  );
+  const existing = hashes.length
+    ? await prisma.matterFinancialEvent.findMany({
+        where: { firmId: user.activeFirmId, dedupeHash: { in: hashes } },
+        select: { dedupeHash: true },
+      })
+    : [];
+  const existingHashes = new Set(existing.map((e) => e.dedupeHash));
+  const newRows = detailRows
+    .map((row, i) => ({ row, dedupeHash: hashes[i] }))
+    .filter((x) => !existingHashes.has(x.dedupeHash));
+
   const importedRows: Array<InvoicePaymentDetailRow & { source?: string }> = [];
 
   await prisma.$transaction(async (tx) => {
-    for (const row of parsed.detailRows as Array<InvoicePaymentDetailRow & { source?: string }>) {
+    for (const { row, dedupeHash } of newRows) {
       const notes = [
         row.source ? `source=${row.source}` : null,
         row.reimbursedDirectUsd ? `reimbursed_direct=${row.reimbursedDirectUsd.toFixed(2)}` : null,
@@ -77,6 +103,7 @@ export async function POST(request: Request) {
           sourceInvoiceNumber: row.invoiceNumber,
           sourceClientName: row.clientMatter,
           sourceMatterName: row.clientMatter,
+          dedupeHash,
           notes,
           attributions: {
             create: {
@@ -95,7 +122,9 @@ export async function POST(request: Request) {
   return NextResponse.json({
     ok: true,
     importBatchId: importBatch.id,
+    parsedRows: detailRows.length,
     importedRows: importedRows.length,
+    skippedDuplicateRows: detailRows.length - newRows.length,
     feeIncomeTotalUsd: importedRows.reduce((sum, row) => sum + row.feeIncomeUsd, 0),
     reimbursedDirectTotalUsd: importedRows.reduce((sum, row) => sum + row.reimbursedDirectUsd, 0),
     reimbursedIndirectTotalUsd: importedRows.reduce((sum, row) => sum + row.reimbursedIndirectUsd, 0),

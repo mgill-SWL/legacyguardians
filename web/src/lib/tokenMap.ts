@@ -28,6 +28,15 @@ function cleanRelationshipPhrase(s?: string) {
   return (s || "").trim();
 }
 
+/** Format an ISO YYYY-MM-DD date as a spelled-out legal date (e.g. "March 14, 2022"); pass through anything else as written. */
+function legalDate(raw: string): string {
+  const trimmed = raw.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  const date = new Date(`${trimmed}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) return trimmed;
+  return new Intl.DateTimeFormat("en-US", { dateStyle: "long", timeZone: "UTC" }).format(date);
+}
+
 function deriveJointRelationshipPhrase({
   person,
   client1First,
@@ -117,28 +126,30 @@ function roleForClient(intake: IntakeV1, roleKey: RoleKey, client: 1 | 2): RoleA
 }
 
 function finalDispositionRanksForClient(intake: IntakeV1, client: 1 | 2): string[][] {
-  const raw = (intake.roles as any)?.finalDispositionAgents;
+  const raw: unknown = (intake.roles as Record<string, unknown> | undefined)?.finalDispositionAgents;
   const key = client === 2 ? "client2" : "client1";
 
-  const isStrArr = (v: any) => Array.isArray(v) && v.every((s: any) => typeof s === "string");
-  const isRankArr = (v: any) => Array.isArray(v) && v.every((r: any) => isStrArr(r));
+  const isStrArr = (v: unknown): v is string[] => Array.isArray(v) && v.every((s) => typeof s === "string");
+  const isRankArr = (v: unknown): v is string[][] => Array.isArray(v) && v.every((r) => isStrArr(r));
 
   // Preferred: { client1: string[][], client2: string[][] }
   if (raw && typeof raw === "object" && !Array.isArray(raw)) {
-    const v = (raw as any)[key];
+    const rec = raw as Record<string, unknown>;
+    const v = rec[key];
     if (isRankArr(v)) return v;
 
     // Legacy RoleAssignment shapes: { primary, alternate1, alternate2 }
-    if ("primary" in raw || "alternate1" in raw || "alternate2" in raw) {
-      const list = [raw.primary, raw.alternate1, raw.alternate2].filter((x) => typeof x === "string") as string[];
+    if ("primary" in rec || "alternate1" in rec || "alternate2" in rec) {
+      const list = [rec.primary, rec.alternate1, rec.alternate2].filter((x): x is string => typeof x === "string");
       return [list.slice(0, 1), ...list.slice(1).map((id) => [id])].filter((r) => r.length);
     }
 
     // Legacy by-client role assignment shapes
-    if ("client1" in raw || "client2" in raw) {
-      const r = (raw as any)[key];
+    if ("client1" in rec || "client2" in rec) {
+      const r = rec[key];
       if (r && typeof r === "object") {
-        const list = [r.primary, r.alternate1, r.alternate2].filter((x: any) => typeof x === "string") as string[];
+        const rr2 = r as Record<string, unknown>;
+        const list = [rr2.primary, rr2.alternate1, rr2.alternate2].filter((x): x is string => typeof x === "string");
         return [list.slice(0, 1), ...list.slice(1).map((id) => [id])].filter((rr) => rr.length);
       }
     }
@@ -168,6 +179,8 @@ export function tokenDataFromIntakeWithOptions(intake: IntakeV1, options?: Token
   const spouseFirst = spouseName.split(" ")[0] ?? "";
   const spouseSurname = spouseName.trim().split(/\s+/).slice(-1)[0] ?? "";
 
+  const reciprocal = Boolean(options?.reciprocalTrustView);
+
   const rawOverride = (
     (povClient === 1
       ? intake.trustNameOverridesByClient?.client1
@@ -179,8 +192,39 @@ export function tokenDataFromIntakeWithOptions(intake: IntakeV1, options?: Token
     ? rawOverride.replace(/^the\s+/i, "").trim()
     : "";
 
-  const trustNameBase = normalizedOverride || defaultTrustNameFromClient1(povName || client1);
+  // Naming convention: reciprocal trusts are each titled "<Grantor's Full Legal Name>
+  // Living Trust" so the spouse's residue clause cross-reference resolves to a real
+  // instrument. Joint/individual trusts keep the "<Surname> Family Living Trust" default.
+  const trustNameBase =
+    normalizedOverride ||
+    (reciprocal && povName
+      ? `${povName} LIVING TRUST`
+      : defaultTrustNameFromClient1(povName || client1));
   const trustName = trustNameBase.toUpperCase();
+
+  // Spouse's trust name (override-aware) for reciprocal cross-references.
+  const spouseRawOverride = (
+    (povClient === 1
+      ? intake.trustNameOverridesByClient?.client2
+      : intake.trustNameOverridesByClient?.client1) || ""
+  ).trim();
+  const spouseNormalizedOverride = spouseRawOverride
+    ? spouseRawOverride.replace(/^the\s+/i, "").trim()
+    : "";
+  const spouseTrustName = (
+    spouseNormalizedOverride || (spouseName ? `${spouseName} LIVING TRUST` : "")
+  ).toUpperCase();
+
+  // "executed ... concurrently herewith" for a new trust, or "under date of trust
+  // <original date>" when the spouse's trust is a restatement of an existing trust.
+  const spouseOriginalDateRaw = (
+    (povClient === 1
+      ? intake.trustOriginalDatesByClient?.client2
+      : intake.trustOriginalDatesByClient?.client1) || ""
+  ).trim();
+  const spouseTrustExecution = spouseOriginalDateRaw
+    ? `under date of trust ${legalDate(spouseOriginalDateRaw)}`
+    : "concurrently herewith";
 
   const client1First = client1.split(" ")[0] ?? "";
   const client2First = client2.split(" ")[0] ?? "";
@@ -244,6 +288,9 @@ export function tokenDataFromIntakeWithOptions(intake: IntakeV1, options?: Token
     SpouseSurname: spouseSurname,
     SPOUSEFirstname: spouseFirst,
     SpouseFirstname: spouseFirst,
+    SPOUSETRUSTNAME: spouseTrustName,
+    SpouseTrustName: spouseTrustName,
+    SPOUSETRUSTEXECUTION: spouseTrustExecution,
   
     // Law firm (legacy individual template tokens)
     "LawFirmCounty/City": "Alexandria",

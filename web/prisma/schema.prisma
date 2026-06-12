@@ -984,6 +984,10 @@ model MatterFinancialEvent {
   sourceMatterName       String?
   notes                  String?
 
+  // Stable content hash for journal-imported rows so re-importing the same
+  // file cannot double-count trust/payment events. Null for manual entries.
+  dedupeHash String?
+
   fromAccountId String?
   fromAccount   BillingAccount? @relation("FinancialEventFromAccount", fields: [fromAccountId], references: [id], onDelete: SetNull)
 
@@ -1001,6 +1005,7 @@ model MatterFinancialEvent {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([firmId, dedupeHash])
   @@index([firmId, eventType, eventDate])
   @@index([matterId, eventDate])
   @@index([importBatchId])

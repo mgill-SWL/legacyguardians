@@ -279,7 +279,7 @@ function sanitizeWordXml(xml: string, data: Record<string, unknown>) {
           "The Trustee shall distribute my tangible personal property to [[SPOUSEFirstname]]."
         );
         const spouseSurvivesResidue = mkListPara(
-          "The Trustee shall distribute the residue of the Trust Estate to the then-acting Trustee of that certain trust agreement known as THE [[SPOUSEFULLNAME]] LIVING TRUST, executed by [[SPOUSEFULLNAME]] (my spouse) concurrently herewith."
+          "The Trustee shall distribute the residue of the Trust Estate to the then-acting Trustee of that certain trust agreement known as THE [[SPOUSETRUSTNAME]], executed by [[SPOUSEFULLNAME]] (my spouse) [[SPOUSETRUSTEXECUTION]]."
         );
 
         const spousePredeceasesHeading = mkHeadingPara(

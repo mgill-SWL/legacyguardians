@@ -13,7 +13,7 @@ function renderOrThrow(templateRelFromRepoRoot: string, data: Record<string, unk
 }
 
 export async function POST(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ matterId: string }> }
 ) {
   const session = await getServerSession(authOptions);
@@ -291,6 +291,24 @@ export async function POST(
       if (!zip.file(name)) {
         zip.file(name, await makePlaceholderDocx("(placeholder — template not wired yet)"));
       }
+    }
+
+    // Missing tokens render as blanks inside otherwise clean-looking legal
+    // documents, so refuse to hand over the packet unless explicitly forced.
+    const docsWithMissingTokens = rendered
+      .filter((r) => r.missingTokens.length > 0)
+      .map((r) => ({ name: r.name, missingTokens: r.missingTokens }));
+    const force = new URL(req.url).searchParams.get("force") === "1";
+    if (docsWithMissingTokens.length > 0 && !force) {
+      return NextResponse.json(
+        {
+          error: "missing_tokens",
+          message:
+            "Some documents have blank fields because intake data is missing. Review the fields below, complete the intake, or download anyway.",
+          documentsWithMissingTokens: docsWithMissingTokens,
+        },
+        { status: 422 }
+      );
     }
 
     zip.file(
