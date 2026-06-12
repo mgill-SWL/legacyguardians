@@ -260,6 +260,7 @@ export function EstatePlanningProposal({
 }: EstatePlanningProposalProps = {}) {
   const router = useRouter();
   const [clientName, setClientName] = useState(initialClientName);
+  const [spouseName, setSpouseName] = useState("");
   const [source, setSource] = useState(initialSource);
   const [office, setOffice] = useState(initialOffice);
   const [salesperson, setSalesperson] = useState("Christopher Heredia");
@@ -353,6 +354,7 @@ export function EstatePlanningProposal({
           salesperson,
           office,
           source,
+          spouseName,
           totalCents: quote.totalCents,
           paymentTerm,
           attorneyTier: ATTORNEY_TIERS[tier].label,
@@ -657,6 +659,10 @@ export function EstatePlanningProposal({
               <label className={styles.field}>
                 <span>Client name</span>
                 <input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Client or household name" />
+              </label>
+              <label className={styles.field}>
+                <span>Spouse full legal name</span>
+                <input value={spouseName} onChange={(e) => setSpouseName(e.target.value)} placeholder="For couple RAs; merged into the agreement" />
               </label>
               <label className={styles.field}>
                 <span>Source</span>
