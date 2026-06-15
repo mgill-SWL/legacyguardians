@@ -34,13 +34,6 @@ const labelStyle = {
   gap: 6,
 } as const;
 
-function splitFullName(fullName: string) {
-  const parts = fullName.trim().replace(/\s+/g, " ").split(" ").filter(Boolean);
-  const firstName = parts.shift() || "";
-  const lastName = parts.join(" ") || "Unknown";
-  return { firstName, lastName };
-}
-
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Registration failed";
 }
@@ -59,11 +52,11 @@ export function WebinarRegistrationForm({ campaignSlug, showingId, showingStarts
     setState({ status: "submitting" });
 
     const form = new FormData(event.currentTarget);
-    const fullName = String(form.get("fullName") || "");
-    const { firstName, lastName } = splitFullName(fullName);
+    const firstName = String(form.get("firstName") || "").trim();
+    const lastName = String(form.get("lastName") || "").trim();
 
     try {
-      if (!firstName) throw new Error("Please enter your full name.");
+      if (!firstName || !lastName) throw new Error("Please enter your first and last name.");
 
       const response = await fetch("/api/webinar/register", {
         body: JSON.stringify({
@@ -133,8 +126,13 @@ export function WebinarRegistrationForm({ campaignSlug, showingId, showingStarts
       }}
     >
       <label style={labelStyle}>
-        Full Name
-        <input autoComplete="name" name="fullName" required style={inputStyle} type="text" />
+        First Name
+        <input autoComplete="given-name" name="firstName" required style={inputStyle} type="text" />
+      </label>
+
+      <label style={labelStyle}>
+        Last Name
+        <input autoComplete="family-name" name="lastName" required style={inputStyle} type="text" />
       </label>
 
       <label style={labelStyle}>

@@ -207,6 +207,27 @@ Think of it like a human reviewing their journal and updating their mental model
 
 The goal: Be helpful without being annoying. Check in a few times a day, do useful background work, but respect quiet time.
 
+## Coding Discipline (Karpathy's Rules)
+
+These four rules govern all code work in this repo. Adopted from Andrej Karpathy's
+widely-shared CLAUDE.md (Jan 2026). They override the urge to be "helpful" by doing more.
+
+1. **Think Before Coding.** State your assumptions explicitly before generating code.
+   If there are multiple valid interpretations of the request, present them and ask —
+   do not silently pick one.
+2. **Simplicity First.** Write the minimum code that solves the problem. Nothing
+   speculative, no features beyond what was asked, no abstractions for single-use code.
+   A 50-line solution should not become 500 lines.
+3. **Surgical Changes.** When editing existing code, touch only what the request
+   requires. Every changed line must trace directly to the request. No drive-by edits
+   to unrelated code.
+4. **Goal-Driven Execution.** Turn the request into a clear goal with explicit
+   verification. State how you verified the result (tests run, output observed) — don't
+   declare success without checking.
+
+**Workflow norm for this repo:** do code changes on a branch and open a PR; let CI run
+and let Misha review before merging to `main`. Avoid pushing feature work straight to `main`.
+
 ## Make It Yours
 
 This is a starting point. Add your own conventions, style, and rules as you figure out what works.
