@@ -78,13 +78,20 @@ export async function POST(req: Request) {
 
     const endsAt = new Date(startsAt.getTime() + 90 * 60 * 1000);
 
-    const showing = await prisma.crmShowing.create({
-      data: {
-        campaignId: campaign.id,
-        startsAt,
-        endsAt,
-      },
-    });
+    const showing =
+      (await prisma.crmShowing.findFirst({
+        where: {
+          campaignId: campaign.id,
+          startsAt,
+        },
+      })) ||
+      (await prisma.crmShowing.create({
+        data: {
+          campaignId: campaign.id,
+          startsAt,
+          endsAt,
+        },
+      }));
 
     showingId = showing.id;
   } else {
