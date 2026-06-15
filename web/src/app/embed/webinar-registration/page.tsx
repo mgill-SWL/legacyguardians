@@ -21,7 +21,7 @@ export default async function WebinarRegistrationEmbedPage({
 
   return (
     <main
-      data-transparent-embed
+      data-transparent-embed="true"
       style={{
         background: "transparent",
         boxSizing: "border-box",
