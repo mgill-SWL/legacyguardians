@@ -9,6 +9,10 @@ import { generate6DigitCode, generateWatchToken, hashCode } from "@/lib/webinarV
 
 export const dynamic = "force-dynamic";
 
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
 type Body = {
   campaignSlug: string;
   showingId?: string;
@@ -36,12 +40,21 @@ export async function POST(req: Request) {
     return withCors(NextResponse.json({ ok: false, error: "Invalid phone" }, { status: 400 }), origin);
   }
 
+  const email = (body.email || "").trim();
+  if (!email || !isValidEmail(email)) {
+    return withCors(NextResponse.json({ ok: false, error: "A valid email is required" }, { status: 400 }), origin);
+  }
+
   // Unauthenticated endpoint that sends an SMS per request — rate limit per
   // phone, per IP, and globally to prevent SMS-pumping abuse.
   const allowed = await consumeRateLimit(
     publicEndpointRules("webinar-register", {
       contactKey: phoneKey(phoneE164),
       ip: clientIpFrom(req),
+      // Public marketing funnel: the default 50/hr global cap would throttle a
+      // real registration campaign. Keep the per-phone (3) and per-IP (10)
+      // abuse limits; raise only the global backstop.
+      globalPerHour: 300,
     })
   );
   if (!allowed) {
@@ -78,20 +91,17 @@ export async function POST(req: Request) {
 
     const endsAt = new Date(startsAt.getTime() + 90 * 60 * 1000);
 
-    const showing =
-      (await prisma.crmShowing.findFirst({
-        where: {
-          campaignId: campaign.id,
-          startsAt,
-        },
-      })) ||
-      (await prisma.crmShowing.create({
-        data: {
-          campaignId: campaign.id,
-          startsAt,
-          endsAt,
-        },
-      }));
+    // Atomic find-or-create keyed on the (campaignId, startsAt) unique index,
+    // so concurrent registrations can't create duplicate showings.
+    const showing = await prisma.crmShowing.upsert({
+      where: { campaignId_startsAt: { campaignId: campaign.id, startsAt } },
+      update: {},
+      create: {
+        campaignId: campaign.id,
+        startsAt,
+        endsAt,
+      },
+    });
 
     showingId = showing.id;
   } else {
@@ -106,12 +116,12 @@ export async function POST(req: Request) {
     update: {
       firstName: body.firstName,
       lastName: body.lastName,
-      email: body.email || undefined,
+      email,
     },
     create: {
       firstName: body.firstName,
       lastName: body.lastName,
-      email: body.email,
+      email,
       phoneE164,
       state: "UNKNOWN",
     },
