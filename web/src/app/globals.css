@@ -22,6 +22,10 @@ body {
   color: var(--sw-text);
 }
 
+body:has([data-transparent-embed]) {
+  background: transparent;
+}
+
 a {
   color: inherit;
 }
