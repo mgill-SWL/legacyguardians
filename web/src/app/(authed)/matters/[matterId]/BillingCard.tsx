@@ -26,11 +26,11 @@ export function BillingCard({ matterId, invoices }: { matterId: string; invoices
     setError(null);
     try {
       const res = await fetch(`/api/matters/${matterId}/invoices/draft-from-timecards`, { method: "POST" });
-      const data = (await res.json().catch(() => ({}))) as any;
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       window.location.reload();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setSubmitting(false);
     }

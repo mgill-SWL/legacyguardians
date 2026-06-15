@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 
 import { authOptions } from "@/authOptions";
 import { prisma } from "@/lib/prisma";
-import { allocationOrderRank } from "@/lib/billing/invoiceMath";
 
 type Payload = {
   refundDate?: string; // YYYY-MM-DD
@@ -138,7 +137,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ invoiceId: str
     return { ok: true as const, paymentId: payment.id, refundedCents: amountCents, newOutstandingCents: newOutstanding };
   });
 
-  if (!result.ok) return NextResponse.json({ error: result.error }, { status: (result as any).status || 400 });
+  if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status || 400 });
   return NextResponse.json(result);
 }
 

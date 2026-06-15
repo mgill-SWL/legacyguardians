@@ -36,8 +36,8 @@ export function SpendForm({
       if (!res.ok || data.ok === false) throw new Error(data.error || `Failed (${res.status})`);
       setAmount("");
       router.refresh();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(false);
     }

@@ -79,8 +79,8 @@ export function EngagementStatusCard({
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
       router.refresh();
-    } catch (e: any) {
-      setError(e?.message || "Failed to update engagement status");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to update engagement status");
     } finally {
       setBusyAction(null);
     }

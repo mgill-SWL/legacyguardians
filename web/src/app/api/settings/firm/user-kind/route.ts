@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
+import type { FirmMemberKind } from "@prisma/client";
+
 import { authOptions } from "@/authOptions";
 import { prisma } from "@/lib/prisma";
 
@@ -21,7 +23,7 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as Body | null;
   if (!body?.userId || !body?.kind) return NextResponse.json({ ok: false, error: "userId + kind required" }, { status: 400 });
 
-  const kind = body.kind as any;
+  const kind = body.kind as FirmMemberKind;
 
   const updated = await prisma.firmMember.updateMany({
     where: { firmId: actor.activeFirmId, userId: body.userId },

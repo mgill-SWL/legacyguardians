@@ -378,7 +378,7 @@ export function FirmSettingsClient({
                                   setError(null);
                                   try {
                                     const res = await fetch(`/api/settings/firm/locations/${l.id}`, { method: "DELETE" });
-                                    const json = (await res.json().catch(() => ({}))) as any;
+                                    const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
                                     if (!res.ok || json.ok === false) throw new Error(json.error || `HTTP ${res.status}`);
                                     window.location.reload();
                                   } catch (err) {

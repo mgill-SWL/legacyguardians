@@ -25,11 +25,11 @@ export function MatterLocationForm({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ primaryLocationId: locationId || null }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       setSavedAt(Date.now());
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setSaving(false);
     }

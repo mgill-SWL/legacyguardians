@@ -8,8 +8,6 @@ import { syncIntakeReportingFromSheet } from "@/lib/kpis/syncIntakeReporting";
 
 export const dynamic = "force-dynamic";
 
-const SLUG = "intake-reporting";
-
 export async function POST() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
@@ -42,8 +40,8 @@ export async function POST() {
     // run inside helper (reads sheet + upserts DB)
     const out = await syncIntakeReportingFromSheet({ googleEmail, spreadsheetId, year, sheetNameTemplate });
     return NextResponse.json({ ok: true, year, ...out });
-  } catch (e: any) {
-    const msg = e?.message || "Failed to read intake KPI sheet";
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Failed to read intake KPI sheet";
     // Most sheet-related errors are user-config issues; return a readable 400.
     return NextResponse.json(
       {

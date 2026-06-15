@@ -85,7 +85,7 @@ export async function POST(request: Request) {
 
   const candidateLocationId =
     requestedLocationId ||
-    (resolvedMatter as any)?.primaryLocationId ||
+    resolvedMatter?.primaryLocationId ||
     user.defaultLocationId ||
     user.activeLocationId ||
     null;

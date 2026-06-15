@@ -1,3 +1,4 @@
+import type { FinancialClassificationType } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
@@ -86,7 +87,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ ok: false, error: "classificationType required" }, { status: 400 });
   }
 
-  const classificationType = body.classificationType as any;
+  const classificationType = body.classificationType as FinancialClassificationType;
   const coaNumber = String(body.coaNumber || "").trim();
   const rememberPayee = !!body.rememberPayee;
 
@@ -125,7 +126,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       where: { id: item.rawTransactionId },
       data: {
         rawData: {
-          ...(item.rawTransaction.rawData as any),
+          ...(item.rawTransaction.rawData as Record<string, unknown>),
           codedCoaNumber: coaNumber,
           codedAt: now.toISOString(),
         },
@@ -171,7 +172,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
       const existing = await prisma.reportRow.findUnique({ where: { tableId_rowKey: { tableId: table.id, rowKey } } });
       if (existing) {
-        await prisma.reportRow.update({ where: { id: existing.id }, data: { label, data: { ...(existing.data as any), ...data } } });
+        await prisma.reportRow.update({ where: { id: existing.id }, data: { label, data: { ...(existing.data as Record<string, unknown>), ...data } } });
       } else {
         const maxSort = await prisma.reportRow.aggregate({ where: { tableId: table.id }, _max: { sortOrder: true } });
         await prisma.reportRow.create({

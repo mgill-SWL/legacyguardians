@@ -20,7 +20,7 @@ function fmtMoney(cents: number) {
   return (cents / 100).toFixed(2);
 }
 
-export function PricingClient({ initialFeatures, canEdit }: { initialFeatures: any[]; canEdit: boolean }) {
+export function PricingClient({ initialFeatures, canEdit }: { initialFeatures: Feature[]; canEdit: boolean }) {
   const features: Feature[] = initialFeatures || [];
 
   const [busy, setBusy] = useState(false);
@@ -28,7 +28,7 @@ export function PricingClient({ initialFeatures, canEdit }: { initialFeatures: a
 
   const [newF, setNewF] = useState({ key: "", label: "", group: "", type: "MONEY" as Feature["type"], money: "0" });
 
-  async function patch(id: string, patch: any) {
+  async function patch(id: string, patch: Partial<Feature>) {
     setBusy(true);
     setError(null);
     try {
@@ -40,8 +40,8 @@ export function PricingClient({ initialFeatures, canEdit }: { initialFeatures: a
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
       window.location.reload();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(false);
     }
@@ -66,8 +66,8 @@ export function PricingClient({ initialFeatures, canEdit }: { initialFeatures: a
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       window.location.reload();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(false);
     }
@@ -82,7 +82,7 @@ export function PricingClient({ initialFeatures, canEdit }: { initialFeatures: a
             <input className="sw-input" placeholder="key (snake_case)" value={newF.key} onChange={(e) => setNewF((s) => ({ ...s, key: e.target.value }))} />
             <input className="sw-input" placeholder="Label" value={newF.label} onChange={(e) => setNewF((s) => ({ ...s, label: e.target.value }))} />
             <input className="sw-input" placeholder="Group (optional)" value={newF.group} onChange={(e) => setNewF((s) => ({ ...s, group: e.target.value }))} />
-            <select className="sw-input" value={newF.type} onChange={(e) => setNewF((s) => ({ ...s, type: e.target.value as any }))}>
+            <select className="sw-input" value={newF.type} onChange={(e) => setNewF((s) => ({ ...s, type: e.target.value as Feature["type"] }))}>
               <option value="MONEY">MONEY</option>
               <option value="TEXT">TEXT</option>
               <option value="BOOLEAN">BOOLEAN</option>

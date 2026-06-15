@@ -137,8 +137,8 @@ export default async function InvoicePage({
           amountCents: l.amountCents,
           sortOrder: l.sortOrder,
           timeEntryId: l.timeEntryId,
-          allocatedCents: (l as any).allocatedCents,
-          remainingCents: (l as any).remainingCents,
+          allocatedCents: l.allocatedCents,
+          remainingCents: l.remainingCents,
         }))}
         payments={Object.values(
           invoice.allocations.reduce<Record<

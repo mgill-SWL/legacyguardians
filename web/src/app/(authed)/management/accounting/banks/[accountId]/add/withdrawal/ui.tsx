@@ -61,11 +61,11 @@ export function WithdrawalClient({
           checkNumber: checkNumber.trim(),
         }),
       });
-      const json = (await res.json().catch(() => ({}))) as any;
+      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; printUrl?: string };
       if (!res.ok || json.ok === false) throw new Error(json.error || `HTTP ${res.status}`);
 
       if (json.printUrl) {
-        window.location.href = json.printUrl as string;
+        window.location.href = json.printUrl;
       } else {
         window.location.href = `/management/accounting/banks/${financialAccountId}`;
       }

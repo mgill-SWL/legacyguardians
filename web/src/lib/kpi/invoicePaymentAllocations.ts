@@ -163,10 +163,6 @@ function accountTotalsFromSheet(text: string): InvoicePaymentAccountTotal[] {
   return out;
 }
 
-function keyFor(row: Pick<InvoicePaymentDetailRow, "appliedDate" | "invoiceNumber" | "matterOwner" | "appliedAmountUsd">) {
-  return [row.appliedDate, row.invoiceNumber, row.matterOwner, row.appliedAmountUsd.toFixed(2)].join("|");
-}
-
 export function parseInvoicePaymentAllocations(input: {
   detailCsv: string;
   transactionsCsv: string;

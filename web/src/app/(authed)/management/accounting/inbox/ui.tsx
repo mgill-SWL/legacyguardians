@@ -63,7 +63,7 @@ export function BookkeepingInboxClient() {
           <span className="sw-muted" style={{ fontSize: 12 }}>
             Import type
           </span>
-          <select className="sw-input" value={importKind} onChange={(e) => setImportKind(e.target.value as any)}>
+          <select className="sw-input" value={importKind} onChange={(e) => setImportKind(e.target.value as "CHASE_CARD" | "CHASE_OPERATING" | "CHASE_IOLTA")}>
             <option value="CHASE_CARD">Chase credit card activity CSV</option>
             <option value="CHASE_OPERATING">Chase operating account transactions CSV</option>
             <option value="CHASE_IOLTA">Chase IOLTA account transactions CSV</option>

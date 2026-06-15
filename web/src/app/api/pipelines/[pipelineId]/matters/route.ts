@@ -35,7 +35,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ pipelineId: st
     });
 
     return NextResponse.json({ ok: true, id: link.id });
-  } catch (e: any) {
+  } catch {
     // unique(matterId,pipelineId)
     return NextResponse.json({ ok: false, error: "already in pipeline" }, { status: 409 });
   }

@@ -15,8 +15,8 @@ export function SyncFromSheetButton() {
       if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
       setMsg(`Synced ${data.totalSheetRows} rows (created ${data.created}, updated ${data.updated}).`);
       window.location.reload();
-    } catch (e: any) {
-      setMsg(e?.message || "Sync failed");
+    } catch (e: unknown) {
+      setMsg(e instanceof Error ? e.message : "Sync failed");
     } finally {
       setBusy(false);
     }

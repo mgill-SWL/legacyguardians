@@ -93,7 +93,7 @@ export default async function ScoreboardReportingPage() {
       <p className="sw-muted" style={{ marginTop: 8 }}>
         Enter the monthly goal and the LawPay 30-day volume number you want shown on the dashboard.
       </p>
-      <ReportGrid table={(refreshed || ensured) as any} canAdmin={!!canAdmin} />
+      <ReportGrid table={refreshed || ensured} canAdmin={!!canAdmin} />
     </div>
   );
 }

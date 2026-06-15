@@ -34,8 +34,8 @@ export function ManagementTextEditor({
       if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
       setSaved(true);
       setTimeout(() => setSaved(false), 1500);
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setSaving(false);
     }

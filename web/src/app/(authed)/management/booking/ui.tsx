@@ -51,7 +51,7 @@ export function BookingAdminClient({
   googleEmails,
   canEdit,
 }: {
-  initialTypes: any[];
+  initialTypes: (Omit<TypeRow, "updatedAt"> & { updatedAt: string | Date })[];
   googleEmails: string[];
   canEdit: boolean;
 }) {
@@ -114,8 +114,8 @@ export function BookingAdminClient({
       const json = await res.json().catch(() => ({}));
       if (!res.ok || json.ok === false) throw new Error(json.error || `HTTP ${res.status}`);
       window.location.reload();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(false);
     }
@@ -133,8 +133,8 @@ export function BookingAdminClient({
       const json = await res.json().catch(() => ({}));
       if (!res.ok || json.ok === false) throw new Error(json.error || `HTTP ${res.status}`);
       window.location.reload();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(false);
     }
@@ -150,8 +150,8 @@ export function BookingAdminClient({
       const json = await res.json().catch(() => ({}));
       if (!res.ok || json.ok === false) throw new Error(json.error || `HTTP ${res.status}`);
       window.location.reload();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(false);
     }
@@ -177,8 +177,8 @@ export function BookingAdminClient({
       const json = await res.json().catch(() => ({}));
       if (!res.ok || json.ok === false) throw new Error(json.error || `HTTP ${res.status}`);
       window.location.reload();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(false);
     }
@@ -196,8 +196,8 @@ export function BookingAdminClient({
       const json = await res.json().catch(() => ({}));
       if (!res.ok || json.ok === false) throw new Error(json.error || `HTTP ${res.status}`);
       window.location.reload();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(false);
     }
@@ -212,8 +212,8 @@ export function BookingAdminClient({
       const json = await res.json().catch(() => ({}));
       if (!res.ok || json.ok === false) throw new Error(json.error || `HTTP ${res.status}`);
       window.location.reload();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(false);
     }
@@ -318,7 +318,7 @@ export function BookingAdminClient({
                 <input
                   className="sw-input"
                   type="number"
-                  value={(draftType as any)[key]}
+                  value={draftType[key]}
                   onChange={(e) => setDraftType((d) => ({ ...d, [key]: Number(e.target.value) }))}
                   disabled={!canEdit}
                 />

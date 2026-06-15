@@ -35,11 +35,11 @@ export function SupportChat() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ messages: next }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       setMessages((m) => [...m, { role: "assistant", content: data.message || "(no response)" }]);
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(false);
     }

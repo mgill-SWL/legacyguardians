@@ -31,8 +31,8 @@ export function PipelineSettingsClient({ pipelines }: { pipelines: Pipe[] }) {
       });
       setNewPipelineName("");
       router.refresh();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(null);
     }
@@ -48,8 +48,8 @@ export function PipelineSettingsClient({ pipelines }: { pipelines: Pipe[] }) {
         body: JSON.stringify({ name }),
       });
       router.refresh();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(null);
     }
@@ -65,8 +65,8 @@ export function PipelineSettingsClient({ pipelines }: { pipelines: Pipe[] }) {
         body: JSON.stringify({ dir }),
       });
       router.refresh();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(null);
     }
@@ -82,8 +82,8 @@ export function PipelineSettingsClient({ pipelines }: { pipelines: Pipe[] }) {
         body: JSON.stringify(patch),
       });
       router.refresh();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(null);
     }
@@ -96,8 +96,8 @@ export function PipelineSettingsClient({ pipelines }: { pipelines: Pipe[] }) {
     try {
       await api(`/api/stages/${stageId}`, { method: "DELETE" });
       router.refresh();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(null);
     }
@@ -113,8 +113,8 @@ export function PipelineSettingsClient({ pipelines }: { pipelines: Pipe[] }) {
         body: JSON.stringify({ name }),
       });
       router.refresh();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(null);
     }
@@ -127,8 +127,8 @@ export function PipelineSettingsClient({ pipelines }: { pipelines: Pipe[] }) {
     try {
       await api(`/api/pipelines/${pipelineId}`, { method: "DELETE" });
       router.refresh();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(null);
     }
@@ -141,8 +141,8 @@ export function PipelineSettingsClient({ pipelines }: { pipelines: Pipe[] }) {
     try {
       await api("/api/pipelines/import-lawmatics", { method: "POST" });
       router.refresh();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(null);
     }
@@ -215,7 +215,6 @@ export function PipelineSettingsClient({ pipelines }: { pipelines: Pipe[] }) {
           <PipelineCard
             key={p.id}
             pipeline={p}
-            busy={busy}
             onAddStage={addStage}
             onMoveStage={moveStage}
             onPatchStage={patchStage}
@@ -235,7 +234,6 @@ export function PipelineSettingsClient({ pipelines }: { pipelines: Pipe[] }) {
 
 function PipelineCard({
   pipeline,
-  busy,
   onAddStage,
   onMoveStage,
   onPatchStage,
@@ -244,7 +242,6 @@ function PipelineCard({
   onDeletePipeline,
 }: {
   pipeline: Pipe;
-  busy: string | null;
   onAddStage: (pipelineId: string, name: string) => Promise<void>;
   onMoveStage: (stageId: string, dir: "up" | "down") => Promise<void>;
   onPatchStage: (stageId: string, patch: { name?: string; colorHex?: string | null }) => Promise<void>;

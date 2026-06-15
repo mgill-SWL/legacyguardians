@@ -40,7 +40,7 @@ export async function sendAutomationSms(toRaw: string, text: string) {
   }
 
   // Send SMS
-  return await ringCentralApi<any>(accessToken, "/restapi/v1.0/account/~/extension/~/sms", {
+  return await ringCentralApi<unknown>(accessToken, "/restapi/v1.0/account/~/extension/~/sms", {
     method: "POST",
     body: JSON.stringify({
       from: { phoneNumber: from },

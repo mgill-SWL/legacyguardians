@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
+import type { Prisma } from "@prisma/client";
+
 import { authOptions } from "@/authOptions";
 import { prisma } from "@/lib/prisma";
 
@@ -52,8 +54,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ matterId: str
   if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status });
 
   const body = (await req.json().catch(() => null)) as null | { intake?: unknown };
-  const intake = body?.intake as any;
+  const intake = body?.intake;
   if (!intake || typeof intake !== "object") return NextResponse.json({ error: "intake required" }, { status: 400 });
+  const intakeData = intake as Prisma.InputJsonValue;
 
   const updated = await prisma.matter.update({
     where: { id: matterId },
@@ -61,8 +64,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ matterId: str
       status: "INTAKE_IN_PROGRESS",
       intake: {
         upsert: {
-          create: { data: intake },
-          update: { data: intake },
+          create: { data: intakeData },
+          update: { data: intakeData },
         },
       },
     },

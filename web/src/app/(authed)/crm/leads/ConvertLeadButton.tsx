@@ -17,8 +17,8 @@ export function ConvertLeadButton({ leadId }: { leadId: string }) {
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
       router.refresh();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(false);
     }

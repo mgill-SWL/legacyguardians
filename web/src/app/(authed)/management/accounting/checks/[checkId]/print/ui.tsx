@@ -78,7 +78,7 @@ export function PrintCheckClient({
       let cn = checkNumber;
       if (!cn) {
         const resAssign = await fetch(`/api/accounting/checks/${checkId}/assign-number`, { method: "PATCH" });
-        const jsonAssign = (await resAssign.json().catch(() => ({}))) as any;
+        const jsonAssign = (await resAssign.json().catch(() => ({}))) as { ok?: boolean; error?: string; checkNumber?: string | number };
         if (!resAssign.ok || jsonAssign.ok === false) throw new Error(jsonAssign.error || `HTTP ${resAssign.status}`);
         cn = String(jsonAssign.checkNumber || "");
         if (!cn) throw new Error("No check number returned");
@@ -87,7 +87,7 @@ export function PrintCheckClient({
 
       // Stamp printed.
       const res = await fetch(`/api/accounting/checks/${checkId}/printed`, { method: "PATCH" });
-      const json = (await res.json().catch(() => ({}))) as any;
+      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || json.ok === false) throw new Error(json.error || `HTTP ${res.status}`);
 
       // Give React a tick to render the assigned number before printing.

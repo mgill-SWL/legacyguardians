@@ -76,7 +76,7 @@ export async function POST(req: Request) {
   }
 
   // Send SMS (RingCentral endpoint).
-  const rcResp = await ringCentralApi<any>(accessToken, '/restapi/v1.0/account/~/extension/~/sms', {
+  const rcResp = await ringCentralApi<{ id?: string | number }>(accessToken, '/restapi/v1.0/account/~/extension/~/sms', {
     method: 'POST',
     body: JSON.stringify({
       from: { phoneNumber: shared },

@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 
+import type { Prisma } from "@prisma/client";
+
 import { prisma } from "@/lib/prisma";
 import { requirePortalSession, portalCanAccessMatter } from "@/lib/portalAccess";
 
 export const dynamic = "force-dynamic";
 
-function stripStaffNotes(data: any) {
+function stripStaffNotes(data: unknown) {
   if (!data || typeof data !== "object") return data;
-  const copy = JSON.parse(JSON.stringify(data));
+  const copy = JSON.parse(JSON.stringify(data)) as Record<string, unknown>;
   delete copy.__staffNotes;
   return copy;
 }
@@ -43,11 +45,13 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ matterId: str
   if (!access.ok) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const body = (await req.json().catch(() => null)) as null | { intake?: unknown };
-  const intake = body?.intake as any;
+  const intake = body?.intake;
   if (!intake || typeof intake !== "object") return NextResponse.json({ error: "intake required" }, { status: 400 });
 
   // Never allow client to write staff notes.
-  if ("__staffNotes" in intake) delete intake.__staffNotes;
+  const intakeRecord = intake as Record<string, unknown>;
+  if ("__staffNotes" in intakeRecord) delete intakeRecord.__staffNotes;
+  const intakeData = intakeRecord as Prisma.InputJsonValue;
 
   const updated = await prisma.matter.update({
     where: { id: matterId },
@@ -55,8 +59,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ matterId: str
       status: "INTAKE_IN_PROGRESS",
       intake: {
         upsert: {
-          create: { data: intake },
-          update: { data: intake },
+          create: { data: intakeData },
+          update: { data: intakeData },
         },
       },
     },

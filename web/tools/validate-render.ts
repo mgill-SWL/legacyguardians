@@ -26,7 +26,7 @@ function validateDocx(file: string) {
     // xmllint exits non-zero on invalid XML.
     try {
       execSync("xmllint --noout -", { input: xml, maxBuffer: 50 * 1024 * 1024 });
-    } catch (e) {
+    } catch {
       throw new Error(`Invalid XML in ${path.basename(file)} :: ${name}`);
     }
   }
@@ -67,9 +67,7 @@ for (const pov of [1, 2] as const) {
   const outPath = path.join(tmpDir, `individual_pov${pov}.docx`);
   fs.writeFileSync(outPath, out.buffer);
   validateDocx(outPath);
-  // eslint-disable-next-line no-console
   console.log("OK", outPath, "missingTokens", out.missingTokens.length);
 }
 
-// eslint-disable-next-line no-console
 console.log("All good.");

@@ -184,154 +184,19 @@ function RoleBlockByClient({
   );
 }
 
-function OrderedAppointeesByClient({
-  title,
-  client1Label,
-  client2Label,
+function RankBlock({
+  label,
+  ranks,
+  setRanks,
   people,
-  value,
-  onChange,
 }: {
-  title: string;
-  client1Label: string;
-  client2Label: string;
+  label: string;
+  ranks: string[][];
+  setRanks: (next: string[][]) => void;
   people: Person[];
-  value: { client1: string[]; client2: string[] };
-  onChange: (next: { client1: string[]; client2: string[] }) => void;
 }) {
   const labelFor = (id: string) => people.find((p) => p.id === id)?.name || "(unnamed)";
-
-  const Block = ({
-    label,
-    ids,
-    setIds,
-  }: {
-    label: string;
-    ids: string[];
-    setIds: (next: string[]) => void;
-  }) => (
-    <div style={{ display: "grid", gap: 10 }}>
-      <div style={{ fontWeight: 800 }}>{label}</div>
-
-      {ids.length ? (
-        <div style={{ display: "grid", gap: 8 }}>
-          {ids.map((id, idx) => (
-            <div key={`${id}_${idx}`} style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-              <div style={{ fontWeight: 700 }}>
-                {idx === 0 ? "Primary: " : `Alternate ${idx}: `}
-                {labelFor(id)}
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  const next = [...ids];
-                  next.splice(idx, 1);
-                  setIds(next);
-                }}
-                style={secondaryBtn}
-              >
-                Remove
-              </button>
-              <button
-                type="button"
-                disabled={idx === 0}
-                onClick={() => {
-                  if (idx === 0) return;
-                  const next = [...ids];
-                  [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
-                  setIds(next);
-                }}
-                style={{ ...secondaryBtn, opacity: idx === 0 ? 0.5 : 1 }}
-              >
-                ↑
-              </button>
-              <button
-                type="button"
-                disabled={idx === ids.length - 1}
-                onClick={() => {
-                  if (idx >= ids.length - 1) return;
-                  const next = [...ids];
-                  [next[idx + 1], next[idx]] = [next[idx], next[idx + 1]];
-                  setIds(next);
-                }}
-                style={{ ...secondaryBtn, opacity: idx === ids.length - 1 ? 0.5 : 1 }}
-              >
-                ↓
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div style={{ color: "var(--sw-muted)" }}>No one selected.</div>
-      )}
-
-      <select
-        value=""
-        onChange={(e) => {
-          const id = e.target.value;
-          if (!id) return;
-          if (ids.includes(id)) return;
-          setIds([...ids, id]);
-        }}
-        style={inputStyle}
-      >
-        <option value="">+ Add person…</option>
-        {people
-          .filter((p) => p?.id)
-          .map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name || "(unnamed)"}
-            </option>
-          ))}
-      </select>
-    </div>
-  );
-
   return (
-    <section style={cardStyle}>
-      <div style={{ fontWeight: 800, marginBottom: 10 }}>{title}</div>
-      <div style={{ display: "grid", gap: 18 }}>
-        <Block
-          label={client1Label}
-          ids={value.client1}
-          setIds={(client1) => onChange({ ...value, client1 })}
-        />
-        <Block
-          label={client2Label}
-          ids={value.client2}
-          setIds={(client2) => onChange({ ...value, client2 })}
-        />
-      </div>
-    </section>
-  );
-}
-
-function CoAgentRanksByClient({
-  title,
-  client1Label,
-  client2Label,
-  people,
-  value,
-  onChange,
-}: {
-  title: string;
-  client1Label: string;
-  client2Label: string;
-  people: Person[];
-  value: { client1: string[][]; client2: string[][] };
-  onChange: (next: { client1: string[][]; client2: string[][] }) => void;
-}) {
-  const labelFor = (id: string) => people.find((p) => p.id === id)?.name || "(unnamed)";
-
-  const RankBlock = ({
-    label,
-    ranks,
-    setRanks,
-  }: {
-    label: string;
-    ranks: string[][];
-    setRanks: (next: string[][]) => void;
-  }) => (
     <div style={{ display: "grid", gap: 10 }}>
       <div style={{ fontWeight: 800 }}>{label}</div>
 
@@ -454,7 +319,23 @@ function CoAgentRanksByClient({
       </div>
     </div>
   );
+}
 
+function CoAgentRanksByClient({
+  title,
+  client1Label,
+  client2Label,
+  people,
+  value,
+  onChange,
+}: {
+  title: string;
+  client1Label: string;
+  client2Label: string;
+  people: Person[];
+  value: { client1: string[][]; client2: string[][] };
+  onChange: (next: { client1: string[][]; client2: string[][] }) => void;
+}) {
   return (
     <section style={cardStyle}>
       <div style={{ fontWeight: 800, marginBottom: 10 }}>{title}</div>
@@ -463,11 +344,13 @@ function CoAgentRanksByClient({
           label={client1Label}
           ranks={value.client1}
           setRanks={(client1) => onChange({ ...value, client1 })}
+          people={people}
         />
         <RankBlock
           label={client2Label}
           ranks={value.client2}
           setRanks={(client2) => onChange({ ...value, client2 })}
+          people={people}
         />
       </div>
     </section>

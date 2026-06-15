@@ -1,3 +1,4 @@
+import { ContactCategory } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
@@ -37,7 +38,7 @@ export async function POST(req: Request) {
       email: body.email || null,
       phone,
       organization: body.organization || null,
-      categories: (body.categories || ["CLIENT"]) as any,
+      categories: (body.categories || ["CLIENT"]) as ContactCategory[],
       professionalType: body.professionalType || null,
       referralSourceStatus: body.referralSourceStatus || null,
       relationshipOwnerId: body.relationshipOwnerId || null,

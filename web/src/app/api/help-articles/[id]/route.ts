@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
+import type { HelpContentFormat } from "@prisma/client";
+
 import { authOptions } from "@/authOptions";
 import { prisma } from "@/lib/prisma";
 
@@ -35,7 +37,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     data: {
       slug: body.slug?.trim() ? body.slug.trim() : undefined,
       title: body.title?.trim() ? body.title.trim() : undefined,
-      format: body.format as any,
+      format: body.format as HelpContentFormat | undefined,
       body: body.body === undefined ? undefined : body.body,
       tags: body.tags === undefined ? undefined : body.tags,
       published: body.published === undefined ? undefined : body.published,

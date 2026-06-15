@@ -1,3 +1,4 @@
+import type { ReportColumnType } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 const SLUG = "payee-rules";
 
-const DEFAULT_COLUMNS: { key: string; label: string; type: any }[] = [
+const DEFAULT_COLUMNS: { key: string; label: string; type: ReportColumnType }[] = [
   { key: "match_type", label: "Match", type: "TEXT" }, // CONTAINS | EXACT
   { key: "pattern", label: "Pattern", type: "TEXT" },
   { key: "applies_to", label: "Applies to", type: "TEXT" }, // CARD | OPERATING | IOLTA | ANY
@@ -91,7 +92,7 @@ export default async function PayeeRulesPage() {
         </div>
       </div>
 
-      <ReportGrid table={(refreshed || ensured) as any} canAdmin={!!canManage} />
+      <ReportGrid table={refreshed || ensured} canAdmin={!!canManage} />
     </div>
   );
 }

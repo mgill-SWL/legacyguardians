@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
@@ -165,10 +166,10 @@ export async function POST(request: Request) {
     const balance = String(row[idx("Balance")] ?? "").trim();
     if (!number) continue;
 
-    const dataPatch: any = { account, type, balance: balance === "" ? null : Number(balance) };
+    const dataPatch: Prisma.InputJsonObject = { account, type, balance: balance === "" ? null : Number(balance) };
     const ex = byKey.get(number);
     if (ex) {
-      await prisma.reportRow.update({ where: { id: ex.id }, data: { label: number, data: { ...(ex.data as any), ...dataPatch } } });
+      await prisma.reportRow.update({ where: { id: ex.id }, data: { label: number, data: { ...(ex.data as Prisma.JsonObject), ...dataPatch } } });
       updated++;
     } else {
       await prisma.reportRow.create({

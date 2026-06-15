@@ -37,8 +37,8 @@ export async function GET(req: Request) {
       sheetNameTemplate,
     });
     return NextResponse.json({ ok: true, googleEmail: gc.googleEmail, year, ...out });
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message || "Sync failed" }, { status: 500 });
+  } catch (e: unknown) {
+    return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "Sync failed" }, { status: 500 });
   }
 }
 

@@ -30,7 +30,7 @@ export function ClearCheckClient({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ rawTransactionId }),
       });
-      const json = (await res.json().catch(() => ({}))) as any;
+      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || json.ok === false) throw new Error(json.error || `HTTP ${res.status}`);
       window.location.href = "/management/accounting/checks";
     } catch (err) {

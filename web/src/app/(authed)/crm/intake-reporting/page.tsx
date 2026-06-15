@@ -1,3 +1,4 @@
+import type { ReportColumnType } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 const SLUG = "intake-reporting";
 
-const DEFAULT_COLUMNS: { key: string; label: string; type?: any }[] = [
+const DEFAULT_COLUMNS: { key: string; label: string; type?: ReportColumnType }[] = [
   { key: "scheduled_intake", label: "Scheduled Intake", type: "NUMBER" },
   { key: "live_transfer", label: "Live Transfer (Lex)", type: "NUMBER" },
   { key: "ringcentral_calls", label: "RingCentral Incoming Calls", type: "NUMBER" },
@@ -54,7 +55,7 @@ async function ensureColumns(tableId: string) {
     }
 
     // Keep labels/types in sync with our defaults (for renamed/retagged columns).
-    const desiredType = (c.type || "TEXT") as any;
+    const desiredType: ReportColumnType = c.type || "TEXT";
     if (found.label !== c.label || found.type !== desiredType) {
       await prisma.reportColumn.update({
         where: { id: found.id },
@@ -133,7 +134,7 @@ export default async function IntakeReportingPage() {
         </div>
       ) : null}
 
-      <ReportGrid table={(refreshed || ensured) as any} canAdmin={!!canAdmin} />
+      <ReportGrid table={refreshed || ensured} canAdmin={!!canAdmin} />
     </div>
   );
 }
