@@ -57,7 +57,9 @@ function enumLabel<T extends string>(options: Array<{ value: T; label: string }>
   return options.find((o) => o.value === value)?.label || value;
 }
 
-export function ContactsClient({ initialContacts, users }: { initialContacts: any[]; users: UserOption[] }) {
+type InitialContact = Omit<Contact, "updatedAt"> & { updatedAt: string | Date };
+
+export function ContactsClient({ initialContacts, users }: { initialContacts: InitialContact[]; users: UserOption[] }) {
   const contacts: Contact[] = (initialContacts || []).map((c) => ({
     ...c,
     updatedAt: typeof c.updatedAt === "string" ? c.updatedAt : new Date(c.updatedAt).toISOString(),
@@ -116,8 +118,8 @@ export function ContactsClient({ initialContacts, users }: { initialContacts: an
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       window.location.reload();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(false);
     }
@@ -206,7 +208,7 @@ export function ContactsClient({ initialContacts, users }: { initialContacts: an
           className="sw-input"
           style={{ minWidth: 260 }}
         />
-        <select value={filter} onChange={(e) => setFilter(e.target.value as any)} className="sw-input">
+        <select value={filter} onChange={(e) => setFilter(e.target.value as "ALL" | ContactCategory)} className="sw-input">
           <option value="ALL">All</option>
           {CATEGORY_OPTIONS.map((category) => <option key={category.value} value={category.value}>{category.label}</option>)}
         </select>

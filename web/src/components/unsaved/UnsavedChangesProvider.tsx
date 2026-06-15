@@ -7,7 +7,7 @@ type SaveFn = () => Promise<void> | void;
 type Ctx = {
   dirty: boolean;
   setDirty: (dirty: boolean) => void;
-  saveFn: SaveFn | null;
+  getSaveFn: () => SaveFn | null;
   registerSaveFn: (fn: SaveFn | null) => void;
 };
 
@@ -21,7 +21,7 @@ export function UnsavedChangesProvider({ children }: { children: React.ReactNode
     return {
       dirty,
       setDirty,
-      saveFn: saveFnRef.current,
+      getSaveFn: () => saveFnRef.current,
       registerSaveFn: (fn) => {
         saveFnRef.current = fn;
       },

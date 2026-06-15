@@ -20,7 +20,6 @@ export async function GET(req: Request) {
 
   if (!code) return NextResponse.json({ error: "missing code" }, { status: 400 });
 
-  const cookieState = (req as any).cookies?.get?.("lg.google.oauth.state")?.value;
   // Next 16 route handlers don't expose cookies on Request consistently; rely on NextResponse cookie parsing fallback.
 
   // We'll validate state using the header cookie manually.
@@ -52,8 +51,13 @@ export async function GET(req: Request) {
     }),
   });
 
-  const tokenJson = (await tokenRes.json().catch(() => null)) as any;
-  if (!tokenRes.ok) {
+  const tokenJson = (await tokenRes.json().catch(() => null)) as {
+    access_token?: string;
+    refresh_token?: string;
+    expires_in?: number;
+    scope?: string;
+  } | null;
+  if (!tokenRes.ok || !tokenJson) {
     return NextResponse.json({ error: "token exchange failed", detail: tokenJson }, { status: 500 });
   }
 
@@ -66,7 +70,7 @@ export async function GET(req: Request) {
   const meRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
     headers: { authorization: `Bearer ${accessToken}` },
   });
-  const me = (await meRes.json().catch(() => null)) as any;
+  const me = (await meRes.json().catch(() => null)) as { email?: string } | null;
   if (!meRes.ok || !me?.email) {
     return NextResponse.json({ error: "failed to fetch userinfo" }, { status: 500 });
   }

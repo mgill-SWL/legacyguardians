@@ -102,7 +102,7 @@ async function loadCoaMap() {
     const m = new Map<string, string>();
     for (const r of coa?.rows || []) {
       const num = String(r.label || r.rowKey || "").trim();
-      const name = String((r.data as any)?.account || "").trim();
+      const name = String((r.data as Record<string, unknown> | null)?.account || "").trim();
       if (num) m.set(num, name);
     }
     return m;
@@ -118,7 +118,7 @@ async function loadPayeeRules(): Promise<PayeeRule[]> {
     const t = await prisma.reportTable.findUnique({ where: { slug: "payee-rules" }, include: { rows: { orderBy: { sortOrder: "asc" } } } });
     return (t?.rows || [])
       .map((r) => {
-        const d: any = r.data || {};
+        const d = (r.data || {}) as Record<string, unknown>;
         const matchType = String(d.match_type || "CONTAINS").toUpperCase();
         const appliesTo = String(d.applies_to || "ANY").toUpperCase();
         const pattern = String(d.pattern || r.label || "");
@@ -128,7 +128,7 @@ async function loadPayeeRules(): Promise<PayeeRule[]> {
         return {
           matchType: matchType === "EXACT" ? "EXACT" : "CONTAINS",
           pattern: normPayee(pattern),
-          appliesTo: (appliesTo === "CARD" || appliesTo === "OPERATING" || appliesTo === "IOLTA" ? appliesTo : "ANY") as any,
+          appliesTo: (appliesTo === "CARD" || appliesTo === "OPERATING" || appliesTo === "IOLTA" ? appliesTo : "ANY") as PayeeRule["appliesTo"],
           coaNumber,
           classification,
         } as PayeeRule;

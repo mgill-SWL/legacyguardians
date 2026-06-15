@@ -17,7 +17,7 @@ export async function portalCanAccessMatter(opts: { matterId: string; email: str
   });
   if (!m?.intake?.data) return { ok: false as const, matter: null };
 
-  const d = m.intake.data as any;
+  const d = m.intake.data as { clientEmails?: { client1?: unknown; client2?: unknown } };
   const e1 = String(d?.clientEmails?.client1 || "").toLowerCase().trim();
   const e2 = String(d?.clientEmails?.client2 || "").toLowerCase().trim();
   const email = opts.email.toLowerCase().trim();

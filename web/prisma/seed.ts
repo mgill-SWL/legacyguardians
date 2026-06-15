@@ -9,13 +9,12 @@ async function main() {
   // So we keep this script very defensive.
 
   // If CRM models don't exist on the client for any reason, bail without failing.
-  const anyPrisma = prisma as any;
-  if (!anyPrisma.crmCampaign || !anyPrisma.crmShowing || !anyPrisma.crmContact || !anyPrisma.crmTask) {
+  if (!prisma.crmCampaign || !prisma.crmShowing || !prisma.crmContact || !prisma.crmTask) {
     console.warn('CRM models not present on Prisma client; skipping CRM seed.');
     return;
   }
 
-  const campaign = await anyPrisma.crmCampaign.upsert({
+  const campaign = await prisma.crmCampaign.upsert({
     where: { slug: 'rei' },
     update: {
       name: 'Real Estate Investor Webinar',
@@ -28,7 +27,7 @@ async function main() {
     },
   });
 
-  const showing = await anyPrisma.crmShowing.create({
+  const showing = await prisma.crmShowing.create({
     data: {
       campaignId: campaign.id,
       startsAt: new Date(Date.now() - 60 * 60 * 1000),
@@ -36,7 +35,7 @@ async function main() {
     },
   });
 
-  const contact = await anyPrisma.crmContact.upsert({
+  const contact = await prisma.crmContact.upsert({
     where: { phoneE164: '+15555550100' },
     update: {},
     create: {
@@ -48,7 +47,7 @@ async function main() {
     },
   });
 
-  await anyPrisma.crmTask.create({
+  await prisma.crmTask.create({
     data: {
       contactId: contact.id,
       campaignId: campaign.id,

@@ -4,7 +4,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { burialWishesPresets, distributionWishesPresets, healthcareWishesPresets, type Preset } from "@/lib/episPresets";
 
-type Intake = any;
+type Person = { id: string; name?: string | null };
+
+type Intake = Record<string, unknown> & {
+  people?: Person[];
+  clientEmails?: { client1?: string; client2?: string };
+  roles?: Record<string, unknown>;
+};
 
 function newPersonId() {
   return `p_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
@@ -35,6 +41,14 @@ function isRecord(x: unknown): x is Record<string, unknown> {
   return Boolean(x) && typeof x === "object";
 }
 
+function str(x: unknown): string {
+  return typeof x === "string" ? x : "";
+}
+
+function finiteNum(x: unknown): number | undefined {
+  return Number.isFinite(x) ? Number(x) : undefined;
+}
+
 function toRoleAssignment(x: unknown): RoleAssignment {
   if (!isRecord(x)) return {};
   return {
@@ -47,8 +61,8 @@ function toRoleAssignment(x: unknown): RoleAssignment {
 function ensureRoleByClient(x: unknown): RoleAssignmentByClient {
   if (isRecord(x) && ("client1" in x || "client2" in x) && !("primary" in x || "alternate1" in x || "alternate2" in x)) {
     return {
-      client1: toRoleAssignment((x as any).client1),
-      client2: toRoleAssignment((x as any).client2),
+      client1: toRoleAssignment(x.client1),
+      client2: toRoleAssignment(x.client2),
     };
   }
   if (isRecord(x) && ("primary" in x || "alternate1" in x || "alternate2" in x)) {
@@ -134,47 +148,57 @@ function ensureWishes(intake: Intake): Wishes {
     distribution: { spouse1: {}, spouse2: {} },
   };
   const w = intake?.wishes;
-  if (!w || typeof w !== "object") return empty;
-  const pick = (x: any) => ({ presetKey: x?.presetKey, text: x?.text });
+  if (!isRecord(w)) return empty;
+  const pick = (x: unknown): Wish => {
+    if (!isRecord(x)) return {};
+    return {
+      presetKey: typeof x.presetKey === "string" ? x.presetKey : undefined,
+      text: typeof x.text === "string" ? x.text : undefined,
+    };
+  };
+  const group = (key: string): Record<string, unknown> => (isRecord(w[key]) ? (w[key] as Record<string, unknown>) : {});
+  const healthcare = group("healthcare");
+  const burial = group("burial");
+  const distribution = group("distribution");
   return {
     healthcare: {
-      spouse1: pick((w as any)?.healthcare?.spouse1),
-      spouse2: pick((w as any)?.healthcare?.spouse2),
+      spouse1: pick(healthcare.spouse1),
+      spouse2: pick(healthcare.spouse2),
     },
     burial: {
-      spouse1: pick((w as any)?.burial?.spouse1),
-      spouse2: pick((w as any)?.burial?.spouse2),
+      spouse1: pick(burial.spouse1),
+      spouse2: pick(burial.spouse2),
     },
     distribution: {
-      spouse1: pick((w as any)?.distribution?.spouse1),
-      spouse2: pick((w as any)?.distribution?.spouse2),
+      spouse1: pick(distribution.spouse1),
+      spouse2: pick(distribution.spouse2),
     },
   };
 }
 
 function ensurePets(intake: Intake): Pets {
-  const p = (intake?.pets ?? {}) as any;
+  const p: Record<string, unknown> = isRecord(intake?.pets) ? intake.pets : {};
   return {
     hasPets: Boolean(p?.hasPets),
     count: Number.isFinite(p?.count) ? Number(p.count) : 0,
     perPetAmountCents: Number.isFinite(p?.perPetAmountCents) ? Number(p.perPetAmountCents) : 5000 * 100,
-    caregiverPersonId: p?.caregiverPersonId || undefined,
-    alternateCaregiverPersonId: p?.alternateCaregiverPersonId || undefined,
+    caregiverPersonId: str(p?.caregiverPersonId) || undefined,
+    alternateCaregiverPersonId: str(p?.alternateCaregiverPersonId) || undefined,
     usePetTrust: Boolean(p?.usePetTrust),
-    petTrustEndowmentCents: Number.isFinite(p?.petTrustEndowmentCents) ? Number(p.petTrustEndowmentCents) : undefined,
+    petTrustEndowmentCents: finiteNum(p?.petTrustEndowmentCents),
     notes: typeof p?.notes === "string" ? p.notes : "",
   };
 }
 
 function ensureAdvisors(intake: Intake): Advisors {
-  const a = (intake?.advisors ?? {}) as any;
-  const pick = (x: any) =>
-    x && typeof x === "object"
+  const a: Record<string, unknown> = isRecord(intake?.advisors) ? intake.advisors : {};
+  const pick = (x: unknown) =>
+    isRecord(x)
       ? {
-          name: x.name || "",
-          company: x.company || "",
-          email: x.email || "",
-          phone: x.phone || "",
+          name: str(x.name),
+          company: str(x.company),
+          email: str(x.email),
+          phone: str(x.phone),
           okToDiscuss: Boolean(x.okToDiscuss),
         }
       : { name: "", company: "", email: "", phone: "", okToDiscuss: false };
@@ -182,94 +206,120 @@ function ensureAdvisors(intake: Intake): Advisors {
     financialAdvisor: pick(a.financialAdvisor),
     cpa: pick(a.cpa),
     other: Array.isArray(a.other)
-      ? a.other.map((x: any) => ({
-          kind: x?.kind || "",
-          name: x?.name || "",
-          company: x?.company || "",
-          email: x?.email || "",
-          phone: x?.phone || "",
-          okToDiscuss: Boolean(x?.okToDiscuss),
-        }))
+      ? a.other.map((x: unknown) => {
+          const o = isRecord(x) ? x : {};
+          return {
+            kind: str(o.kind),
+            name: str(o.name),
+            company: str(o.company),
+            email: str(o.email),
+            phone: str(o.phone),
+            okToDiscuss: Boolean(o.okToDiscuss),
+          };
+        })
       : [],
   };
 }
 
 function ensureAssets(intake: Intake): AssetBuckets {
-  const a = (intake?.assets ?? {}) as any;
-  const fa = (x: any): FinancialAccountItem => ({
-    institution: x?.institution || "",
-    accountType: x?.accountType || "",
-    last4: x?.last4 || "",
-    notes: x?.notes || "",
-    approxValueCents: Number.isFinite(x?.approxValueCents) ? Number(x.approxValueCents) : undefined,
-  });
-  const re = (x: any): RealEstateItem => ({
-    address: x?.address || "",
-    notes: x?.notes || "",
-    approxValueCents: Number.isFinite(x?.approxValueCents) ? Number(x.approxValueCents) : undefined,
-  });
-  const policy = (x: any) => ({
-    carrier: x?.carrier || "",
-    policyNumber: x?.policyNumber || x?.last4 || "",
-    notes: x?.notes || "",
-    benefitCents: Number.isFinite(x?.benefitCents) ? Number(x.benefitCents) : undefined,
-  });
-  const withAccounts = (node: any) => ({
-    approxTotalCents: Number.isFinite(node?.approxTotalCents) ? Number(node.approxTotalCents) : undefined,
-    accounts: Array.isArray(node?.accounts) ? node.accounts.map(fa) : [],
-    notes: typeof node?.notes === "string" ? node.notes : "",
-  });
+  const a: Record<string, unknown> = isRecord(intake?.assets) ? intake.assets : {};
+  const rec = (x: unknown): Record<string, unknown> => (isRecord(x) ? x : {});
+  const arr = (x: unknown): unknown[] => (Array.isArray(x) ? x : []);
+  const fa = (x: unknown): FinancialAccountItem => {
+    const o = rec(x);
+    return {
+      institution: str(o.institution),
+      accountType: str(o.accountType),
+      last4: str(o.last4),
+      notes: str(o.notes),
+      approxValueCents: finiteNum(o.approxValueCents),
+    };
+  };
+  const re = (x: unknown): RealEstateItem => {
+    const o = rec(x);
+    return {
+      address: str(o.address),
+      notes: str(o.notes),
+      approxValueCents: finiteNum(o.approxValueCents),
+    };
+  };
+  const policy = (x: unknown) => {
+    const o = rec(x);
+    return {
+      carrier: str(o.carrier),
+      policyNumber: str(o.policyNumber) || str(o.last4),
+      notes: str(o.notes),
+      benefitCents: finiteNum(o.benefitCents),
+    };
+  };
+  const withAccounts = (node: unknown) => {
+    const o = rec(node);
+    return {
+      approxTotalCents: finiteNum(o.approxTotalCents),
+      accounts: arr(o.accounts).map(fa),
+      notes: str(o.notes),
+    };
+  };
+  const lifeInsurance = rec(a.lifeInsurance);
+  const businessInterests = rec(a.businessInterests);
+  const vehicles = rec(a.vehicles);
+  const personalProperty = rec(a.personalProperty);
+  const realEstate = rec(a.realEstate);
+  const alternativeAssets = rec(a.alternativeAssets);
   return {
     retirement: withAccounts(a.retirement),
     bank: withAccounts(a.bank),
     brokerage: withAccounts(a.brokerage),
     lifeInsurance: {
-      approxTotalCents: Number.isFinite(a?.lifeInsurance?.approxTotalCents) ? Number(a.lifeInsurance.approxTotalCents) : undefined,
-      policies: Array.isArray(a?.lifeInsurance?.policies) ? a.lifeInsurance.policies.map(policy) : [],
-      notes: typeof a?.lifeInsurance?.notes === "string" ? a.lifeInsurance.notes : "",
+      approxTotalCents: finiteNum(lifeInsurance.approxTotalCents),
+      policies: arr(lifeInsurance.policies).map(policy),
+      notes: str(lifeInsurance.notes),
     },
     businessInterests: {
-      approxTotalCents: Number.isFinite(a?.businessInterests?.approxTotalCents) ? Number(a.businessInterests.approxTotalCents) : undefined,
-      items: Array.isArray(a?.businessInterests?.items)
-        ? a.businessInterests.items.map((x: any) => ({
-            name: x?.name || "",
-            notes: x?.notes || "",
-            approxValueCents: Number.isFinite(x?.approxValueCents) ? Number(x.approxValueCents) : undefined,
-          }))
-        : [],
-      notes: typeof a?.businessInterests?.notes === "string" ? a.businessInterests.notes : "",
+      approxTotalCents: finiteNum(businessInterests.approxTotalCents),
+      items: arr(businessInterests.items).map((x: unknown) => {
+        const o = rec(x);
+        return {
+          name: str(o.name),
+          notes: str(o.notes),
+          approxValueCents: finiteNum(o.approxValueCents),
+        };
+      }),
+      notes: str(businessInterests.notes),
     },
     vehicles: {
-      approxTotalCents: Number.isFinite(a?.vehicles?.approxTotalCents) ? Number(a.vehicles.approxTotalCents) : undefined,
-      items: Array.isArray(a?.vehicles?.items)
-        ? a.vehicles.items.map((x: any) => ({
-            description: x?.description || "",
-            notes: x?.notes || "",
-            approxValueCents: Number.isFinite(x?.approxValueCents) ? Number(x.approxValueCents) : undefined,
-          }))
-        : [],
-      notes: typeof a?.vehicles?.notes === "string" ? a.vehicles.notes : "",
+      approxTotalCents: finiteNum(vehicles.approxTotalCents),
+      items: arr(vehicles.items).map((x: unknown) => {
+        const o = rec(x);
+        return {
+          description: str(o.description),
+          notes: str(o.notes),
+          approxValueCents: finiteNum(o.approxValueCents),
+        };
+      }),
+      notes: str(vehicles.notes),
     },
     personalProperty: {
-      approxTotalCents: Number.isFinite(a?.personalProperty?.approxTotalCents) ? Number(a.personalProperty.approxTotalCents) : undefined,
-      notes: typeof a?.personalProperty?.notes === "string" ? a.personalProperty.notes : "",
+      approxTotalCents: finiteNum(personalProperty.approxTotalCents),
+      notes: str(personalProperty.notes),
     },
     realEstate: {
-      approxTotalCents: Number.isFinite(a?.realEstate?.approxTotalCents) ? Number(a.realEstate.approxTotalCents) : undefined,
-      properties: Array.isArray(a?.realEstate?.properties) ? a.realEstate.properties.map(re) : [],
-      notes: typeof a?.realEstate?.notes === "string" ? a.realEstate.notes : "",
-      transactionsNext24Months: Boolean(a?.realEstate?.transactionsNext24Months),
+      approxTotalCents: finiteNum(realEstate.approxTotalCents),
+      properties: arr(realEstate.properties).map(re),
+      notes: str(realEstate.notes),
+      transactionsNext24Months: Boolean(realEstate.transactionsNext24Months),
     },
     alternativeAssets: {
-      approxTotalCents: Number.isFinite(a?.alternativeAssets?.approxTotalCents) ? Number(a.alternativeAssets.approxTotalCents) : undefined,
-      items: Array.isArray(a?.alternativeAssets?.items)
-        ? a.alternativeAssets.items.map((x: any) => ({
-            description: x?.description || "",
-            notes: x?.notes || "",
-            approxValueCents: Number.isFinite(x?.approxValueCents) ? Number(x.approxValueCents) : undefined,
-          }))
-        : [],
-      notes: typeof a?.alternativeAssets?.notes === "string" ? a.alternativeAssets.notes : "",
+      approxTotalCents: finiteNum(alternativeAssets.approxTotalCents),
+      items: arr(alternativeAssets.items).map((x: unknown) => {
+        const o = rec(x);
+        return {
+          description: str(o.description),
+          notes: str(o.notes),
+          approxValueCents: finiteNum(o.approxValueCents),
+        };
+      }),
+      notes: str(alternativeAssets.notes),
     },
   };
 }
@@ -358,13 +408,14 @@ function ensureRankedRoles(intake: Intake): RankedRoles {
     guardians: [],
   };
   const existing = intake?.rankedRoles;
-  if (!existing || typeof existing !== "object") return base;
+  if (!isRecord(existing)) return base;
+  const groups = (v: unknown): RankGroup[] => (Array.isArray(v) ? (v as RankGroup[]) : []);
   return {
-    trustees: Array.isArray(existing.trustees) ? existing.trustees : [],
-    executors: Array.isArray(existing.executors) ? existing.executors : [],
-    financialAgents: Array.isArray(existing.financialAgents) ? existing.financialAgents : [],
-    healthAgents: Array.isArray(existing.healthAgents) ? existing.healthAgents : [],
-    guardians: Array.isArray(existing.guardians) ? existing.guardians : [],
+    trustees: groups(existing.trustees),
+    executors: groups(existing.executors),
+    financialAgents: groups(existing.financialAgents),
+    healthAgents: groups(existing.healthAgents),
+    guardians: groups(existing.guardians),
   };
 }
 
@@ -372,30 +423,30 @@ function ensureFinalDispositionRanksByClient(x: unknown): { client1: string[][];
   const empty = { client1: [[]] as string[][], client2: [[]] as string[][] };
   if (!x) return empty;
 
-  const isStrArr = (v: any) => Array.isArray(v) && v.every((s: any) => typeof s === "string");
-  const isRankArr = (v: any) => Array.isArray(v) && v.every((r: any) => isStrArr(r));
+  const isStrArr = (v: unknown): v is string[] => Array.isArray(v) && v.every((s) => typeof s === "string");
+  const isRankArr = (v: unknown): v is string[][] => Array.isArray(v) && v.every((r) => isStrArr(r));
 
   // Preferred: { client1: string[][], client2: string[][] }
-  if (typeof x === "object" && !Array.isArray(x)) {
-    const o: any = x;
+  if (isRecord(x) && !Array.isArray(x)) {
+    const o = x;
     if (isRankArr(o.client1) || isRankArr(o.client2)) {
       return {
-        client1: (isRankArr(o.client1) ? o.client1 : [[]]).map((r: any) => r.filter((s: any) => typeof s === "string")),
-        client2: (isRankArr(o.client2) ? o.client2 : [[]]).map((r: any) => r.filter((s: any) => typeof s === "string")),
+        client1: (isRankArr(o.client1) ? o.client1 : [[]]).map((r) => r.filter((s) => typeof s === "string")),
+        client2: (isRankArr(o.client2) ? o.client2 : [[]]).map((r) => r.filter((s) => typeof s === "string")),
       };
     }
 
     // Legacy RoleAssignment shapes: { primary, alternate1, alternate2 }
     if ("primary" in o || "alternate1" in o || "alternate2" in o) {
-      const list = [o.primary, o.alternate1, o.alternate2].filter((v: any) => typeof v === "string");
-      return { client1: [list.slice(0, 1), ...list.slice(1).map((id: string) => [id])], client2: [list.slice(0, 1), ...list.slice(1).map((id: string) => [id])] };
+      const list = [o.primary, o.alternate1, o.alternate2].filter((v): v is string => typeof v === "string");
+      return { client1: [list.slice(0, 1), ...list.slice(1).map((id) => [id])], client2: [list.slice(0, 1), ...list.slice(1).map((id) => [id])] };
     }
 
     // Legacy by-client role assignment shapes
     if ("client1" in o || "client2" in o) {
-      const from = (r: any) =>
-        r && typeof r === "object"
-          ? [r.primary, r.alternate1, r.alternate2].filter((v: any) => typeof v === "string")
+      const from = (r: unknown): string[] =>
+        isRecord(r)
+          ? [r.primary, r.alternate1, r.alternate2].filter((v): v is string => typeof v === "string")
           : [];
       const l1 = from(o.client1);
       const l2 = from(o.client2);
@@ -406,7 +457,7 @@ function ensureFinalDispositionRanksByClient(x: unknown): { client1: string[][];
 
   // Legacy: string[] applied to both.
   if (isStrArr(x)) {
-    const list = (x as any[]).filter((v) => typeof v === "string") as string[];
+    const list = x.filter((v) => typeof v === "string");
     const packed = [list.slice(0, 1), ...list.slice(1).map((id) => [id])];
     return { client1: packed.length ? packed : [[]], client2: packed.length ? packed : [[]] };
   }
@@ -425,30 +476,33 @@ function normalizeLegacyRolesFromRanked(intake: Intake) {
     };
   };
 
-  const isByClient = (x: any) => {
-    if (!x || typeof x !== "object") return false;
+  const isByClient = (x: unknown) => {
+    if (!isRecord(x)) return false;
     // Newer schema uses { client1: RoleAssignment, client2: RoleAssignment }
     // (as opposed to the legacy flat { primary, alternate1, alternate2 }).
     return ("client1" in x || "client2" in x) && !("primary" in x || "alternate1" in x || "alternate2" in x);
   };
 
-  intake.roles = intake.roles || {};
+  const roles: Record<string, unknown> = isRecord(intake.roles) ? intake.roles : {};
+  intake.roles = roles;
 
   // Preserve newer per-client roles if present; otherwise keep the legacy single-assignment shape
   // in sync with rankedRoles for back-compat.
-  if (!isByClient(intake.roles.trustees)) intake.roles.trustees = pick(ranked.trustees);
-  if (!isByClient(intake.roles.executors)) intake.roles.executors = pick(ranked.executors);
-  if (!isByClient(intake.roles.financialAgents)) intake.roles.financialAgents = pick(ranked.financialAgents);
-  if (!isByClient(intake.roles.healthAgents)) intake.roles.healthAgents = pick(ranked.healthAgents);
-  intake.roles.guardians = pick(ranked.guardians);
+  if (!isByClient(roles.trustees)) roles.trustees = pick(ranked.trustees);
+  if (!isByClient(roles.executors)) roles.executors = pick(ranked.executors);
+  if (!isByClient(roles.financialAgents)) roles.financialAgents = pick(ranked.financialAgents);
+  if (!isByClient(roles.healthAgents)) roles.healthAgents = pick(ranked.healthAgents);
+  roles.guardians = pick(ranked.guardians);
 }
+
+type EditablePerson = Person & { email?: string | null; phone?: string | null };
 
 function PeopleEditor({
   people,
   setPeople,
 }: {
-  people: any[];
-  setPeople: (p: any[]) => void;
+  people: EditablePerson[];
+  setPeople: (p: EditablePerson[]) => void;
 }) {
   return (
     <section style={card}>
@@ -521,7 +575,7 @@ function PersonSelect({
   onChange,
 }: {
   label: string;
-  people: any[];
+  people: Person[];
   value?: string;
   onChange: (id: string | undefined) => void;
 }) {
@@ -547,7 +601,7 @@ function RoleFields({
   value,
   onChange,
 }: {
-  people: any[];
+  people: Person[];
   value: RoleAssignment;
   onChange: (next: RoleAssignment) => void;
 }) {
@@ -581,7 +635,7 @@ function RoleBlockByClient({
   title: string;
   client1Label: string;
   client2Label: string;
-  people: any[];
+  people: Person[];
   value: RoleAssignmentByClient;
   onChange: (next: RoleAssignmentByClient) => void;
 }) {
@@ -602,145 +656,19 @@ function RoleBlockByClient({
   );
 }
 
-function OrderedAppointeesByClient({
-  title,
-  client1Label,
-  client2Label,
+function RankBlock({
+  label,
+  ranks,
+  setRanks,
   people,
-  value,
-  onChange,
 }: {
-  title: string;
-  client1Label: string;
-  client2Label: string;
-  people: any[];
-  value: { client1: string[]; client2: string[] };
-  onChange: (next: { client1: string[]; client2: string[] }) => void;
+  label: string;
+  ranks: string[][];
+  setRanks: (next: string[][]) => void;
+  people: Person[];
 }) {
   const labelFor = (id: string) => people.find((p) => p.id === id)?.name || "(unnamed)";
-
-  const Block = ({
-    label,
-    ids,
-    setIds,
-  }: {
-    label: string;
-    ids: string[];
-    setIds: (next: string[]) => void;
-  }) => (
-    <div style={{ display: "grid", gap: 10 }}>
-      <div style={{ fontWeight: 800 }}>{label}</div>
-      {ids.length ? (
-        <div style={{ display: "grid", gap: 8 }}>
-          {ids.map((id, idx) => (
-            <div key={`${id}_${idx}`} style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-              <div style={{ fontWeight: 700 }}>
-                {idx === 0 ? "Primary: " : `Alternate ${idx}: `}
-                {labelFor(id)}
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  const next = [...ids];
-                  next.splice(idx, 1);
-                  setIds(next);
-                }}
-                style={btnSecondary}
-              >
-                Remove
-              </button>
-              <button
-                type="button"
-                disabled={idx === 0}
-                onClick={() => {
-                  if (idx === 0) return;
-                  const next = [...ids];
-                  [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
-                  setIds(next);
-                }}
-                style={{ ...btnSecondary, opacity: idx === 0 ? 0.5 : 1 }}
-              >
-                ↑
-              </button>
-              <button
-                type="button"
-                disabled={idx === ids.length - 1}
-                onClick={() => {
-                  if (idx >= ids.length - 1) return;
-                  const next = [...ids];
-                  [next[idx + 1], next[idx]] = [next[idx], next[idx + 1]];
-                  setIds(next);
-                }}
-                style={{ ...btnSecondary, opacity: idx === ids.length - 1 ? 0.5 : 1 }}
-              >
-                ↓
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div style={{ color: "var(--sw-muted)" }}>No one selected.</div>
-      )}
-
-      <select
-        value=""
-        onChange={(e) => {
-          const id = e.target.value;
-          if (!id) return;
-          if (ids.includes(id)) return;
-          setIds([...ids, id]);
-        }}
-        style={input}
-      >
-        <option value="">+ Add person…</option>
-        {people
-          .filter((p) => p?.id)
-          .map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name || "(unnamed)"}
-            </option>
-          ))}
-      </select>
-    </div>
-  );
-
   return (
-    <section style={card}>
-      <div style={{ fontWeight: 800, marginBottom: 10 }}>{title}</div>
-      <div style={{ display: "grid", gap: 18 }}>
-        <Block label={client1Label} ids={value.client1} setIds={(client1) => onChange({ ...value, client1 })} />
-        <Block label={client2Label} ids={value.client2} setIds={(client2) => onChange({ ...value, client2 })} />
-      </div>
-    </section>
-  );
-}
-
-function CoAgentRanksByClient({
-  title,
-  client1Label,
-  client2Label,
-  people,
-  value,
-  onChange,
-}: {
-  title: string;
-  client1Label: string;
-  client2Label: string;
-  people: any[];
-  value: { client1: string[][]; client2: string[][] };
-  onChange: (next: { client1: string[][]; client2: string[][] }) => void;
-}) {
-  const labelFor = (id: string) => people.find((p) => p.id === id)?.name || "(unnamed)";
-
-  const RankBlock = ({
-    label,
-    ranks,
-    setRanks,
-  }: {
-    label: string;
-    ranks: string[][];
-    setRanks: (next: string[][]) => void;
-  }) => (
     <div style={{ display: "grid", gap: 10 }}>
       <div style={{ fontWeight: 800 }}>{label}</div>
       <div style={{ display: "grid", gap: 10 }}>
@@ -860,13 +788,29 @@ function CoAgentRanksByClient({
       </div>
     </div>
   );
+}
 
+function CoAgentRanksByClient({
+  title,
+  client1Label,
+  client2Label,
+  people,
+  value,
+  onChange,
+}: {
+  title: string;
+  client1Label: string;
+  client2Label: string;
+  people: Person[];
+  value: { client1: string[][]; client2: string[][] };
+  onChange: (next: { client1: string[][]; client2: string[][] }) => void;
+}) {
   return (
     <section style={card}>
       <div style={{ fontWeight: 800, marginBottom: 10 }}>{title}</div>
       <div style={{ display: "grid", gap: 18 }}>
-        <RankBlock label={client1Label} ranks={value.client1} setRanks={(client1) => onChange({ ...value, client1 })} />
-        <RankBlock label={client2Label} ranks={value.client2} setRanks={(client2) => onChange({ ...value, client2 })} />
+        <RankBlock label={client1Label} ranks={value.client1} setRanks={(client1) => onChange({ ...value, client1 })} people={people} />
+        <RankBlock label={client2Label} ranks={value.client2} setRanks={(client2) => onChange({ ...value, client2 })} people={people} />
       </div>
     </section>
   );
@@ -880,7 +824,7 @@ function RoleRankEditor({
   defaultSpouseGroup,
 }: {
   title: string;
-  people: any[];
+  people: Person[];
   groups: RankGroup[];
   onChange: (next: RankGroup[]) => void;
   defaultSpouseGroup: { enabled: boolean; spouseIds: string[] };
@@ -1018,7 +962,7 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
   const [intake, setIntake] = useState<Intake | null>(null);
   const [status, setStatus] = useState<string>("");
   const [lastSavedAt, setLastSavedAt] = useState<string>("");
-  const saveTimer = useRef<any>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -1029,8 +973,8 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
         setLoading(false);
         return;
       }
-      const data = (await res.json()) as { intake: any };
-      const incoming = data.intake || {};
+      const data = (await res.json()) as { intake?: Intake };
+      const incoming: Intake = data.intake || {};
       // Ensure a couple of expected shapes.
       incoming.people = Array.isArray(incoming.people) ? incoming.people : [];
       incoming.clientEmails = incoming.clientEmails || {};
@@ -1040,11 +984,12 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
       incoming.rankedRoles = ensureRankedRoles(incoming);
 
       // Ensure per-client role assignment shapes exist for roles we draft separately.
-      incoming.roles = incoming.roles || {};
-      incoming.roles.executors = ensureRoleByClient(incoming.roles.executors);
-      incoming.roles.financialAgents = ensureRoleByClient(incoming.roles.financialAgents);
-      incoming.roles.healthAgents = ensureRoleByClient(incoming.roles.healthAgents);
-      incoming.roles.finalDispositionAgents = ensureFinalDispositionRanksByClient(incoming.roles.finalDispositionAgents);
+      const roles: Record<string, unknown> = isRecord(incoming.roles) ? incoming.roles : {};
+      incoming.roles = roles;
+      roles.executors = ensureRoleByClient(roles.executors);
+      roles.financialAgents = ensureRoleByClient(roles.financialAgents);
+      roles.healthAgents = ensureRoleByClient(roles.healthAgents);
+      roles.finalDispositionAgents = ensureFinalDispositionRanksByClient(roles.finalDispositionAgents);
       setIntake(incoming);
       setLoading(false);
     })();
@@ -1053,11 +998,13 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
   const spouseIds = useMemo(() => {
     // Heuristic: treat first two people entries that match grantor names as spouse people.
     if (!intake) return [] as string[];
-    const [g1, g2] = intake.grantors || ["", ""];
+    const grantors = Array.isArray(intake.grantors) ? (intake.grantors as unknown[]) : ["", ""];
+    const g1 = typeof grantors[0] === "string" ? grantors[0] : "";
+    const g2 = typeof grantors[1] === "string" ? grantors[1] : "";
     const norm = (s: string) => (s || "").toLowerCase().trim();
-    const p1 = intake.people.find((p: any) => norm(p.name) === norm(g1));
-    const p2 = intake.people.find((p: any) => norm(p.name) === norm(g2));
-    return [p1?.id, p2?.id].filter(Boolean);
+    const p1 = (intake.people ?? []).find((p) => norm(p.name ?? "") === norm(g1));
+    const p2 = (intake.people ?? []).find((p) => norm(p.name ?? "") === norm(g2));
+    return [p1?.id, p2?.id].filter((id): id is string => Boolean(id));
   }, [intake]);
 
   // Ensure spouse default Rank 1 group exists for trustees (removable by user).
@@ -1076,14 +1023,14 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spouseIds.join("|"), !!intake]);
 
-  function queueSave(nextIntake: any) {
+  function queueSave(nextIntake: Intake) {
     setIntake(nextIntake);
     setStatus("Unsaved changes…");
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
       try {
         setStatus("Saving…");
-        const toSave = JSON.parse(JSON.stringify(nextIntake));
+        const toSave = JSON.parse(JSON.stringify(nextIntake)) as Intake;
         normalizeLegacyRolesFromRanked(toSave);
         const res = await fetch(`/api/portal/matters/${matterId}/epis`, {
           method: "PATCH",
@@ -1097,8 +1044,8 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
         const data = (await res.json()) as { updatedAt?: string };
         setLastSavedAt(data.updatedAt ? new Date(data.updatedAt).toLocaleString() : new Date().toLocaleString());
         setStatus("Saved");
-      } catch (e: any) {
-        setStatus(e?.message || "Save failed");
+      } catch (e: unknown) {
+        setStatus(e instanceof Error ? e.message : "Save failed");
       }
     }, 1000);
   }
@@ -1156,13 +1103,13 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
       </section>
 
       <PeopleEditor
-        people={intake.people}
+        people={intake.people ?? []}
         setPeople={(people) => queueSave({ ...intake, people })}
       />
 
       <RoleRankEditor
         title="Trustees (ranked)"
-        people={intake.people}
+        people={intake.people ?? []}
         groups={ranked.trustees}
         defaultSpouseGroup={{ enabled: spouseIds.length === 2, spouseIds }}
         onChange={(groups) => queueSave({ ...intake, rankedRoles: { ...ranked, trustees: groups } })}
@@ -1207,7 +1154,7 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
         title="Executors / wills"
         client1Label={client1Name ? `Client 1 — ${client1Name}` : "Client 1"}
         client2Label={client2Name ? `Client 2 — ${client2Name}` : "Client 2"}
-        people={intake.people}
+        people={intake.people ?? []}
         value={ensureRoleByClient(intake.roles?.executors)}
         onChange={(executors) => queueSave({ ...intake, roles: { ...(intake.roles || {}), executors } })}
       />
@@ -1215,7 +1162,7 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
         title="Financial agents / GDPOA"
         client1Label={client1Name ? `Client 1 — ${client1Name}` : "Client 1"}
         client2Label={client2Name ? `Client 2 — ${client2Name}` : "Client 2"}
-        people={intake.people}
+        people={intake.people ?? []}
         value={ensureRoleByClient(intake.roles?.financialAgents)}
         onChange={(financialAgents) => queueSave({ ...intake, roles: { ...(intake.roles || {}), financialAgents } })}
       />
@@ -1223,7 +1170,7 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
         title="Health care agents / AMD"
         client1Label={client1Name ? `Client 1 — ${client1Name}` : "Client 1"}
         client2Label={client2Name ? `Client 2 — ${client2Name}` : "Client 2"}
-        people={intake.people}
+        people={intake.people ?? []}
         value={ensureRoleByClient(intake.roles?.healthAgents)}
         onChange={(healthAgents) => queueSave({ ...intake, roles: { ...(intake.roles || {}), healthAgents } })}
       />
@@ -1231,13 +1178,13 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
         title="Final disposition agents"
         client1Label={client1Name ? `Client 1 — ${client1Name}` : "Client 1"}
         client2Label={client2Name ? `Client 2 — ${client2Name}` : "Client 2"}
-        people={intake.people}
+        people={intake.people ?? []}
         value={ensureFinalDispositionRanksByClient(intake.roles?.finalDispositionAgents)}
         onChange={(finalDispositionAgents) => queueSave({ ...intake, roles: { ...(intake.roles || {}), finalDispositionAgents } })}
       />
       <RoleRankEditor
         title="Guardians (ranked)"
-        people={intake.people}
+        people={intake.people ?? []}
         groups={ranked.guardians}
         defaultSpouseGroup={{ enabled: spouseIds.length === 2, spouseIds }}
         onChange={(groups) => queueSave({ ...intake, rankedRoles: { ...ranked, guardians: groups } })}
@@ -1328,7 +1275,7 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
                 style={input}
               >
                 <option value="">—</option>
-                {intake.people.map((p: any) => (
+                {(intake.people ?? []).map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name || "(unnamed)"}
                   </option>
@@ -1349,7 +1296,7 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
                 style={input}
               >
                 <option value="">—</option>
-                {intake.people.map((p: any) => (
+                {(intake.people ?? []).map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name || "(unnamed)"}
                   </option>
@@ -1636,7 +1583,7 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
                   />
                 </label>
 
-                {assets[key].accounts.map((acct: any, idx: number) => (
+                {assets[key].accounts.map((acct, idx: number) => (
                   <div key={idx} style={{ display: "grid", gap: 10, gridTemplateColumns: "2fr 1fr 1fr" }}>
                     <input
                       value={acct.institution || ""}
@@ -1717,7 +1664,7 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
                 />
               </label>
 
-              {assets.realEstate.properties.map((prop: any, idx: number) => (
+              {assets.realEstate.properties.map((prop, idx: number) => (
                 <div key={idx} style={{ display: "grid", gap: 10 }}>
                   <div style={{ display: "grid", gap: 10, gridTemplateColumns: "2fr 1fr" }}>
                     <input
@@ -1820,7 +1767,7 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
                 />
               </label>
 
-              {assets.lifeInsurance.policies.map((pol: any, idx: number) => (
+              {assets.lifeInsurance.policies.map((pol, idx: number) => (
                 <div key={idx} style={{ display: "grid", gap: 10 }}>
                   <div style={{ display: "grid", gap: 10, gridTemplateColumns: "2fr 1fr 1fr" }}>
                     <input
@@ -1916,7 +1863,7 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
                 />
               </label>
 
-              {assets.businessInterests.items.map((it: any, idx: number) => (
+              {assets.businessInterests.items.map((it, idx: number) => (
                 <div key={idx} style={{ display: "grid", gap: 10 }}>
                   <div style={{ display: "grid", gap: 10, gridTemplateColumns: "2fr 1fr" }}>
                     <input
@@ -2002,7 +1949,7 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
                 />
               </label>
 
-              {assets.vehicles.items.map((it: any, idx: number) => (
+              {assets.vehicles.items.map((it, idx: number) => (
                 <div key={idx} style={{ display: "grid", gap: 10 }}>
                   <div style={{ display: "grid", gap: 10, gridTemplateColumns: "2fr 1fr" }}>
                     <input
@@ -2134,7 +2081,7 @@ export function EpisEditorClient({ matterId }: { matterId: string }) {
                 />
               </label>
 
-              {assets.alternativeAssets.items.map((it: any, idx: number) => (
+              {assets.alternativeAssets.items.map((it, idx: number) => (
                 <div key={idx} style={{ display: "grid", gap: 10, gridTemplateColumns: "2fr 1fr" }}>
                   <input
                     value={it.description || ""}

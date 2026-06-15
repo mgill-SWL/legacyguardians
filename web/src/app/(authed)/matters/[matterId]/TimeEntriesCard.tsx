@@ -108,7 +108,7 @@ export function TimeEntriesCard({
           <span className="sw-muted" style={{ fontSize: 12 }}>
             Pricing
           </span>
-          <select value={pricingMode} onChange={(ev) => setPricingMode(ev.target.value as any)}>
+          <select value={pricingMode} onChange={(ev) => setPricingMode(ev.target.value as "HOURLY" | "FLAT")}>
             <option value="HOURLY">Hourly (tenths)</option>
             <option value="FLAT">Flat price (per timecard)</option>
           </select>

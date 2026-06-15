@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
+import type { Prisma } from "@prisma/client";
+
 import { authOptions } from "@/authOptions";
 import { prisma } from "@/lib/prisma";
 
@@ -51,7 +53,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ slug: string;
   });
   if (!col) return NextResponse.json({ ok: false, error: "column not found" }, { status: 404 });
 
-  const data = (row.data as any) || {};
+  const data = (row.data as Record<string, unknown> | null) || {};
 
   // Parse & store typed values so downstream calculations/formatting behave.
   if (col.type === "NUMBER" || col.type === "CURRENCY") {
@@ -66,7 +68,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ slug: string;
     data[body.key] = body.value;
   }
 
-  await prisma.reportRow.update({ where: { id: rowId }, data: { data } });
+  await prisma.reportRow.update({ where: { id: rowId }, data: { data: data as Prisma.InputJsonValue } });
 
   return NextResponse.json({ ok: true });
 }

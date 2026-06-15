@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 const SLUG = "payee-rules";
 
-const DEFAULT_COLUMNS: { key: string; label: string; type: any }[] = [
+const DEFAULT_COLUMNS: { key: string; label: string; type: "TEXT" | "NUMBER" | "CURRENCY" }[] = [
   { key: "match_type", label: "Match", type: "TEXT" },
   { key: "pattern", label: "Pattern", type: "TEXT" },
   { key: "applies_to", label: "Applies to", type: "TEXT" },
@@ -111,7 +111,7 @@ export async function POST(request: Request) {
   if (!sheetName) return NextResponse.json({ ok: false, error: "no sheets" }, { status: 400 });
 
   const ws = wb.Sheets[sheetName];
-  const rows = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, raw: true, blankrows: false }) as any[][];
+  const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, raw: true, blankrows: false }) as unknown[][];
 
   // Parse report blocks.
   // We look for header row: Date | Ref# | Payee | Description | Account | Debit | Credit | Balance
@@ -124,7 +124,7 @@ export async function POST(request: Request) {
   let inTable = false;
   let col: Record<string, number> | null = null;
 
-  const toCents = (v: any) => {
+  const toCents = (v: unknown) => {
     const n = typeof v === "number" ? v : Number(String(v ?? "").replaceAll(",", ""));
     return Number.isFinite(n) ? Math.round(n * 100) : 0;
   };
@@ -142,7 +142,7 @@ export async function POST(request: Request) {
     }
 
     // Detect table header
-    const rowNorm = r.slice(0, 8).map((x: any) => norm(String(x ?? "")));
+    const rowNorm = r.slice(0, 8).map((x: unknown) => norm(String(x ?? "")));
     const isHeader = HEADER.every((h, idx) => rowNorm[idx] === h);
     if (isHeader) {
       inTable = true;
@@ -257,11 +257,11 @@ export async function POST(request: Request) {
       coa_number: s.coa_number,
       classification: s.classification,
       confidence: s.confidence,
-    } as any;
+    } satisfies Record<string, unknown>;
 
     const ex = existingByKey.get(rowKey);
     if (ex) {
-      await prisma.reportRow.update({ where: { id: ex.id }, data: { data: { ...(ex.data as any), ...data } } });
+      await prisma.reportRow.update({ where: { id: ex.id }, data: { data: { ...(ex.data as Record<string, unknown>), ...data } } });
       updated++;
     } else {
       await prisma.reportRow.create({

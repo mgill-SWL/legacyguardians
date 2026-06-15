@@ -60,16 +60,15 @@ function endOfDay(d: Date) {
 }
 
 async function getStageStats(pipelineName: string, firmId?: string): Promise<StageStat[]> {
-  const anyPrisma = prisma as any;
-  if (!anyPrisma.pipeline || !anyPrisma.matterPipeline) return [];
+  if (!prisma.pipeline || !prisma.matterPipeline) return [];
 
-  const pipeline = await anyPrisma.pipeline.findFirst({
+  const pipeline = await prisma.pipeline.findFirst({
     where: { name: pipelineName },
     include: { stages: { orderBy: { sortOrder: "asc" } } },
   });
   if (!pipeline) return [];
 
-  const links = await anyPrisma.matterPipeline.findMany({
+  const links = await prisma.matterPipeline.findMany({
     where: {
       pipelineId: pipeline.id,
       ...(firmId ? { matter: { firmId } } : {}),
@@ -89,7 +88,7 @@ async function getStageStats(pipelineName: string, firmId?: string): Promise<Sta
     byStage.set(name, prev);
   }
 
-  const order = new Map<string, number>((pipeline.stages || []).map((s: any, idx: number) => [s.name, s.sortOrder ?? idx] as const));
+  const order = new Map<string, number>((pipeline.stages || []).map((s, idx) => [s.name, s.sortOrder ?? idx] as const));
   return Array.from(byStage.values()).sort((a, b) => (order.get(a.stageName) ?? 9999) - (order.get(b.stageName) ?? 9999));
 }
 
@@ -97,8 +96,7 @@ export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) redirect("/login");
 
-  const anyPrisma = prisma as any;
-  const user = anyPrisma.user ? await anyPrisma.user.findUnique({ where: { email: session.user.email } }) : null;
+  const user = prisma.user ? await prisma.user.findUnique({ where: { email: session.user.email } }) : null;
   const firmId: string | undefined = user?.activeFirmId || undefined;
 
   // --- Billing series (last 6 months) + MTD totals ---
@@ -119,8 +117,8 @@ export default async function DashboardPage() {
   const rangeStart = months[0]?.start || startOfMonth(now);
   const rangeEnd = startOfMonth(new Date(now.getFullYear(), now.getMonth() + 1, 1));
 
-  const events: { eventType: string; eventDate: Date; amountCents: number }[] = anyPrisma.matterFinancialEvent
-    ? await anyPrisma.matterFinancialEvent.findMany({
+  const events: { eventType: string; eventDate: Date; amountCents: number }[] = prisma.matterFinancialEvent
+    ? await prisma.matterFinancialEvent.findMany({
         where: {
           ...(firmId ? { firmId } : {}),
           eventType: { in: ["BILLED", "PAYMENT_RECEIVED"] },
@@ -154,10 +152,10 @@ export default async function DashboardPage() {
   };
 
   // --- Scoreboard inputs ---
-  const scoreboardRow: any = anyPrisma.reportTable
-    ? await anyPrisma.reportTable.findUnique({ where: { slug: "firm-scoreboard" }, include: { rows: { orderBy: { sortOrder: "asc" } } } })
+  const scoreboardRow = prisma.reportTable
+    ? await prisma.reportTable.findUnique({ where: { slug: "firm-scoreboard" }, include: { rows: { orderBy: { sortOrder: "asc" } } } })
     : null;
-  const scoreboardData = scoreboardRow?.rows?.[0]?.data || {};
+  const scoreboardData = (scoreboardRow?.rows?.[0]?.data ?? {}) as Record<string, unknown>;
   const monthlyGoalCents = Math.round(Number(scoreboardData.monthly_goal || 0) * 100);
   const lawpay30dCents = Math.round(Number(scoreboardData.lawpay_30d_volume || 0) * 100);
 
@@ -173,14 +171,6 @@ export default async function DashboardPage() {
 
   let intakeKpis: Kpi[] = [];
   let intakeStatsAtGlance: IntakeStatsBlock[] = [];
-
-  const fmt = (v: number) => (Number.isFinite(v) ? v.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "0");
-  const fmtPct = (v: number) => {
-    const n = Number(v);
-    if (!Number.isFinite(n)) return "0%";
-    const asPct = n <= 1 ? n * 100 : n;
-    return `${Math.round(asPct)}%`;
-  };
 
   function lastCompletedFridayIso(d: Date) {
     // Most recent Friday strictly before today (local). If today is Friday, this returns last week's Friday.
@@ -206,7 +196,7 @@ export default async function DashboardPage() {
     return new Date(Date.UTC(y, mo, da + days)).toISOString().slice(0, 10);
   }
 
-  function n(v: any) {
+  function n(v: unknown) {
     const x = Number(v);
     return Number.isFinite(x) ? x : 0;
   }
@@ -321,14 +311,14 @@ export default async function DashboardPage() {
   }
 
   if (!intakeStatsAtGlance.length) {
-    const intakeTable: any = anyPrisma.reportTable
-      ? await anyPrisma.reportTable.findUnique({ where: { slug: "intake-reporting" }, include: { rows: { orderBy: { sortOrder: "asc" } } } })
+    const intakeTable = prisma.reportTable
+      ? await prisma.reportTable.findUnique({ where: { slug: "intake-reporting" }, include: { rows: { orderBy: { sortOrder: "asc" } } } })
       : null;
 
     // If we have week-keyed rows, build the same at-a-glance blocks.
     if (intakeTable?.rows?.length) {
-      const rr = (intakeTable.rows || []).map((r: any) => {
-        const d = r.data || {};
+      const rr = (intakeTable.rows || []).map((r) => {
+        const d = (r.data ?? {}) as Record<string, unknown>;
         return {
           weekEnding: r.rowKey,
           totalIntakeCalls: n(d.total_intake_calls),
@@ -344,8 +334,8 @@ export default async function DashboardPage() {
     }
 
     const intakeTotals = (intakeTable?.rows || []).reduce(
-      (acc: any, r: any) => {
-        const d = r.data || {};
+      (acc, r) => {
+        const d = (r.data ?? {}) as Record<string, unknown>;
         acc.scheduled += n(d.scheduled_intake);
         acc.qualified += n(d.qualified);
         acc.designBooked += n(d.design_meetings_booked) || n(d.design_meetings_held) + n(d.design_meetings_cancelled);
@@ -393,8 +383,8 @@ export default async function DashboardPage() {
   // --- Today’s meetings ---
   const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
   const dayEnd = endOfDay(now);
-  const meetings = anyPrisma.appointment
-    ? await anyPrisma.appointment.findMany({
+  const meetings = prisma.appointment
+    ? await prisma.appointment.findMany({
         where: {
           status: "SCHEDULED",
           startsAt: { gte: dayStart, lte: dayEnd },
@@ -406,9 +396,9 @@ export default async function DashboardPage() {
       })
     : [];
 
-  const tasks: DashboardTask[] = anyPrisma.task
+  const tasks: DashboardTask[] = prisma.task
     ? (
-        await anyPrisma.task.findMany({
+        await prisma.task.findMany({
           where: {
             ...(firmId ? { firmId } : {}),
             completionPercent: { lt: 100 },
@@ -437,7 +427,7 @@ export default async function DashboardPage() {
         intakeKpis={intakeKpis}
         intakeStatsAtGlance={intakeStatsAtGlance}
         wipKpis={wipKpis}
-        meetings={meetings.map((m: any) => ({
+        meetings={meetings.map((m) => ({
           id: m.id,
           typeName: m.type?.name || "(Meeting)",
         clientName: m.clientName || "(No name)",

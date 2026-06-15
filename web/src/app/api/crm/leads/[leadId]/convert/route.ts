@@ -1,3 +1,4 @@
+import { ContactCategory } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
@@ -50,7 +51,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ leadId: strin
           displayName: displayName || existingContact.displayName,
           email: lead.contact.email || existingContact.email,
           phone: lead.contact.phoneE164 || existingContact.phone,
-          categories: Array.from(new Set([...(existingContact.categories as any), "CLIENT"])) as any,
+          categories: Array.from(new Set([...existingContact.categories, ContactCategory.CLIENT])),
         },
       })
     : await prisma.contact.create({
@@ -58,7 +59,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ leadId: strin
           displayName: displayName || lead.contact.phoneE164,
           email: lead.contact.email,
           phone: lead.contact.phoneE164,
-          categories: ["CLIENT"] as any,
+          categories: [ContactCategory.CLIENT],
         },
       });
 

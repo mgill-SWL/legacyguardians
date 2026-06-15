@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
-type Intake = any;
+type StaffNotes = { sections: Record<string, string> };
+type Intake = Record<string, unknown> & { __staffNotes?: StaffNotes };
 
 const SECTIONS: Array<{ key: string; label: string }> = [
   { key: "client_info", label: "Client information" },
@@ -16,11 +17,13 @@ const SECTIONS: Array<{ key: string; label: string }> = [
   { key: "conflicts", label: "Conflict waiver" },
 ];
 
-function ensureNotes(intake: Intake) {
-  const n = (intake?.__staffNotes ?? {}) as any;
-  if (!n || typeof n !== "object") return { sections: {} as Record<string, string> };
-  n.sections = n.sections && typeof n.sections === "object" ? n.sections : {};
-  return n;
+function ensureNotes(intake: Intake | null): StaffNotes {
+  const n = intake?.__staffNotes;
+  if (!n || typeof n !== "object") return { sections: {} };
+  return {
+    ...n,
+    sections: n.sections && typeof n.sections === "object" ? n.sections : {},
+  };
 }
 
 export function EpisEditorStaffClient({ matterId }: { matterId: string }) {
@@ -28,7 +31,7 @@ export function EpisEditorStaffClient({ matterId }: { matterId: string }) {
   const [intake, setIntake] = useState<Intake | null>(null);
   const [status, setStatus] = useState<string>("");
   const [lastSavedAt, setLastSavedAt] = useState<string>("");
-  const saveTimer = useRef<any>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -39,15 +42,15 @@ export function EpisEditorStaffClient({ matterId }: { matterId: string }) {
         setLoading(false);
         return;
       }
-      const data = (await res.json()) as { intake: any };
-      const incoming = data.intake || {};
+      const data = (await res.json()) as { intake: Intake | null };
+      const incoming: Intake = data.intake || {};
       incoming.__staffNotes = ensureNotes(incoming);
       setIntake(incoming);
       setLoading(false);
     })();
   }, [matterId]);
 
-  function queueSave(nextIntake: any) {
+  function queueSave(nextIntake: Intake) {
     setIntake(nextIntake);
     setStatus("Unsaved changes…");
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -66,8 +69,8 @@ export function EpisEditorStaffClient({ matterId }: { matterId: string }) {
         const out = (await res.json()) as { updatedAt?: string };
         setLastSavedAt(out.updatedAt ? new Date(out.updatedAt).toLocaleString() : new Date().toLocaleString());
         setStatus("Saved");
-      } catch (e: any) {
-        setStatus(e?.message || "Save failed");
+      } catch (e: unknown) {
+        setStatus(e instanceof Error ? e.message : "Save failed");
       }
     }, 600);
   }

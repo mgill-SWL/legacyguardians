@@ -29,5 +29,8 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
+      - name: Lint
+        run: npm run lint
+
       - name: Template audit (renders every legal document template)
         run: npx tsx tools/templateAuditAll.ts

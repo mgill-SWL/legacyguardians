@@ -27,8 +27,8 @@ export function Composer({ threadId }: { threadId: string }) {
       }
       setText("");
       router.refresh();
-    } catch (e: any) {
-      setError(e?.message || "Send failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Send failed");
     } finally {
       setBusy(false);
     }

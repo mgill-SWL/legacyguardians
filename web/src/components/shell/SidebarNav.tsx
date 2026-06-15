@@ -112,7 +112,7 @@ type FirmCtx = {
 export function SidebarNav({ email }: { email: string | null | undefined }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { dirty, saveFn, setDirty, registerSaveFn } = useUnsavedChanges();
+  const { dirty, getSaveFn, setDirty, registerSaveFn } = useUnsavedChanges();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
 
   const [firmCtx, setFirmCtx] = useState<FirmCtx | null>(null);
@@ -222,6 +222,7 @@ export function SidebarNav({ email }: { email: string | null | undefined }) {
     if (!href) return;
 
     try {
+      const saveFn = getSaveFn();
       if (saveFn) {
         await saveFn();
       }

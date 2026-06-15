@@ -1,3 +1,4 @@
+import type { ReportColumnType } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 const SLUG = "chart-of-accounts";
 
-const DEFAULT_COLUMNS: { key: string; label: string; type: any }[] = [
+const DEFAULT_COLUMNS: { key: string; label: string; type: ReportColumnType }[] = [
   { key: "account", label: "Account", type: "TEXT" },
   { key: "type", label: "Type", type: "TEXT" },
   { key: "balance", label: "Balance", type: "CURRENCY" },
@@ -79,7 +80,7 @@ export default async function ChartOfAccountsPage() {
         <CoaImportClient />
       </div>
 
-      <ReportGrid table={(refreshed || ensured) as any} canAdmin={!!canManage} />
+      <ReportGrid table={refreshed || ensured} canAdmin={!!canManage} />
     </div>
   );
 }

@@ -398,42 +398,41 @@ function KpiGrid({ title, subtitle, kpis }: { title: string; subtitle?: string; 
   );
 }
 
-function WipStages({ preDesign, preDocTour }: { preDesign: StageStat[]; preDocTour: StageStat[] }) {
+function StageTable({ title, rows }: { title: string; rows: StageStat[] }) {
   const money = (cents: number) => (cents / 100).toLocaleString(undefined, { style: "currency", currency: "USD" });
-
-  function StageTable({ title, rows }: { title: string; rows: StageStat[] }) {
-    return (
-      <div className="sw-card sw-card-pad">
-        <div style={{ fontWeight: 900 }}>{title}</div>
-        <div style={{ marginTop: 10, overflowX: "auto" }}>
-          <table className="sw-table">
-            <thead>
-              <tr>
-                <th className="sw-th">Stage</th>
-                <th className="sw-th">Total value</th>
-                <th className="sw-th">Total matters</th>
+  return (
+    <div className="sw-card sw-card-pad">
+      <div style={{ fontWeight: 900 }}>{title}</div>
+      <div style={{ marginTop: 10, overflowX: "auto" }}>
+        <table className="sw-table">
+          <thead>
+            <tr>
+              <th className="sw-th">Stage</th>
+              <th className="sw-th">Total value</th>
+              <th className="sw-th">Total matters</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.stageName} className="sw-tr">
+                <td className="sw-td" style={{ fontWeight: 900, whiteSpace: "nowrap" }}>
+                  {r.stageName}
+                </td>
+                <td className="sw-td">{money(r.totalValueCents)}</td>
+                <td className="sw-td">{r.matterCount}</td>
               </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.stageName} className="sw-tr">
-                  <td className="sw-td" style={{ fontWeight: 900, whiteSpace: "nowrap" }}>
-                    {r.stageName}
-                  </td>
-                  <td className="sw-td">{money(r.totalValueCents)}</td>
-                  <td className="sw-td">{r.matterCount}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="sw-muted" style={{ marginTop: 10, fontSize: 12 }}>
-          Note: “Total value” uses each matter’s value field (shown on pipeline cards).
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
-    );
-  }
+      <div className="sw-muted" style={{ marginTop: 10, fontSize: 12 }}>
+        Note: “Total value” uses each matter’s value field (shown on pipeline cards).
+      </div>
+    </div>
+  );
+}
 
+function WipStages({ preDesign, preDocTour }: { preDesign: StageStat[]; preDocTour: StageStat[] }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: 12 }}>
       <StageTable title="Pre-design meeting stages" rows={preDesign} />

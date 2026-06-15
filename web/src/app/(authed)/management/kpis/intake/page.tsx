@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-function n(v: any) {
+function n(v: unknown) {
   const x = Number(v);
   return Number.isFinite(x) ? x : 0;
 }
@@ -23,7 +23,7 @@ export default async function IntakeKpiSummary() {
   const rows = table?.rows || [];
   const totals = rows.reduce(
     (acc, r) => {
-      const d: any = r.data || {};
+      const d = (r.data || {}) as Record<string, unknown>;
       acc.scheduled += n(d.scheduled_intake);
       acc.qualified += n(d.qualified);
       acc.welcomeHeld += n(d.welcome_calls_held);

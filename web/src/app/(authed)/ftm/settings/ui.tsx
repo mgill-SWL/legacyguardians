@@ -110,7 +110,7 @@ function MapCard({ map, users, onChanged }: { map: Map; users: User[]; onChanged
     onChanged();
   }
 
-  async function updateStep(stepId: string, patch: any) {
+  async function updateStep(stepId: string, patch: Partial<Pick<Step, "howOwnerUserId" | "ensureOwnerUserId" | "doerUserId" | "doerRole" | "name">>) {
     await api(`/api/ftm/steps/${stepId}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },

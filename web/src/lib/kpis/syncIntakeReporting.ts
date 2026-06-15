@@ -1,3 +1,5 @@
+import { Prisma } from "@prisma/client";
+
 import { prisma } from "@/lib/prisma";
 import { getIntakeKpisFromSheet } from "@/lib/kpis/intakeSheet";
 
@@ -83,7 +85,7 @@ async function ensureColumns(tableId: string) {
     if (found.label !== c.label || found.type !== c.type) {
       await prisma.reportColumn.update({
         where: { id: found.id },
-        data: { label: c.label, type: c.type as any },
+        data: { label: c.label, type: c.type },
       });
     }
   }
@@ -132,8 +134,8 @@ export async function syncIntakeReportingFromSheet({
   let created = 0;
   let updated = 0;
 
-  for (const r of rows as any[]) {
-    const sr = r.sourceRow as { header: string; value: unknown; col: number }[] | undefined;
+  for (const r of rows) {
+    const sr = r.sourceRow;
 
     const dataPatch = {
       scheduled_intake: pickSheetNumber(sr, (h) => h === "scheduled intake" || h.startsWith("scheduled intake ")),
@@ -176,8 +178,8 @@ export async function syncIntakeReportingFromSheet({
       _source: "google_sheet",
       _source_weekEnding: r.weekEnding,
       _source_year: year,
-      _source_sheet_row: r.sourceRow || null,
-    } as any;
+      _source_sheet_row: (r.sourceRow ?? null) as Prisma.InputJsonValue,
+    };
 
     const existing = byRowKey.get(r.weekEnding);
     if (existing) {
@@ -185,7 +187,12 @@ export async function syncIntakeReportingFromSheet({
         where: { id: existing.id },
         data: {
           label: existing.label || r.weekEnding,
-          data: { ...(existing.data as any), ...dataPatch },
+          data: {
+            ...(existing.data && typeof existing.data === "object" && !Array.isArray(existing.data)
+              ? (existing.data as Prisma.JsonObject)
+              : {}),
+            ...dataPatch,
+          },
         },
       });
       updated++;

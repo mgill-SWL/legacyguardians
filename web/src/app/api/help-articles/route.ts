@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
+import type { HelpContentFormat } from "@prisma/client";
+
 import { authOptions } from "@/authOptions";
 import { prisma } from "@/lib/prisma";
 
@@ -38,7 +40,7 @@ export async function POST(req: Request) {
       firmId,
       slug: body.slug.trim(),
       title: body.title.trim(),
-      format: (body.format || "MARKDOWN") as any,
+      format: (body.format || "MARKDOWN") as HelpContentFormat,
       body: body.body,
       tags: body.tags || [],
       published: body.published ?? true,

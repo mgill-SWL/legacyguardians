@@ -80,12 +80,6 @@ export async function POST(req: Request) {
 
   const system = `You are Speedwell Law's helpful operations chatbot.\n\nRules:\n- Answer ONLY using the provided Help Topics and Pricing context.\n- If the user asks something not covered, say you don't have that info yet and suggest what to ask the firm.\n- Do not provide legal advice; keep it informational.\n- Keep answers concise and friendly.\n`;
 
-  const prompt = {
-    system,
-    context,
-    conversation: messages.slice(-12),
-  };
-
   const r = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
@@ -111,15 +105,22 @@ export async function POST(req: Request) {
     }),
   });
 
-  const data = await r.json().catch(() => null);
+  type OpenAiContentPart = { text?: string };
+  type OpenAiOutputItem = { content?: OpenAiContentPart[] };
+  type OpenAiResponse = {
+    error?: { message?: string };
+    output?: OpenAiOutputItem[];
+    output_text?: string;
+  };
+  const data = (await r.json().catch(() => null)) as OpenAiResponse | null;
   if (!r.ok) {
     return NextResponse.json({ ok: false, error: data?.error?.message || `OpenAI error ${r.status}` }, { status: 500 });
   }
 
   // Responses API returns output text in output[0].content[*].text for simple generations.
   const text =
-    data?.output?.flatMap((o: any) => o?.content || [])
-      ?.map((c: any) => c?.text)
+    data?.output?.flatMap((o: OpenAiOutputItem) => o?.content || [])
+      ?.map((c: OpenAiContentPart) => c?.text)
       ?.filter(Boolean)
       ?.join("\n") ||
     data?.output_text ||

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 
+import { Prisma } from "@prisma/client";
+
 import { prisma } from "@/lib/prisma";
 import { portalCookieName, verifyPortalSession } from "@/lib/portalSession";
 
@@ -23,9 +25,9 @@ export default async function PortalHome() {
         intake: {
           is: {
             OR: [
-              { data: { path: ["clientEmails", "client1"], equals: email } } as any,
-              { data: { path: ["clientEmails", "client2"], equals: email } } as any,
-            ],
+              { data: { path: ["clientEmails", "client1"], equals: email } },
+              { data: { path: ["clientEmails", "client2"], equals: email } },
+            ] satisfies Prisma.IntakeResponseWhereInput[],
           },
         },
       },
@@ -44,7 +46,7 @@ export default async function PortalHome() {
     });
     matters = recent
       .filter((m) => {
-        const d = (m.intake?.data ?? {}) as any;
+        const d = (m.intake?.data ?? {}) as { clientEmails?: { client1?: unknown; client2?: unknown } };
         const e1 = String(d?.clientEmails?.client1 || "").toLowerCase().trim();
         const e2 = String(d?.clientEmails?.client2 || "").toLowerCase().trim();
         return e1 === email || e2 === email;

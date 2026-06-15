@@ -297,11 +297,11 @@ function AddMatterModal({
     setError(null);
     try {
       const res = await fetch(`/api/pipelines/${pipelineId}/available-matters?q=${encodeURIComponent(q)}`);
-      const data = await res.json();
+      const data = (await res.json()) as { ok?: boolean; error?: string; matters?: Matter[] };
       if (!res.ok || data.ok === false) throw new Error(data.error || "Failed");
       setResults(data.matters || []);
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(false);
     }
@@ -316,11 +316,11 @@ function AddMatterModal({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ matterId, stageId }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || data.ok === false) throw new Error(data.error || "Failed");
       onAdded();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(false);
     }

@@ -73,11 +73,11 @@ export function InvoiceClient({ invoice, lines, payments }: { invoice: InvoiceHe
           amountUsd: newCostAmountUsd,
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as any;
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       window.location.reload();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setSubmitting(false);
     }
@@ -88,11 +88,11 @@ export function InvoiceClient({ invoice, lines, payments }: { invoice: InvoiceHe
     setError(null);
     try {
       const res = await fetch(`/api/invoices/${invoice.id}/lines/${lineId}`, { method: "DELETE" });
-      const data = (await res.json().catch(() => ({}))) as any;
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       window.location.reload();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setSubmitting(false);
     }
@@ -113,11 +113,11 @@ export function InvoiceClient({ invoice, lines, payments }: { invoice: InvoiceHe
           reference: payRef,
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as any;
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       window.location.reload();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setSubmitting(false);
     }
@@ -143,11 +143,11 @@ export function InvoiceClient({ invoice, lines, payments }: { invoice: InvoiceHe
           reference: refundRef,
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as any;
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       window.location.reload();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setSubmitting(false);
     }
@@ -162,11 +162,11 @@ export function InvoiceClient({ invoice, lines, payments }: { invoice: InvoiceHe
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ issueDate, dueDate: dueDate || undefined }),
       });
-      const data = (await res.json().catch(() => ({}))) as any;
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       window.location.reload();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setSubmitting(false);
     }
@@ -286,7 +286,7 @@ export function InvoiceClient({ invoice, lines, payments }: { invoice: InvoiceHe
             <span className="sw-muted" style={{ fontSize: 12 }}>
               Method
             </span>
-            <select value={payMethod} onChange={(e) => setPayMethod(e.target.value as any)}>
+            <select value={payMethod} onChange={(e) => setPayMethod(e.target.value as "CHECK" | "ACH" | "WIRE" | "CASH" | "CARD" | "OTHER")}>
               <option value="CHECK">Check</option>
               <option value="ACH">ACH</option>
               <option value="WIRE">Wire</option>
@@ -371,7 +371,7 @@ export function InvoiceClient({ invoice, lines, payments }: { invoice: InvoiceHe
             <span className="sw-muted" style={{ fontSize: 12 }}>
               Type
             </span>
-            <select value={refundReason} onChange={(e) => setRefundReason(e.target.value as any)}>
+            <select value={refundReason} onChange={(e) => setRefundReason(e.target.value as "REFUND" | "CHARGEBACK")}>
               <option value="REFUND">Refund</option>
               <option value="CHARGEBACK">Chargeback</option>
             </select>

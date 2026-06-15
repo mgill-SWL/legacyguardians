@@ -47,22 +47,30 @@ export default async function MatterTrustLedgerPage({ params }: { params: Promis
   const accounts = accountIds.length
     ? await prisma.billingAccount.findMany({ where: { id: { in: accountIds } }, select: { id: true, accountType: true } })
     : [];
-  const accountTypeById = accounts.reduce<Record<string, any>>((acc, a) => {
+  const accountTypeById = accounts.reduce<Record<string, (typeof accounts)[number]["accountType"]>>((acc, a) => {
     acc[a.id] = a.accountType;
     return acc;
   }, {});
 
-  let running = 0;
-  const rows = events.map((e) => {
-    const delta = trustDeltaCents({
-      eventType: e.eventType,
-      amountCents: e.amountCents,
-      fromAccountType: e.fromAccountId ? accountTypeById[e.fromAccountId] : null,
-      toAccountType: e.toAccountId ? accountTypeById[e.toAccountId] : null,
-    });
-    running += delta;
-    return { e, deltaCents: delta, balanceCents: running };
-  });
+  const rows = events.reduce<{
+    list: { e: (typeof events)[number]; deltaCents: number; balanceCents: number }[];
+    running: number;
+  }>(
+    (acc, e) => {
+      const delta = trustDeltaCents({
+        eventType: e.eventType,
+        amountCents: e.amountCents,
+        fromAccountType: e.fromAccountId ? accountTypeById[e.fromAccountId] : null,
+        toAccountType: e.toAccountId ? accountTypeById[e.toAccountId] : null,
+      });
+      const balanceCents = acc.running + delta;
+      acc.list.push({ e, deltaCents: delta, balanceCents });
+      return { list: acc.list, running: balanceCents };
+    },
+    { list: [], running: 0 }
+  ).list;
+
+  const runningBalanceCents = rows.length ? rows[rows.length - 1].balanceCents : 0;
 
   return (
     <div className="sw-page">
@@ -88,7 +96,7 @@ export default async function MatterTrustLedgerPage({ params }: { params: Promis
         <div className="sw-muted" style={{ fontSize: 12 }}>
           Current trust balance
         </div>
-        <div style={{ fontSize: 28, fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>{usd(running)}</div>
+        <div style={{ fontSize: 28, fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>{usd(runningBalanceCents)}</div>
       </div>
 
       <AddTrustTransaction matterId={matterId} />

@@ -12,8 +12,8 @@ export async function GET(req: Request) {
   try {
     const { slots, tz } = await getBookingSlots({ typeSlug: "discovery-call", date });
     return NextResponse.json({ ok: true, date, tz, slots });
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message || "failed" }, { status: 500 });
+  } catch (e: unknown) {
+    return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "failed" }, { status: 500 });
   }
 }
 

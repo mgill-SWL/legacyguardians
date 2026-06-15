@@ -1,6 +1,8 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
+import type { Prisma } from "@prisma/client";
+
 import { authOptions } from "@/authOptions";
 import { prisma } from "@/lib/prisma";
 
@@ -24,7 +26,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ lo
   const json = (await request.json().catch(() => null)) as Payload | null;
   if (!json) return NextResponse.json({ ok: false, error: "body required" }, { status: 400 });
 
-  const patch: any = {};
+  const patch: Prisma.FirmLocationUpdateInput = {};
   if (json.name !== undefined) {
     const name = String(json.name || "").trim();
     if (!name) return NextResponse.json({ ok: false, error: "name required" }, { status: 400 });
@@ -46,9 +48,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ lo
 
   try {
     await prisma.firmLocation.update({ where: { id: locationId }, data: patch });
-  } catch (e: any) {
+  } catch (e: unknown) {
     // Prisma unique constraint on (firmId, slug) shows up as P2002.
-    if (e?.code === "P2002") return NextResponse.json({ ok: false, error: "slug already exists" }, { status: 400 });
+    if (e && typeof e === "object" && "code" in e && e.code === "P2002") {
+      return NextResponse.json({ ok: false, error: "slug already exists" }, { status: 400 });
+    }
     return NextResponse.json({ ok: false, error: "update failed" }, { status: 500 });
   }
 

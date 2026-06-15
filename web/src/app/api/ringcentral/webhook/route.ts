@@ -114,9 +114,9 @@ export async function POST(req: Request) {
         sentAt: isInbound ? null : createdAt,
       },
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     // Idempotency: ignore duplicates when RingCentral retries webhook delivery.
-    if (e?.code !== 'P2002') throw e;
+    if (!(e && typeof e === 'object' && 'code' in e && e.code === 'P2002')) throw e;
   }
 
   await prisma.crmMessageThread.update({

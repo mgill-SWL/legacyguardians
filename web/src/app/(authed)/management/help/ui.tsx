@@ -13,7 +13,7 @@ type Article = {
   sortOrder: number;
 };
 
-export function HelpTopicsClient({ initialArticles, canEdit }: { initialArticles: any[]; canEdit: boolean }) {
+export function HelpTopicsClient({ initialArticles, canEdit }: { initialArticles: Article[]; canEdit: boolean }) {
   const articles: Article[] = initialArticles || [];
   const [selectedId, setSelectedId] = useState<string | null>(articles[0]?.id || null);
 
@@ -73,8 +73,8 @@ export function HelpTopicsClient({ initialArticles, canEdit }: { initialArticles
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
       window.location.reload();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(false);
     }
@@ -103,8 +103,8 @@ export function HelpTopicsClient({ initialArticles, canEdit }: { initialArticles
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
       window.location.reload();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(false);
     }
@@ -120,8 +120,8 @@ export function HelpTopicsClient({ initialArticles, canEdit }: { initialArticles
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
       window.location.reload();
-    } catch (e: any) {
-      setError(e?.message || "Failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(false);
     }
@@ -224,7 +224,7 @@ export function HelpTopicsClient({ initialArticles, canEdit }: { initialArticles
               <span className="sw-muted" style={{ fontSize: 12 }}>
                 Format
               </span>
-              <select className="sw-input" value={draft.format} onChange={(e) => setDraft((d) => ({ ...d, format: e.target.value as any }))} disabled={!canEdit}>
+              <select className="sw-input" value={draft.format} onChange={(e) => setDraft((d) => ({ ...d, format: e.target.value as Article["format"] }))} disabled={!canEdit}>
                 <option value="MARKDOWN">MARKDOWN</option>
                 <option value="HTML">HTML</option>
                 <option value="PLAINTEXT">PLAINTEXT</option>

@@ -44,8 +44,9 @@ export function HelpWidget() {
         const s = data.suggestions.map((x) => `• ${x.title}`).join("\n");
         setMessages((m) => [...m, { role: "bot", text: `Suggested topics:\n${s}` }]);
       }
-    } catch (e: any) {
-      setMessages((m) => [...m, { role: "bot", text: `Error: ${e?.message || "Failed"}` }]);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Failed";
+      setMessages((m) => [...m, { role: "bot", text: `Error: ${message}` }]);
     } finally {
       setBusy(false);
     }

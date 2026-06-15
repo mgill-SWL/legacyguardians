@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
+import type { FeeFeatureType } from "@prisma/client";
+
 import { authOptions } from "@/authOptions";
 import { prisma } from "@/lib/prisma";
 
@@ -35,7 +37,7 @@ export async function POST(req: Request) {
       key: body.key.trim(),
       label: body.label.trim(),
       group: body.group || null,
-      type: (body.type || "MONEY") as any,
+      type: (body.type || "MONEY") as FeeFeatureType,
       moneyCents: body.moneyCents ?? 0,
       sortOrder: count,
     },
