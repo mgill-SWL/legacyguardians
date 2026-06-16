@@ -1,0 +1,75 @@
+.eyebrow {
+  color: var(--sw-muted);
+  font-size: 12px;
+  font-weight: 740;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 4px 0 0;
+  font-size: 24px;
+  font-weight: 820;
+}
+
+.subcopy {
+  margin: 6px 0 0;
+  color: var(--sw-muted);
+  max-width: 70ch;
+}
+
+.statusStrip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  margin-top: 16px;
+  border: 1px solid var(--sw-border);
+  border-radius: var(--sw-radius);
+  overflow: hidden;
+  background: var(--sw-card);
+}
+
+.statusCell {
+  padding: 13px 14px;
+  border-right: 1px solid var(--sw-border);
+}
+
+.statusCell:last-child {
+  border-right: 0;
+}
+
+.metricLabel {
+  color: var(--sw-muted);
+  font-size: 11px;
+  font-weight: 740;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.metricValue {
+  margin-top: 5px;
+  font-variant-numeric: tabular-nums;
+  font-size: 22px;
+  font-weight: 760;
+}
+
+.metricNote {
+  margin-top: 4px;
+  color: var(--sw-muted);
+  font-size: 12px;
+}
+
+.sectionTitle {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.empty {
+  color: var(--sw-muted);
+  padding: 8px 0;
+}

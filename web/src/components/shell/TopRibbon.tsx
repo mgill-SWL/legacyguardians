@@ -38,6 +38,8 @@ function titleFromPath(pathname: string) {
   if (pathname.startsWith("/matters")) return "Matters";
   if (pathname.startsWith("/tasks")) return "Tasks";
   if (pathname.startsWith("/management")) return "Management";
+  if (pathname.startsWith("/marketing/webinars")) return "Webinars";
+  if (pathname.startsWith("/marketing")) return "Marketing";
   if (pathname.startsWith("/settings")) return "Settings";
   return "Dashboard";
 }
