@@ -244,6 +244,7 @@ type EstatePlanningProposalProps = {
   initialClientName?: string;
   initialOffice?: string;
   initialSource?: string;
+  initialSpouseName?: string;
   latestAgreementDraft?: AgreementDraft | null;
   leadId?: string;
   leadHref?: string;
@@ -254,13 +255,14 @@ export function EstatePlanningProposal({
   initialClientName = "",
   initialOffice = "Alexandria",
   initialSource = "Google PPC",
+  initialSpouseName = "",
   latestAgreementDraft = null,
   leadId,
   leadHref,
 }: EstatePlanningProposalProps = {}) {
   const router = useRouter();
   const [clientName, setClientName] = useState(initialClientName);
-  const [spouseName, setSpouseName] = useState("");
+  const [spouseName, setSpouseName] = useState(initialSpouseName);
   const [source, setSource] = useState(initialSource);
   const [office, setOffice] = useState(initialOffice);
   const [salesperson, setSalesperson] = useState("Christopher Heredia");

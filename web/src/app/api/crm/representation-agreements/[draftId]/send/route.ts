@@ -61,10 +61,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ draftId: strin
   }
 
   const contact = draft.lead.contact;
+  const leadSpouseName = `${draft.lead.spouseFirstName || ""} ${draft.lead.spouseLastName || ""}`.trim();
   const signer1Name = String(form.get("signer1Name") || `${contact.firstName} ${contact.lastName}`).trim();
   const signer1Email = String(form.get("signer1Email") || contact.email || "").trim().toLowerCase();
-  const signer2Name = String(form.get("signer2Name") || "").trim();
-  const signer2Email = String(form.get("signer2Email") || "").trim().toLowerCase();
+  // Default the second signer from the lead's spouse / co-client (overridable by the form).
+  const signer2Name = String(form.get("signer2Name") || leadSpouseName).trim();
+  const signer2Email = String(form.get("signer2Email") || draft.lead.spouseEmail || "").trim().toLowerCase();
 
   if (!signer1Email || !isValidEmail(signer1Email)) {
     return NextResponse.json(

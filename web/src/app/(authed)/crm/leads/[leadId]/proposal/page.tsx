@@ -38,6 +38,7 @@ export default async function LeadProposalPage({
   if (!lead) notFound();
 
   const leadName = `${lead.contact.firstName} ${lead.contact.lastName}`.trim();
+  const spouseName = `${lead.spouseFirstName || ""} ${lead.spouseLastName || ""}`.trim();
 
   return (
     <LeadRecordShell
@@ -73,6 +74,7 @@ export default async function LeadProposalPage({
           embedded
           initialClientName={leadName}
           initialSource={lead.campaign.slug}
+          initialSpouseName={spouseName}
           latestAgreementDraft={
             lead.representationAgreementDrafts[0]
               ? {

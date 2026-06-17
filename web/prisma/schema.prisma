@@ -2089,6 +2089,14 @@ model CrmLeadPipeline {
   dateAdded       DateTime @default(now())
   additionalNotes String?
 
+  // Spouse / co-client for couple matters (used for the representation
+  // agreement and as the second Documenso signer). Flat fields on the lead;
+  // the spouse is not a separate Contact record.
+  spouseFirstName String?
+  spouseLastName  String?
+  spouseEmail     String?
+  spousePhone     String?
+
   intakeCallAttempted   Boolean   @default(false)
   intakeCallAttemptedAt DateTime?
 

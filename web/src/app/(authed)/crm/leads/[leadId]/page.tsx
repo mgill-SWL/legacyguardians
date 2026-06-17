@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { EngagementStatusCard } from "./EngagementStatusCard";
 import { LeadRecordShell } from "./LeadRecordShell";
 import { LeadReviewPanel } from "./LeadReviewPanel";
+import { LeadSpouseCard } from "./LeadSpouseCard";
 import styles from "./leadRecord.module.css";
 
 export const dynamic = "force-dynamic";
@@ -258,6 +259,14 @@ export default async function LeadDetailPage({
             raPreparedAt={lead.raPreparedAt}
             raSentAt={lead.raSentAt}
             raSignedAt={lead.raSignedAt}
+          />
+
+          <LeadSpouseCard
+            leadId={lead.id}
+            spouseFirstName={lead.spouseFirstName}
+            spouseLastName={lead.spouseLastName}
+            spouseEmail={lead.spouseEmail}
+            spousePhone={lead.spousePhone}
           />
 
           <LeadReviewPanel
