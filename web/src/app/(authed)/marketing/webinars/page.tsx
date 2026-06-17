@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 
 import styles from "../page.module.css";
 import { CopyableSnippet } from "./CopyableSnippet";
+import { DeleteWebinarButton } from "./DeleteWebinarButton";
 import { NewWebinarForm } from "./NewWebinarForm";
 
 export const dynamic = "force-dynamic";
@@ -87,6 +88,7 @@ export default async function WebinarsPage() {
                         {w._count.registrations === 1 ? "" : "s"}
                       </div>
                     </div>
+                    <DeleteWebinarButton id={w.id} name={w.name || w.slug} registrations={w._count.registrations} />
                   </div>
 
                   <div style={{ display: "grid", gap: 14, marginTop: 10 }}>
