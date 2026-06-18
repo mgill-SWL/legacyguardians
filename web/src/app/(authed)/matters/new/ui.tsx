@@ -602,6 +602,7 @@ export function NewMatterForm() {
         body: JSON.stringify({
           displayName: computedDisplayName,
           intake: intakePayload,
+          practiceArea: "ESTATE_PLANNING",
         }),
       });
 
@@ -660,6 +661,7 @@ export function NewMatterForm() {
         displayName:
           displayName.trim() || `${grantor1} + ${grantor2} (Joint Trust)`,
         intake: intakePayload,
+        practiceArea: "ESTATE_PLANNING",
       }),
     });
 
