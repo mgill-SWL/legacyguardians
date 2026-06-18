@@ -74,6 +74,10 @@ function buildMergeData(input: {
     contact: { firstName: string; lastName: string; email: string | null; phoneE164: string };
     campaign: { name: string; slug: string };
     additionalNotes: string | null;
+    spouseFirstName: string | null;
+    spouseLastName: string | null;
+    spouseEmail: string | null;
+    spousePhone: string | null;
   };
 }) {
   const clientName = `${input.lead.contact.firstName} ${input.lead.contact.lastName}`.trim() || "Unnamed Client";
@@ -90,7 +94,16 @@ function buildMergeData(input: {
     : [];
   const quoteLinesText = quoteLines.map((line) => `${line.label}: ${line.amount}${line.summary ? ` - ${line.summary}` : ""}`).join("\n");
 
-  const spouseName = cleanText(input.body.spouseName);
+  // Spouse comes from the lead record (the durable home — see the lead page's
+  // "Spouse / co-client" card). A spouse name typed on the proposal still wins
+  // if present, for backward compatibility.
+  const leadSpouseName = [input.lead.spouseFirstName, input.lead.spouseLastName]
+    .map((part) => (part || "").trim())
+    .filter(Boolean)
+    .join(" ");
+  const spouseName = cleanText(input.body.spouseName) || leadSpouseName;
+  const spouseEmail = (input.lead.spouseEmail || "").trim();
+  const spousePhone = (input.lead.spousePhone || "").trim();
 
   const data = {
     CLIENTNAME: clientName,
@@ -101,6 +114,10 @@ function buildMergeData(input: {
     SPOUSEFULLNAME: spouseName,
     SpouseName: spouseName,
     SPOUSENAME: spouseName,
+    SpouseEmail: spouseEmail,
+    SPOUSEEMAIL: spouseEmail,
+    SpousePhone: spousePhone,
+    SPOUSEPHONE: spousePhone,
     CLIENTFIRSTNAME: input.lead.contact.firstName,
     ClientFirstName: input.lead.contact.firstName,
     CLIENTLASTNAME: input.lead.contact.lastName,
