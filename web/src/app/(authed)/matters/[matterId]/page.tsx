@@ -11,6 +11,9 @@ import { BillingCard } from "./BillingCard";
 import { TimelineCard } from "./TimelineCard";
 import { MatterFieldsCard } from "./MatterFieldsCard";
 import GeneratePacketButton from "./GeneratePacketButton";
+import { MatterClassificationForm } from "./MatterClassificationForm";
+import { MatterPartiesCard } from "./MatterPartiesCard";
+import { PRACTICE_AREA_LABEL } from "@/lib/matter/practiceArea";
 
 export default async function MatterDetailPage({
   params,
@@ -97,6 +100,16 @@ export default async function MatterDetailPage({
       })
     : [];
 
+  const parties = await prisma.matterContact.findMany({
+    where: { matterId },
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      role: true,
+      contact: { select: { id: true, displayName: true, email: true, organization: true } },
+    },
+  });
+
   if (!matter) {
     return (
       <main style={{ padding: 24 }}>
@@ -112,7 +125,47 @@ export default async function MatterDetailPage({
         ← Matters
       </Link>
       <h1 style={{ marginTop: 14, marginBottom: 6 }}>{matter.displayName}</h1>
-      <div style={{ color: "var(--sw-muted)", fontSize: 13 }}>Status: {matter.status}</div>
+      <div style={{ color: "var(--sw-muted)", fontSize: 13 }}>
+        Status: {matter.status}
+        {matter.practiceArea ? ` • ${PRACTICE_AREA_LABEL[matter.practiceArea]}` : ""}
+        {matter.practiceArea === "LITIGATION" && matter.litigationSubjectArea
+          ? ` (${PRACTICE_AREA_LABEL[matter.litigationSubjectArea]})`
+          : ""}
+      </div>
+
+      <section
+        style={{
+          marginTop: 18,
+          padding: 18,
+          borderRadius: "var(--sw-radius)",
+          background: "var(--sw-card)",
+          border: "1px solid var(--sw-border)",
+        }}
+      >
+        <div style={{ fontWeight: 800, marginBottom: 10 }}>Practice area</div>
+        <MatterClassificationForm
+          matterId={matter.id}
+          practiceArea={matter.practiceArea}
+          litigationSubjectArea={matter.litigationSubjectArea}
+        />
+      </section>
+
+      <section
+        style={{
+          marginTop: 18,
+          padding: 18,
+          borderRadius: "var(--sw-radius)",
+          background: "var(--sw-card)",
+          border: "1px solid var(--sw-border)",
+        }}
+      >
+        <div style={{ fontWeight: 800, marginBottom: 10 }}>Parties</div>
+        <MatterPartiesCard
+          matterId={matter.id}
+          parties={parties}
+          contacts={contacts.map((c) => ({ id: c.id, displayName: c.displayName, organization: c.organization }))}
+        />
+      </section>
 
       <section
         style={{

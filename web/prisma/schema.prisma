@@ -1421,6 +1421,24 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+enum PracticeArea {
+  ESTATE_PLANNING
+  ESTATE_ADMINISTRATION
+  TRUST_ADMINISTRATION
+  ELDER_LAW
+  FIDUCIARY_SERVICES
+  LITIGATION
+}
+
+enum MatterPartyRole {
+  CLIENT
+  CO_CLIENT
+  OPPOSING_PARTY
+  OPPOSING_COUNSEL
+  WITNESS
+  OTHER
+}
+
 model Matter {
   id     String       @id @default(cuid())
   firmId String?
@@ -1429,6 +1447,12 @@ model Matter {
 
   // v0: keep it simple; later we can normalize people/roles.
   displayName String
+
+  // Practice area / department (one per matter, drives P&L-by-area reporting).
+  // Disputes live in LITIGATION (Option A); litigationSubjectArea records the
+  // underlying subject of a litigation matter (e.g. a contested trust).
+  practiceArea          PracticeArea?
+  litigationSubjectArea PracticeArea?
 
   // lightweight contact/value fields for pipeline cards (MVP)
   primaryEmail        String?
@@ -1471,12 +1495,31 @@ model Matter {
   tasks Task[]
   timelineEvents MatterTimelineEvent[]
   fieldValues MatterFieldValue[]
+  parties MatterContact[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([firmId, primaryLocationId])
   @@index([referralSourceContactId])
+  @@index([firmId, practiceArea])
+}
+
+// Parties on a matter (clients, co-clients, opposing parties/counsel,
+// witnesses). Many-to-many between Matter and Contact with a role, so a
+// matter can have any number of parties (litigation co-clients, etc.).
+model MatterContact {
+  id        String          @id @default(cuid())
+  matterId  String
+  matter    Matter          @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  contactId String
+  contact   Contact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  role      MatterPartyRole @default(CLIENT)
+  createdAt DateTime        @default(now())
+
+  @@unique([matterId, contactId])
+  @@index([matterId])
+  @@index([contactId])
 }
 
 model Task {
@@ -1802,6 +1845,7 @@ model Contact {
 
   primaryMatters Matter[] @relation("MatterPrimaryContact")
   referredMatters Matter[] @relation("MatterReferralSource")
+  matterParties MatterContact[]
 
   financialClassifications FinancialClassification[]
 
