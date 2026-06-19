@@ -24,6 +24,7 @@ const {
 const FONT = "Times New Roman";
 const BODY = 22; // 11pt
 const CONTENT_WIDTH = 9360;
+const RATE_YEAR = 2026; // bump once per year
 
 const border = { style: BorderStyle.SINGLE, size: 4, color: "444444" };
 const borders = { top: border, bottom: border, left: border, right: border };
@@ -170,18 +171,19 @@ const children = [
 
   centeredTitle("EXHIBIT A", 24),
   centeredTitle("Hourly Rates and Services", 24),
-  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 120 }, children: [run("2026 Hourly Rates", { bold: true })] }),
+  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 120 }, children: [run(`${RATE_YEAR} Hourly Rates`, { bold: true })] }),
   new Table({
     width: { size: CONTENT_WIDTH, type: WidthType.DXA },
     columnWidths: RATE_COLS,
     rows: [
-      rateRow("Senior Attorney", "$450"),
-      rateRow("Associate", "$350"),
+      rateRow("Premium Attorney", "$675"),
+      rateRow("Senior Attorney", "$525"),
+      rateRow("Associate", "$400"),
       rateRow("Paralegal", "$185"),
       rateRow("Legal Assistant", "$125"),
     ],
   }),
-  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 100, after: 200 }, children: [run("(Only valid for 2026)")] }),
+  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 100, after: 200 }, children: [run(`(Only valid for ${RATE_YEAR})`)] }),
 
   new Paragraph({ spacing: { after: 100 }, children: [run("Services", { bold: true })] }),
   new Paragraph({ spacing: { after: 60 }, children: [run("Conveyance and Miscellaneous Instruments", { bold: true })] }),

@@ -281,6 +281,8 @@ const waiverAndPoa = [
   new Paragraph({ children: [new PageBreak()] }),
 ];
 
+const RATE_YEAR = 2026; // bump once per year
+
 const RATE_COLS = [6360, 3000];
 const rateRow = (label, amount, boldRow = false) =>
   new TableRow({
@@ -293,19 +295,19 @@ const rateRow = (label, amount, boldRow = false) =>
 const exhibitA = [
   centeredTitle("EXHIBIT A", 24),
   centeredTitle("ESTATE PLANNING SERVICES AND PRICES", 24),
-  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 160 }, children: [run("2026 Hourly Rates", { bold: true })] }),
+  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 160 }, children: [run(`${RATE_YEAR} Hourly Rates`, { bold: true })] }),
   new Table({
     width: { size: CONTENT_WIDTH, type: WidthType.DXA },
     columnWidths: RATE_COLS,
     rows: [
-      rateRow("Premium Attorney", "$625"),
-      rateRow("Senior Attorney", "$450"),
-      rateRow("Associate", "$350"),
+      rateRow("Premium Attorney", "$675"),
+      rateRow("Senior Attorney", "$525"),
+      rateRow("Associate", "$400"),
       rateRow("Paralegal", "$185"),
       rateRow("Legal Assistant", "$125"),
     ],
   }),
-  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 120, after: 160 }, children: [run("(Only valid for 2026)")] }),
+  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 120, after: 160 }, children: [run(`(Only valid for ${RATE_YEAR})`)] }),
   ...coupleSignatureBlock(),
   new Paragraph({ children: [new PageBreak()] }),
 ];
