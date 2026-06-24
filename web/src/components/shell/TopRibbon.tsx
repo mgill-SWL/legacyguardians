@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 
 import styles from "./TopRibbon.module.css";
+import { PRACTICE_AREAS } from "@/lib/matter/practiceArea";
 
 type CreateType = "lead" | "contact" | "matter";
 
@@ -72,6 +73,7 @@ function blankForm(type: CreateType): Record<string, string> {
   }
   return {
     displayName: "",
+    practiceArea: "",
   };
 }
 
@@ -255,7 +257,7 @@ export function TopRibbon() {
         const res = await fetch("/api/matters", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ displayName: form.displayName }),
+          body: JSON.stringify({ displayName: form.displayName, practiceArea: form.practiceArea || undefined }),
         });
         const data = (await res.json().catch(() => ({}))) as { matterId?: string; error?: string };
         if (!res.ok || !data.matterId) throw new Error(data.error || `HTTP ${res.status}`);
@@ -491,9 +493,22 @@ function MatterFields({
   updateField: (key: string, value: string) => void;
 }) {
   return (
-    <label className={styles.field}>
-      <span>Matter name</span>
-      <input ref={firstFieldRef} className="sw-input" required value={form.displayName || ""} onChange={(e) => updateField("displayName", e.target.value)} />
-    </label>
+    <div className={styles.fieldGrid}>
+      <label className={styles.field}>
+        <span>Matter name</span>
+        <input ref={firstFieldRef} className="sw-input" required value={form.displayName || ""} onChange={(e) => updateField("displayName", e.target.value)} />
+      </label>
+      <label className={styles.field}>
+        <span>Practice area</span>
+        <select className="sw-input" value={form.practiceArea || ""} onChange={(e) => updateField("practiceArea", e.target.value)}>
+          <option value="">— Set later —</option>
+          {PRACTICE_AREAS.map((a) => (
+            <option key={a.value} value={a.value}>
+              {a.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
   );
 }
