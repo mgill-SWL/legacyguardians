@@ -1,8 +1,10 @@
+import type { PracticeArea } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/authOptions";
 import { prisma } from "@/lib/prisma";
+import { PRACTICE_AREA_VALUES } from "@/lib/matter/practiceArea";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -11,10 +13,19 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as null | {
     displayName?: string;
     intake?: unknown;
+    practiceArea?: unknown;
   };
 
   if (!body?.displayName) {
     return NextResponse.json({ error: "displayName is required" }, { status: 400 });
+  }
+
+  let practiceArea: PracticeArea | null = null;
+  if (body.practiceArea !== undefined && body.practiceArea !== null && body.practiceArea !== "") {
+    if (typeof body.practiceArea !== "string" || !PRACTICE_AREA_VALUES.has(body.practiceArea)) {
+      return NextResponse.json({ error: "invalid practice area" }, { status: 400 });
+    }
+    practiceArea = body.practiceArea as PracticeArea;
   }
 
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
@@ -35,6 +46,7 @@ export async function POST(req: Request) {
       firmId: user.activeFirmId,
       createdById: user.id,
       primaryLocationId: defaultLocationId,
+      practiceArea,
       status: body.intake ? "INTAKE_IN_PROGRESS" : "DRAFT",
       intake: body.intake
         ? {
