@@ -51,9 +51,6 @@ export function LeadRecordShell({ activeTab, children, lead }: LeadRecordShellPr
       label: "Estate Planning Proposal",
       href: `/crm/leads/${lead.id}/proposal`,
     },
-    { key: "intake", label: "Intake", href: `/crm/leads/${lead.id}` },
-    { key: "tasks", label: "Tasks", href: `/crm/leads/${lead.id}` },
-    { key: "timeline", label: "Timeline", href: `/crm/leads/${lead.id}` },
   ];
 
   return (
