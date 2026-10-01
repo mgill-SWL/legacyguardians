@@ -637,5 +637,11 @@ export function tokenDataFromIntakeWithOptions(intake: IntakeV1, options?: Token
   data.Client1FinalDispositionAlternatesText = fmtSuccessors(fd1Ranks || []);
   data.Client2FinalDispositionAlternatesText = fmtSuccessors(fd2Ranks || []);
 
+  // Drives the reciprocal distribution branch in individual.docx
+  // ([[#reciprocal]] / [[^reciprocal]]). Always a defined boolean so the section
+  // tag never registers as a missing token. Reciprocal trusts render the
+  // individual template twice with reciprocalTrustView set.
+  data.reciprocal = intake.offering === "RECIPROCAL_TRUSTS" || Boolean(options?.reciprocalTrustView);
+
   return data;
 }
