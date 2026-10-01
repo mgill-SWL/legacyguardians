@@ -33,6 +33,7 @@ function titleFromPath(pathname: string) {
   if (pathname.startsWith("/crm/leads")) return "Leads";
   if (pathname.startsWith("/crm/inbox")) return "Inbox";
   if (pathname.startsWith("/crm/queue")) return "Queue";
+  if (pathname.startsWith("/crm/work")) return "Work";
   if (pathname.startsWith("/crm")) return "CRM";
   if (pathname.startsWith("/clients/contacts")) return "Contacts";
   if (pathname.startsWith("/clients/billing")) return "Billing";
