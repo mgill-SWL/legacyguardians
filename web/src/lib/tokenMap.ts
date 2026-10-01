@@ -637,5 +637,14 @@ export function tokenDataFromIntakeWithOptions(intake: IntakeV1, options?: Token
   data.Client1FinalDispositionAlternatesText = fmtSuccessors(fd1Ranks || []);
   data.Client2FinalDispositionAlternatesText = fmtSuccessors(fd2Ranks || []);
 
+  // Bespoke distribution language (attorney-approved, AI-assisted). Layered on top
+  // of the template's default residuary clause via an optional [[DistributionLanguage]]
+  // token. Harmless when absent from a template — docxtemplater only pulls referenced
+  // tokens, so this stays blank until a template opts in.
+  const bespokeDistribution = (intake.draftedClauses?.distribution || "").trim();
+  data.DistributionLanguage = bespokeDistribution;
+  data.DISTRIBUTIONLANGUAGE = bespokeDistribution;
+  data.BespokeDistribution = bespokeDistribution;
+
   return data;
 }

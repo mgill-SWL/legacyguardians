@@ -11,6 +11,7 @@ import { BillingCard } from "./BillingCard";
 import { TimelineCard } from "./TimelineCard";
 import { MatterFieldsCard } from "./MatterFieldsCard";
 import GeneratePacketButton from "./GeneratePacketButton";
+import DistributionDraftCard from "./DistributionDraftCard";
 import { MatterClassificationForm } from "./MatterClassificationForm";
 import { MatterPartiesCard } from "./MatterPartiesCard";
 import { PRACTICE_AREA_LABEL } from "@/lib/matter/practiceArea";
@@ -341,6 +342,19 @@ export default async function MatterDetailPage({
         >
           Open EPIS (staff) →
         </Link>
+      </section>
+
+      <section
+        style={{
+          marginTop: 14,
+          padding: 18,
+          borderRadius: "var(--sw-radius)",
+          background: "var(--sw-card)",
+          border: "1px solid var(--sw-border)",
+        }}
+      >
+        <div style={{ fontWeight: 800, marginBottom: 10 }}>Distribution language (AI-assisted)</div>
+        <DistributionDraftCard matterId={matter.id} />
       </section>
 
       <section

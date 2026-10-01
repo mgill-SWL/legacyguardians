@@ -72,6 +72,9 @@ export type Child = {
   dob?: string; // ISO date (YYYY-MM-DD)
 };
 
+/** EPIS free-text wish (preset choice + edited text), captured in the staff EPIS editor. */
+export type Wish = { presetKey?: string; text?: string };
+
 export type Offering =
   | "JOINT_TRUST"
   | "INDIVIDUAL_TRUST"
@@ -148,6 +151,27 @@ export type IntakeV1 = {
   children: Child[];
   successorTrustees: string[];
   distributionScheme: string;
+
+  /**
+   * EPIS free-text client wishes (healthcare / burial / distribution), captured
+   * per spouse in the staff EPIS editor. The distribution wishes feed the
+   * AI-assisted distribution drafter (web/src/lib/drafting/distribution.ts).
+   */
+  wishes?: {
+    healthcare?: { spouse1?: Wish; spouse2?: Wish };
+    burial?: { spouse1?: Wish; spouse2?: Wish };
+    distribution?: { spouse1?: Wish; spouse2?: Wish };
+  };
+
+  /**
+   * Attorney-approved, AI-assisted bespoke clause language, reviewed before use.
+   * These supplement (not replace) the template's vetted default language and are
+   * surfaced to templates as optional tokens (see tokenMap.ts).
+   */
+  draftedClauses?: {
+    /** Bespoke distribution provisions layered on top of the default residuary clause. */
+    distribution?: string;
+  };
 
   /** Optional: trust protector (v1 EPIS). */
   trustProtector?: {
