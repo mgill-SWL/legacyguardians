@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 
 import { EngagementStatusCard } from "./EngagementStatusCard";
 import { LeadRecordShell } from "./LeadRecordShell";
+import { LeadIntakeCard } from "./LeadIntakeCard";
 import { LeadReviewPanel } from "./LeadReviewPanel";
 import { LeadSpouseCard } from "./LeadSpouseCard";
 import styles from "./leadRecord.module.css";
@@ -191,9 +192,8 @@ export default async function LeadDetailPage({
         <main className={styles.panel}>
           <h2>Lead summary</h2>
           <p>
-            This shell gives proposal work a home inside the lead record. The next
-            pass can wire editable intake fields, tasks, messages, and timeline
-            events into these sections.
+            Intake, appointments, and review are editable in the cards on the right; the timeline
+            below tracks activity as the lead moves toward engagement.
           </p>
 
           <div className={styles.detailGrid}>
@@ -204,10 +204,6 @@ export default async function LeadDetailPage({
             <div className={styles.detailCell}>
               <span className={styles.detailLabel}>Phone</span>
               <strong className={styles.detailValue}>{lead.contact.phoneE164 || "Not captured"}</strong>
-            </div>
-            <div className={styles.detailCell}>
-              <span className={styles.detailLabel}>Additional notes</span>
-              <strong className={styles.detailValue}>{lead.additionalNotes || "No notes yet"}</strong>
             </div>
             <div className={styles.detailCell}>
               <span className={styles.detailLabel}>Duplicate review</span>
@@ -259,6 +255,17 @@ export default async function LeadDetailPage({
             raPreparedAt={lead.raPreparedAt}
             raSentAt={lead.raSentAt}
             raSignedAt={lead.raSignedAt}
+          />
+
+          <LeadIntakeCard
+            leadId={lead.id}
+            intakeCallAttempted={lead.intakeCallAttempted}
+            appt1AtISO={lead.appt1At ? lead.appt1At.toISOString() : null}
+            appt1Status={lead.appt1Status}
+            appt2AtISO={lead.appt2At ? lead.appt2At.toISOString() : null}
+            appt2Status={lead.appt2Status}
+            leadQualityScore={lead.leadQualityScore}
+            additionalNotes={lead.additionalNotes}
           />
 
           <LeadSpouseCard
