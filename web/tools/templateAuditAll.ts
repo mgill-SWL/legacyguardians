@@ -14,6 +14,12 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
+import PizZip from "pizzip";
+
+import { renderDocxTemplate, repoTemplatePath } from "../src/lib/docx/renderTemplate";
+import { tokenDataFromIntakeWithOptions } from "../src/lib/tokenMap";
+import { sampleIntake } from "./sampleIntake";
+
 // Templates the packet/RA flows actually render. reciprocal.docx is the
 // legacy Jinja-style source and is intentionally excluded (the reciprocal
 // offering renders individual.docx).
@@ -84,6 +90,41 @@ for (const template of TEMPLATES) {
     if (seriousLeftovers.length) console.error(`  leftovers: ${seriousLeftovers.join(", ")}`);
   } else {
     console.log(`PASS ${template}${warnings.length ? ` (warnings: ${warnings.join(", ")})` : ""}`);
+  }
+}
+
+// Reciprocal distribution is produced by the [[#reciprocal]] / [[^reciprocal]]
+// conditionals in individual.docx (not by runtime XML surgery). Render both
+// spouse POVs and assert the two-branch structure appears with no missing
+// tokens — this is the coverage the old surgery never had (it had silently
+// stopped firing).
+{
+  const base = sampleIntake();
+  const abs = repoTemplatePath("templates/canonical/individual.docx");
+  for (const pov of [1, 2] as const) {
+    const data = {
+      ...(tokenDataFromIntakeWithOptions(
+        { ...base, offering: "RECIPROCAL_TRUSTS" },
+        { primaryClient: pov, reciprocalTrustView: true },
+      ) as Record<string, unknown>),
+      Offering: "RECIPROCAL_TRUSTS",
+    };
+    const { buffer, missingTokens } = renderDocxTemplate({ templateAbsPath: abs, data });
+    const text = (new PizZip(buffer).file("word/document.xml")?.asText() ?? "").replace(/<[^>]+>/g, "");
+    const problems: string[] = [];
+    if (missingTokens.length) problems.push(`missing tokens: ${missingTokens.join(", ")}`);
+    if (!text.includes("Distribution at My Death if My Spouse Survives")) {
+      problems.push("missing 'spouse survives' branch");
+    }
+    if (!text.includes("Distribution at My Death if My Spouse Predeceases Me")) {
+      problems.push("missing 'spouse predeceases' branch");
+    }
+    if (problems.length) {
+      failures += 1;
+      console.error(`FAIL reciprocal individual.docx (spouse ${pov}): ${problems.join("; ")}`);
+    } else {
+      console.log(`PASS reciprocal individual.docx (spouse ${pov})`);
+    }
   }
 }
 
